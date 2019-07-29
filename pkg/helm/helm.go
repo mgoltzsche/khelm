@@ -78,7 +78,7 @@ type K8sMetadata struct {
 
 // ChartConfig define chart lookup and render config
 type ChartConfig struct {
-	HelmHome string `yaml: "helmHome,omitempty"`
+	HelmHome string `yaml: "helmHome"`
 	LoadChartConfig
 	RenderConfig
 }
