@@ -1,0 +1,81 @@
+# github.com/BurntSushi/toml v0.3.1
+github.com/BurntSushi/toml
+# github.com/Masterminds/goutils v1.1.0
+github.com/Masterminds/goutils
+# github.com/Masterminds/semver v1.4.2
+github.com/Masterminds/semver
+# github.com/Masterminds/sprig v2.20.0+incompatible
+github.com/Masterminds/sprig
+# github.com/cyphar/filepath-securejoin v0.2.2
+github.com/cyphar/filepath-securejoin
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
+# github.com/ghodss/yaml v1.0.0
+github.com/ghodss/yaml
+# github.com/gobwas/glob v0.2.3
+github.com/gobwas/glob
+github.com/gobwas/glob/compiler
+github.com/gobwas/glob/syntax
+github.com/gobwas/glob/match
+github.com/gobwas/glob/syntax/ast
+github.com/gobwas/glob/util/runes
+github.com/gobwas/glob/syntax/lexer
+github.com/gobwas/glob/util/strings
+# github.com/golang/protobuf v1.3.2
+github.com/golang/protobuf/ptypes/any
+github.com/golang/protobuf/ptypes/timestamp
+github.com/golang/protobuf/proto
+# github.com/google/uuid v1.1.1
+github.com/google/uuid
+# github.com/huandu/xstrings v1.2.0
+github.com/huandu/xstrings
+# github.com/imdario/mergo v0.3.7
+github.com/imdario/mergo
+# github.com/pkg/errors v0.8.1
+github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/spf13/pflag v1.0.3
+github.com/spf13/pflag
+# github.com/stretchr/testify v1.3.0
+github.com/stretchr/testify/require
+github.com/stretchr/testify/assert
+# golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
+golang.org/x/crypto/openpgp
+golang.org/x/crypto/openpgp/clearsign
+golang.org/x/crypto/openpgp/packet
+golang.org/x/crypto/openpgp/armor
+golang.org/x/crypto/openpgp/errors
+golang.org/x/crypto/openpgp/s2k
+golang.org/x/crypto/cast5
+golang.org/x/crypto/openpgp/elgamal
+golang.org/x/crypto/scrypt
+golang.org/x/crypto/pbkdf2
+# gopkg.in/yaml.v2 v2.2.2
+gopkg.in/yaml.v2
+# k8s.io/apimachinery v0.0.0-20190727130956-f97a4e5b4abc
+k8s.io/apimachinery/pkg/version
+# k8s.io/client-go v11.0.0+incompatible
+k8s.io/client-go/util/homedir
+# k8s.io/helm v2.14.2+incompatible
+k8s.io/helm/pkg/chartutil
+k8s.io/helm/pkg/downloader
+k8s.io/helm/pkg/getter
+k8s.io/helm/pkg/helm/environment
+k8s.io/helm/pkg/helm/helmpath
+k8s.io/helm/pkg/manifest
+k8s.io/helm/pkg/proto/hapi/chart
+k8s.io/helm/pkg/renderutil
+k8s.io/helm/pkg/repo
+k8s.io/helm/pkg/ignore
+k8s.io/helm/pkg/proto/hapi/version
+k8s.io/helm/pkg/sympath
+k8s.io/helm/pkg/version
+k8s.io/helm/pkg/provenance
+k8s.io/helm/pkg/resolver
+k8s.io/helm/pkg/urlutil
+k8s.io/helm/pkg/plugin
+k8s.io/helm/pkg/tlsutil
+k8s.io/helm/pkg/releaseutil
+k8s.io/helm/pkg/engine
+k8s.io/helm/pkg/proto/hapi/release
