@@ -1,0 +1,10 @@
+apiVersion: helm.mgoltzsche.github.com/v1
+kind: ChartInflator
+metadata:
+  name: jenkins-chart-inflator
+repository: https://kubernetes-charts.storage.googleapis.com
+chart: jenkins
+version: 0.32.4
+loadDependencies: true
+valueFiles:
+  - jenkins-values.yaml
