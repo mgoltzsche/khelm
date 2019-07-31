@@ -35,8 +35,8 @@ func TestRender(t *testing.T) {
 	b := rendered.Bytes()
 	l, err := readYaml(b)
 	require.NoError(t, err, "rendered yaml:\n%s", b)
-	require.True(t, len(l) > 0, "rendered yaml should contain resources")
-	require.Contains(t, rendered.String(), "name: jenkins-agent")
+	require.True(t, len(l) > 0, "rendered yaml is empty")
+	require.Contains(t, rendered.String(), "- host: \"jenkins.example.org\"\n")
 }
 
 func chdir(dir string) {

@@ -1,32 +1,31 @@
 jenkins:
-  enabled: true
-  Master:
-    HostName: jenkins.algorythm.de
-    ImageTag: lts-alpine
-    ServiceType: ClusterIP
-    # TODO: verify
-    RunAsUser: 1000
-    FsGroup: 1000
+enabled: true
+Master:
+  HostName: jenkins.example.org
+  ImageTag: lts-alpine
+  ServiceType: ClusterIP
+  RunAsUser: 1000
+  FsGroup: 1000
 
-  Agent:
-    Image: mgoltzsche/jenkins-jnlp-slave
-    ImageTag: latest
-    PodName: jenkins-slave
-    ContainerCap: 3
-    Privileged: true
-    resources:
-      requests:
-        cpu: "200m"
-        memory: "2096Mi"
-      limits:
-        cpu: "300m"
-        memory: "2096Mi"
+Agent:
+  Image: mgoltzsche/jenkins-jnlp-slave
+  ImageTag: latest
+  PodName: jenkins-slave
+  ContainerCap: 3
+  Privileged: true
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "2096Mi"
+    limits:
+      cpu: "300m"
+      memory: "2096Mi"
 
-  Persistence:
-    Size: 1Gi
-    #StorageClass: local-storage
-    StorageClass: rook-ceph-block
+Persistence:
+  Size: 1Gi
+  #StorageClass: local-storage
+  StorageClass: rook-ceph-block
 
-  rbac:
-    install: true
-    serviceAccountName: jenkins
+rbac:
+  install: true
+  serviceAccountName: jenkins
