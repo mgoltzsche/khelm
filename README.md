@@ -59,10 +59,10 @@ apiVersion: helm.mgoltzsche.github.com/v1
 kind: ChartInflator
 metadata:
   name: <NAME>
+  namespace: <NAMESPACE>
 repository: <REPOSITORY>
 chart: <CHART_NAME>
 version: <CHART_VERSION>
-namespace: <NAMESPACE>
 valueFiles:
   - <VALUE_FILE>
 value: <VALUE_MAP>

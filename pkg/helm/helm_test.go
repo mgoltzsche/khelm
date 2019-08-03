@@ -37,6 +37,14 @@ func TestRender(t *testing.T) {
 	require.NoError(t, err, "rendered yaml:\n%s", b)
 	require.True(t, len(l) > 0, "rendered yaml is empty")
 	require.Contains(t, rendered.String(), "- host: jenkins.example.org\n")
+	hasJenkinsNamespace := false
+	for _, o := range l {
+		if o["metadata"].(map[interface{}]interface{})["namespace"] == "jenkins" {
+			hasJenkinsNamespace = true
+			break
+		}
+	}
+	require.True(t, hasJenkinsNamespace, "should have 'jenkins' namespace")
 }
 
 func chdir(dir string) {

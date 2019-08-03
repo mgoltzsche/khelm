@@ -47,7 +47,8 @@ type GeneratorConfig struct {
 
 // K8sMetadata define the name to be kubernetes object schema conform
 type K8sMetadata struct {
-	Name string `yaml:"name"`
+	Name      string `yaml:"name"`
+	Namespace string `yaml:"namespace,omitempty"`
 }
 
 // ChartConfig define chart lookup and render config
@@ -97,6 +98,11 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		if cfg.Chart == "" {
 			err = errors.New("chart not specified")
 		}
+	}
+	if cfg.Namespace == "" {
+		cfg.Namespace = cfg.Metadata.Namespace
+	} else if cfg.Metadata.Namespace != "" && err == nil {
+		err = errors.New("both metadata.namespace and namespace defined")
 	}
 	return cfg, errors.Wrap(err, "read chart inflator config")
 }
