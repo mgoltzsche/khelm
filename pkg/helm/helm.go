@@ -22,33 +22,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/repo"
-	//"github.com/ContainerSolutions/helm-convert/pkg/helm"
 )
-
-/*func Render(loadCfg *helm.LoadChartConfig, renderCfg *helm.RenderChartConfig, writer io.Writer) (err error) {
-	var (
-		settings environment.EnvSettings
-	)
-	settings.Home = "/home/max/.helm"
-	h := helm.NewHelm(settings, writer)
-	chartRequested, err := h.LoadChart(loadCfg)
-	if err != nil {
-		return
-	}
-	if renderCfg.Name == "" {
-		renderCfg.Name = chartRequested.Metadata.Name
-	}
-	renderedManifests, err := h.RenderChart(renderCfg)
-	if err != nil {
-		return
-	}
-	for _, m := range renderedManifests {
-		fmt.Fprintln(writer, m.Content)
-	}
-	return
-}*/
-
-// derived from https://github.com/ContainerSolutions/helm-convert/blob/v0.5.0/pkg/helm/helm.go
 
 const stableRepository = "stable"
 
@@ -138,17 +112,7 @@ func Render(cfg *GeneratorConfig, writer io.Writer) (err error) {
 	if renderCfg.Name == "" {
 		renderCfg.Name = chrt.Metadata.Name
 	}
-	resources, err := h.RenderChart(chrt, renderCfg)
-	if err != nil {
-		return
-	}
-	for _, m := range resources {
-		b := filepath.Base(m.Name)
-		if b != "NOTES.txt" && !strings.HasPrefix(b, "_") && !whitespaceRegex.MatchString(m.Content) {
-			fmt.Fprintln(writer, "---\n"+m.Content)
-		}
-	}
-	return
+	return h.RenderChart(chrt, renderCfg, writer)
 }
 
 // NewHelm constructs helm
@@ -165,7 +129,8 @@ func NewHelm(home string, out io.Writer) *Helm {
 	}
 }
 
-// Initialize initialize the helm home directory
+// Initialize initialize the helm home directory.
+// Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/installer/init.go
 func (h *Helm) Initialize() (err error) {
 	// TODO:
 	/*if _, e := os.Stat(h.settings.Home.String()); e == nil {
@@ -284,28 +249,46 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 }
 
 // RenderChart manifest
-func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig) (m []manifest.Manifest, err error) {
+// Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/template.go
+func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer) (err error) {
+	namespace := c.Namespace
+	if namespace == "" {
+		namespace = "default"
+	}
 	renderOpts := renderutil.Options{
 		ReleaseOptions: chartutil.ReleaseOptions{
 			Name:      c.Name,
-			Namespace: c.Namespace,
+			Namespace: namespace,
 		},
 		KubeVersion: defaultKubeVersion,
 	}
-	log.Printf("Rendering chart with name %q, namespace: %q\n", c.Name, c.Namespace)
+	log.Printf("Rendering chart with name %q, namespace: %q\n", c.Name, namespace)
 
 	rawVals, err := h.Vals(c.ValueFiles, c.Values, "", "", "")
 	if err != nil {
-		return nil, errors.Wrap(err, "load values")
+		return errors.Wrap(err, "load values")
 	}
 	config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
 
-	renderedResources, err := renderutil.Render(chrt, config, renderOpts)
+	renderedTemplates, err := renderutil.Render(chrt, config, renderOpts)
 	if err != nil {
-		return nil, errors.Wrap(err, "render chart")
+		return errors.Wrap(err, "render chart")
 	}
 
-	return manifest.SplitManifests(renderedResources), nil
+	listManifests := manifest.SplitManifests(renderedTemplates)
+
+	for _, m := range sortByKind(listManifests) {
+		b := filepath.Base(m.Name)
+		if b == "NOTES.txt" || strings.HasPrefix(b, "_") || whitespaceRegex.MatchString(m.Content) {
+			continue
+		}
+		if err = setNamespaceIfMissing(&m, namespace); err != nil {
+			return errors.Wrap(err, "render chart")
+		}
+		fmt.Fprintf(writer, "---\n# Source: %s\n", m.Name)
+		fmt.Fprintln(writer, m.Content)
+	}
+	return
 }
 
 // LocateChartPath looks for a chart directory in known places, and returns either the full path or an error.

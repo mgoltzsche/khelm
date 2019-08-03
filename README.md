@@ -62,6 +62,7 @@ metadata:
 repository: <REPOSITORY>
 chart: <CHART_NAME>
 version: <CHART_VERSION>
+namespace: <NAMESPACE>
 valueFiles:
   - <VALUE_FILE>
 value: <VALUE_MAP>
@@ -70,8 +71,8 @@ value: <VALUE_MAP>
 
 ### Example
 
-An example kustomization using this plugin can be found in the `example/jenkins` directory
-and rendered like this:
+An example kustomization using this plugin can be found in the `example/jenkins`
+directory and rendered like this:
 ```
 kustomize build --enable_alpha_plugins github.com/mgoltzsche/helm-kustomize-plugin/example/jenkins
 ```

@@ -36,7 +36,7 @@ func TestRender(t *testing.T) {
 	l, err := readYaml(b)
 	require.NoError(t, err, "rendered yaml:\n%s", b)
 	require.True(t, len(l) > 0, "rendered yaml is empty")
-	require.Contains(t, rendered.String(), "- host: \"jenkins.example.org\"\n")
+	require.Contains(t, rendered.String(), "- host: jenkins.example.org\n")
 }
 
 func chdir(dir string) {

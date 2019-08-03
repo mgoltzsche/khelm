@@ -57,7 +57,7 @@ gopkg.in/yaml.v2
 k8s.io/apimachinery/pkg/version
 # k8s.io/client-go v11.0.0+incompatible
 k8s.io/client-go/util/homedir
-# k8s.io/helm v2.14.2+incompatible
+# k8s.io/helm v2.14.3+incompatible
 k8s.io/helm/pkg/chartutil
 k8s.io/helm/pkg/downloader
 k8s.io/helm/pkg/getter

@@ -28,6 +28,10 @@ build: golang-image
 helm-kustomize-plugin:
 	go build -a -ldflags '-s -w -extldflags "-static" $(LDFLAGS)' -tags '$(BUILDTAGS)' .
 
+install:
+	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/helm.mgoltzsche.github.com/v1/chartinflator
+	cp helm-kustomize-plugin $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/helm.mgoltzsche.github.com/v1/chartinflator/ChartInflator
+
 test:
 	go test -coverprofile coverage.out -cover ./...
 
@@ -56,17 +60,24 @@ coverage-report: golang-image
 	firefox coverage.html
 
 vendor-update: golang-image
-	$(DOCKERRUN) -e GO111MODULE=on $(GOIMAGE) go mod vendor
+	mkdir -p .build-cache
+	$(DOCKERRUN) -e GO111MODULE=on \
+		--mount "type=bind,src=$(shell pwd)/.build-cache,dst=/go" \
+		$(GOIMAGE) go mod vendor
 
 golang-image:
 	echo "$$GODOCKERFILE" | docker build --force-rm -t $(GOIMAGE) -
 
 ide:
+	mkdir -p .build-cache
 	docker run -d --name liteide-helm-kustomize-plugin --rm \
 		-e DISPLAY="$(shell echo $$DISPLAY)" \
 		-e CHUSR=$(shell id -u):$(shell id -g) \
+		-e GO111MODULE=on \
+		-e GOFLAGS=' ' \
 		--mount type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix \
 		--mount type=bind,src=/etc/machine-id,dst=/etc/machine-id \
+		--mount "type=bind,src=$(shell pwd)/.build-cache,dst=/go" \
 		--mount "type=bind,src=$(shell pwd),dst=/go/src/$(PKG)" \
 		"$(LITEIDEIMAGE)" \
 		"/go/src/$(PKG)"

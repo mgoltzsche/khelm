@@ -1,4 +1,3 @@
-jenkins:
 enabled: true
 Master:
   HostName: jenkins.example.org

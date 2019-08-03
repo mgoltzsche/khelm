@@ -1,3 +1,4 @@
 helm-kustomize-plugin
 coverage.out
+.build-cache
 
