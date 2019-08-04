@@ -1,0 +1,11 @@
+apiVersion: helm.mgoltzsche.github.com/v1
+kind: ChartInflator
+metadata:
+  name: ceph-chart-inflator
+  namespace: rook-ceph-system
+repository: https://charts.rook.io/stable
+chart: rook-ceph
+version: 0.9.3
+loadDependencies: true
+valueFiles:
+  - values.yaml

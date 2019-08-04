@@ -1,0 +1,4 @@
+resources:
+  - operator
+  - cluster.yaml
+  - storageclass.yaml
