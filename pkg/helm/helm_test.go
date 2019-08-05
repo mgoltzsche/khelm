@@ -33,7 +33,7 @@ func TestRender(t *testing.T) {
 		b := rendered.Bytes()
 		l, err := readYaml(b)
 		require.NoError(t, err, "rendered yaml:\n%s", b)
-		require.True(t, len(l) > 0, "rendered yaml is empty")
+		require.True(t, len(l) > 0, "%s: rendered yaml is empty", file)
 		require.Contains(t, rendered.String(), "- host: jenkins.example.org\n")
 		hasJenkinsNamespace := false
 		for _, o := range l {
@@ -42,7 +42,7 @@ func TestRender(t *testing.T) {
 				break
 			}
 		}
-		require.True(t, hasJenkinsNamespace, "should have 'jenkins' namespace")
+		require.True(t, hasJenkinsNamespace, "%s: should have 'jenkins' namespace", file)
 	}
 }
 

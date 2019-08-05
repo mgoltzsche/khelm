@@ -1,7 +1,7 @@
-apiVersion: helm.mgoltzsche.github.com/v1
-kind: ChartInflator
+apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+kind: ChartRenderer
 metadata:
-  name: ceph-chart-inflator
+  name: rook-ceph
   namespace: rook-ceph-system
 repository: https://charts.rook.io/stable
 chart: rook-ceph

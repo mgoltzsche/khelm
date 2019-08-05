@@ -60,8 +60,8 @@ A _plugin descriptor_ specifying the helm repository, chart, version and values
 that should be used in a kubernetes-style resource can be referenced in the
 `generators` section of a `kustomization.yaml` and looks as follows:
 ```
-apiVersion: helm.mgoltzsche.github.com/v1
-kind: ChartInflator
+apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+kind: ChartRenderer
 metadata:
   name: <NAME>
   namespace: <NAMESPACE>

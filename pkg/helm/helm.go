@@ -25,7 +25,11 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-const stableRepository = "stable"
+const (
+	stableRepository    = "stable"
+	generatorAPIVersion = "helm.kustomize.mgoltzsche.github.com/v1"
+	generatorKind       = "ChartRenderer"
+)
 
 var (
 	whitespaceRegex    = regexp.MustCompile(`^\s*$`)
@@ -64,14 +68,15 @@ type LoadChartConfig struct {
 	Repository string `yaml:"repository"`
 	Chart      string `yaml:"chart"`
 	Version    string `yaml:"version"`
-	Username   string `yaml:"user,omitempty"`
-	Password   string `yaml:"password,omitempty"`
-	DepUp      bool   `yaml:"loadDependencies,omitempty"`
-	Verify     bool   `yaml:"verify,omitempty"`
-	Keyring    string `yaml:"keyring,omitempty"`
-	CertFile   string `yaml:"certFile,omitempty"`
-	KeyFile    string `yaml:"keyFile,omitempty"`
-	CaFile     string `yaml:"caFile,omitempty"`
+
+	// TODO: load from some local configuration
+	Username string `yaml:"user,omitempty"`
+	Password string `yaml:"password,omitempty"`
+	Verify   bool   `yaml:"verify,omitempty"`
+	Keyring  string `yaml:"keyring,omitempty"`
+	CertFile string `yaml:"certFile,omitempty"`
+	KeyFile  string `yaml:"keyFile,omitempty"`
+	CaFile   string `yaml:"caFile,omitempty"`
 }
 
 // RenderConfig defines the configuration to render a chart
@@ -101,13 +106,19 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		if cfg.Chart == "" {
 			err = errors.New("chart not specified")
 		}
+		if cfg.APIVersion != generatorAPIVersion {
+			err = errors.Errorf("expected apiVersion %s but was %s", generatorAPIVersion, cfg.APIVersion)
+		}
+		if cfg.Kind != generatorKind {
+			err = errors.Errorf("expected kind %s but was %s", generatorKind, cfg.Kind)
+		}
 	}
 	if cfg.Namespace == "" {
 		cfg.Namespace = cfg.Metadata.Namespace
 	} else if cfg.Metadata.Namespace != "" && err == nil {
 		err = errors.New("both metadata.namespace and namespace defined")
 	}
-	return cfg, errors.Wrap(err, "read chart inflator config")
+	return cfg, errors.Wrap(err, "read chart renderer config")
 }
 
 // Render manifest from helm chart configuration (shorthand)
@@ -141,10 +152,10 @@ func NewHelm(home string, out io.Writer) *Helm {
 // Initialize initialize the helm home directory.
 // Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/installer/init.go
 func (h *Helm) Initialize() (err error) {
-	// TODO:
-	/*if _, e := os.Stat(h.settings.Home.String()); e == nil {
+	// TODO: create temporary helm home?
+	if _, e := os.Stat(h.settings.Home.String()); e == nil {
 		return
-	}*/
+	}
 
 	log.Printf("Initializing helm home at %s\n", h.settings.Home)
 
@@ -228,25 +239,21 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 	req, e := chartutil.LoadRequirements(c)
 	if e == nil {
 		if err = renderutil.CheckDependencies(c, req); err != nil {
-			if ref.DepUp {
-				man := &downloader.Manager{
-					Out:        h.out,
-					ChartPath:  chartPath,
-					HelmHome:   h.settings.Home,
-					Keyring:    ref.Keyring,
-					SkipUpdate: false,
-					Getters:    getter.All(h.settings),
-				}
-				if err = man.Update(); err != nil {
-					return
-				}
+			man := &downloader.Manager{
+				Out:        h.out,
+				ChartPath:  chartPath,
+				HelmHome:   h.settings.Home,
+				Keyring:    ref.Keyring,
+				SkipUpdate: true,
+				Getters:    getter.All(h.settings),
+			}
+			if err = man.Update(); err != nil {
+				return
+			}
 
-				// Update all dependencies which are present in /charts.
-				c, err = chartutil.Load(chartPath)
-				if err != nil {
-					return
-				}
-			} else {
+			// Update all dependencies which are present in /charts.
+			c, err = chartutil.Load(chartPath)
+			if err != nil {
 				return
 			}
 		}
