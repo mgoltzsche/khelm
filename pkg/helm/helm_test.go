@@ -21,28 +21,34 @@ var currDir = func() string {
 }()
 
 func TestRender(t *testing.T) {
-	for _, file := range []string{
-		"../../example/jenkins/jenkins-chart.yaml",
-		"chartwithextvalues.yaml",
+	expectedJenkinsContained := "- host: jenkins.example.org\n"
+	for _, c := range []struct {
+		file              string
+		expectedNamespace string
+		expectedContained string
+	}{
+		{"../../example/jenkins/jenkins-chart.yaml", "jenkins", expectedJenkinsContained},
+		{"chartwithextvalues.yaml", "jenkins", expectedJenkinsContained},
+		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
 	} {
 		var rendered bytes.Buffer
-		absFile := filepath.Join(currDir, file)
+		absFile := filepath.Join(currDir, c.file)
 		rootDir := filepath.Join(currDir, "..", "..")
 		err := render(t, absFile, rootDir, &rendered)
-		require.NoError(t, err, "render %s", file)
+		require.NoError(t, err, "render %s", c.file)
 		b := rendered.Bytes()
 		l, err := readYaml(b)
 		require.NoError(t, err, "rendered yaml:\n%s", b)
-		require.True(t, len(l) > 0, "%s: rendered yaml is empty", file)
-		require.Contains(t, rendered.String(), "- host: jenkins.example.org\n")
-		hasJenkinsNamespace := false
+		require.True(t, len(l) > 0, "%s: rendered yaml is empty", c.file)
+		require.Contains(t, rendered.String(), c.expectedContained)
+		hasExpectedNamespace := false
 		for _, o := range l {
-			if o["metadata"].(map[interface{}]interface{})["namespace"] == "jenkins" {
-				hasJenkinsNamespace = true
+			if o["metadata"].(map[interface{}]interface{})["namespace"] == c.expectedNamespace {
+				hasExpectedNamespace = true
 				break
 			}
 		}
-		require.True(t, hasJenkinsNamespace, "%s: should have 'jenkins' namespace", file)
+		require.True(t, hasExpectedNamespace, "%s: should have namespace %q", c.file, c.expectedNamespace)
 	}
 }
 
