@@ -85,6 +85,4 @@ kustomize build --enable_alpha_plugins github.com/mgoltzsche/helm-kustomize-plug
 
 ## Compatibility & security notice
 
-Plugin support in kustomize is still an alpha feature and likely to be changed soon.  
-Also this plugin's file system access is currently not restricted which allows
-to load a helm value file from anywhere on your host. This may change as well.
+Plugin support in kustomize is still an alpha feature and likely to be changed soon.

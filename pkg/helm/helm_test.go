@@ -21,36 +21,48 @@ var currDir = func() string {
 }()
 
 func TestRender(t *testing.T) {
+	for _, file := range []string{
+		"../../example/jenkins/jenkins-chart.yaml",
+		"chartwithextvalues.yaml",
+	} {
+		var rendered bytes.Buffer
+		absFile := filepath.Join(currDir, file)
+		rootDir := filepath.Join(currDir, "..", "..")
+		err := render(t, absFile, rootDir, &rendered)
+		require.NoError(t, err, "render %s", file)
+		b := rendered.Bytes()
+		l, err := readYaml(b)
+		require.NoError(t, err, "rendered yaml:\n%s", b)
+		require.True(t, len(l) > 0, "rendered yaml is empty")
+		require.Contains(t, rendered.String(), "- host: jenkins.example.org\n")
+		hasJenkinsNamespace := false
+		for _, o := range l {
+			if o["metadata"].(map[interface{}]interface{})["namespace"] == "jenkins" {
+				hasJenkinsNamespace = true
+				break
+			}
+		}
+		require.True(t, hasJenkinsNamespace, "should have 'jenkins' namespace")
+	}
+}
+
+func TestRenderReject(t *testing.T) {
+	file := filepath.Join(currDir, "chartwithextvalues.yaml")
+	err := render(t, file, currDir, &bytes.Buffer{})
+	require.Error(t, err, "render %s within %s", file, currDir)
+}
+
+func render(t *testing.T, file, rootDir string, writer io.Writer) (err error) {
 	log.SetFlags(0)
-	chdir(filepath.Join(currDir, "../../example/jenkins"))
-	defer chdir(currDir)
-	var rendered bytes.Buffer
-	f, err := os.Open("jenkins-chart.yaml")
+	f, err := os.Open(file)
 	require.NoError(t, err)
 	defer f.Close()
 	cfg, err := ReadGeneratorConfig(f)
 	require.NoError(t, err)
-	err = Render(cfg, &rendered)
-	require.NoError(t, err, "render")
-	b := rendered.Bytes()
-	l, err := readYaml(b)
-	require.NoError(t, err, "rendered yaml:\n%s", b)
-	require.True(t, len(l) > 0, "rendered yaml is empty")
-	require.Contains(t, rendered.String(), "- host: jenkins.example.org\n")
-	hasJenkinsNamespace := false
-	for _, o := range l {
-		if o["metadata"].(map[interface{}]interface{})["namespace"] == "jenkins" {
-			hasJenkinsNamespace = true
-			break
-		}
-	}
-	require.True(t, hasJenkinsNamespace, "should have 'jenkins' namespace")
-}
-
-func chdir(dir string) {
-	if err := os.Chdir(dir); err != nil {
-		panic(err)
-	}
+	cfg.RootDir = rootDir
+	cfg.BaseDir = filepath.Dir(file)
+	err = Render(cfg, writer)
+	return
 }
 
 func readYaml(y []byte) (l []map[string]interface{}, err error) {

@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"k8s.io/helm/pkg/chartutil"
@@ -79,6 +80,8 @@ type RenderConfig struct {
 	Namespace  string                 `yaml:"namespace,omitempty"`
 	ValueFiles []string               `yaml:"valueFiles,omitempty"`
 	Values     map[string]interface{} `yaml:"values,omitempty"`
+	BaseDir    string                 `yaml:"-"`
+	RootDir    string                 `yaml:"-"`
 }
 
 // ReadGeneratorConfig read the generator configuration
@@ -270,7 +273,11 @@ func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer)
 	}
 	log.Printf("Rendering chart with name %q, namespace: %q\n", c.Name, namespace)
 
-	rawVals, err := h.Vals(c.ValueFiles, c.Values, "", "", "")
+	valPaths, err := securePaths(c.ValueFiles, c.BaseDir, c.RootDir)
+	if err != nil {
+		return errors.Wrap(err, "load values")
+	}
+	rawVals, err := h.Vals(valPaths, c.Values, "", "", "")
 	if err != nil {
 		return errors.Wrap(err, "load values")
 	}
@@ -293,6 +300,24 @@ func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer)
 		}
 		fmt.Fprintf(writer, "---\n# Source: %s\n", m.Name)
 		fmt.Fprintln(writer, m.Content)
+	}
+	return
+}
+
+func securePaths(paths []string, baseDir, rootDir string) (secured []string, err error) {
+	if rootDir == "" {
+		return nil, errors.New("no root dir provided")
+	}
+	relBaseDir, err := filepath.Rel(rootDir, baseDir)
+	if err != nil {
+		return
+	}
+	secured = make([]string, len(paths))
+	for i, path := range paths {
+		path = filepath.Join(relBaseDir, path)
+		if secured[i], err = securejoin.SecureJoin(rootDir, path); err != nil {
+			return
+		}
 	}
 	return
 }

@@ -20,6 +20,12 @@ func main() {
 	fmt.Fprintf(os.Stderr, "##ARGS: %s %s\n", os.Args[0], os.Args[1])
 	cfg, err := helm.ReadGeneratorConfig(f)
 	handleError(err)
+	cfg.RootDir = os.Getenv("KUSTOMIZE_PLUGIN_CONFIG_ROOT")
+	if cfg.RootDir == "" {
+		handleError(fmt.Errorf("no KUSTOMIZE_PLUGIN_CONFIG_ROOT env var provided"))
+	}
+	cfg.BaseDir, err = os.Getwd()
+	handleError(err)
 	err = helm.Render(cfg, os.Stdout)
 	handleError(err)
 }
