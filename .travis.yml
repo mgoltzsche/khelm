@@ -3,3 +3,12 @@ services:
 - docker
 script:
 - make check
+deploy:
+  provider: releases
+  api_key:
+    secure: YCNelO7BhDwixo9NvPxNvJ9vCPYwbfscOv0y7wVQllHMHb2kblhymIHTqlcjBso57PZdPnJQtwUp837k4769WNu+7lAvZpgnTX4sL7YwwZwbDxvCsGCZmybM/K1hEoqKj0kyAXeX3rlL36ZsitRQUYuhPIy7jEVoy/69n8ZIZOcnGqy+aDr8qIBhG+ebtebBx4cD5eZplM/J37g64zCtiPMuBqeMaL+YqOPecNcVXP4ncLMVVzFpoTLIcQUnMy9OBilF/akNjqYrrYhgYPVoPzQQHUGgNXqn93ueISeLx4+rlhfXkbPy2ij53fbSh+0xDJLh2iSRJeJ/cBgG+K5v/JhFLDWRHJTaKrxTUD9dqR66EcujhhN+aUcLSsHdVPXNSZUnvvCSBNytY1PYVYQ5PupD3Y7q1lnzQikEHGPCqOH14dYW4/+PSFkODhyDEX5Szuzox0JZRBcUM9pWC8rL83pStuCY00/+GS26W310NXXkGkeNvfSk3i76ocF9mIP4tZGf1A2lZu7vqClUGMkMZTnmwgZLAuMFmN2+yrU3FIcfDzcGTgJcosMfm5MWTu4bBNbn+WA+Wvtf9NeVWWJH2pUC1QbRtvvWUKNWXlfLYr62dAO0ECzWi6ONQwI4uJyO/sbMNvanlw334LyFIlDO7oQm5cfEGWi+io3vSzBwi7M=
+  file: helm-kustomize-plugin
+  skip_cleanup: true
+  on:
+    repo: mgoltzsche/helm-kustomize-plugin
+    tags: true
