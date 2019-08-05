@@ -10,8 +10,6 @@ This plugin is an improved, golang-based version of the
 [example chartinflator plugin](https://github.com/kubernetes-sigs/kustomize/tree/v3.1.0/plugin/someteam.example.com/v1/chartinflator)
 with helm built-in.
 
-_THIS PROJECT IS STILL IN EARLY DEVELOPMENT._
-
 ## Motivation
 
 [Helm](https://github.com/helm/helm) packages ("charts") provide a great way to
@@ -39,15 +37,15 @@ which allows to manage their state within the cluster as well.
 
 Install using curl (linux amd64):
 ```
-mkdir -p $HOME/.config/kustomize/plugin/helm.mgoltzsche.github.com/v1/chartinflator
-curl -L https://github.com/mgoltzsche/helm-kustomize-plugin/releases/latest/download/helm-kustomize-plugin > $HOME/.config/kustomize/plugin/helm.mgoltzsche.github.com/v1/chartinflator/ChartInflator
-chmod u+x $HOME/.config/kustomize/plugin/helm.mgoltzsche.github.com/v1/chartinflator/ChartInflator
+mkdir -p $HOME/.config/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer
+curl -L https://github.com/mgoltzsche/helm-kustomize-plugin/releases/latest/download/helm-kustomize-plugin > $HOME/.config/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
+chmod u+x $HOME/.config/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
 ```
 or using `go`:
 ```
 go get github.com/mgoltzsche/helm-kustomize-plugin
-mkdir -p $HOME/.config/kustomize/plugin/helm.mgoltzsche.github.com/v1/chartinflator
-mv $GOPATH/bin/helm-kustomize-plugin $HOME/.config/kustomize/plugin/helm.mgoltzsche.github.com/v1/chartinflator/ChartInflator
+mkdir -p $HOME/.config/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer
+mv $GOPATH/bin/helm-kustomize-plugin $HOME/.config/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
 ```
 
 The [kustomize plugin documentation](https://github.com/kubernetes-sigs/kustomize/tree/master/docs/plugins)
