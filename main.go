@@ -2,27 +2,36 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/mgoltzsche/helm-kustomize-plugin/pkg/helm"
 )
 
+const (
+	envConfig = "KUSTOMIZE_PLUGIN_CONFIG_STRING"
+	envRoot   = "KUSTOMIZE_PLUGIN_CONFIG_ROOT"
+)
+
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintf(os.Stderr, "helm-kustomize-plugin usage: %s FILE\nprovided args: %+v\n", os.Args[0], os.Args[1:])
+	log.SetFlags(0)
+	rawCfg := os.Getenv(envConfig)
+	if len(os.Args) != 2 && rawCfg == "" {
+		fmt.Fprintf(os.Stderr, "helm-kustomize-plugin usage: %s [FILE]\n\nENV VARS:\n  %s\n  [%s]\n\nprovided args: %+v\n", os.Args[0], envRoot, envConfig, os.Args[1:])
 		os.Exit(1)
 	}
-	log.SetFlags(0)
-	f, err := os.Open(os.Args[1])
+	if rawCfg == "" {
+		b, err := ioutil.ReadFile(os.Args[1])
+		handleError(err)
+		rawCfg = string(b)
+	}
+	cfg, err := helm.ReadGeneratorConfig(strings.NewReader(rawCfg))
 	handleError(err)
-	defer f.Close()
-	fmt.Fprintf(os.Stderr, "##ARGS: %s %s\n", os.Args[0], os.Args[1])
-	cfg, err := helm.ReadGeneratorConfig(f)
-	handleError(err)
-	cfg.RootDir = os.Getenv("KUSTOMIZE_PLUGIN_CONFIG_ROOT")
+	cfg.RootDir = os.Getenv(envRoot)
 	if cfg.RootDir == "" {
-		handleError(fmt.Errorf("no KUSTOMIZE_PLUGIN_CONFIG_ROOT env var provided"))
+		handleError(fmt.Errorf("no %s env var provided", envRoot))
 	}
 	cfg.BaseDir, err = os.Getwd()
 	handleError(err)
