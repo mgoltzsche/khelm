@@ -1,0 +1,10 @@
+apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+kind: ChartRenderer
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+repository: https://charts.jetstack.io
+chart: cert-manager
+version: 0.9.1
+valueFiles:
+- values.yaml

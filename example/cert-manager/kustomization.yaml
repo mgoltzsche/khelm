@@ -1,0 +1,6 @@
+generators:
+  - cert-manager-chart.yaml
+
+resources:
+  - crds.yaml
+  - namespace.yaml

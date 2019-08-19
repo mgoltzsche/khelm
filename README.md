@@ -69,15 +69,14 @@ version: <CHART_VERSION>
 valueFiles:
   - <VALUE_FILE>
 value: <VALUE_MAP>
-# TODO: ...
 ```
 
 ### Example
 
-An example kustomization using this plugin can be found in the `example/jenkins`
-directory and rendered like this:
+Example kustomizations using this plugin can be found in the `example` directory.
+For instance `cert-manager` can be rendered and deployed like this:
 ```
-kustomize build --enable_alpha_plugins github.com/mgoltzsche/helm-kustomize-plugin/example/jenkins
+kustomize build --enable_alpha_plugins github.com/mgoltzsche/helm-kustomize-plugin/example/cert-manager | kubectl apply -f -
 ```
 
 
