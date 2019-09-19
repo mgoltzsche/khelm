@@ -2,6 +2,7 @@ package helm
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"log"
 	"os"
@@ -30,12 +31,15 @@ func TestRender(t *testing.T) {
 		{"../../example/jenkins/jenkins-chart.yaml", "jenkins", expectedJenkinsContained},
 		{"chartwithextvalues.yaml", "jenkins", expectedJenkinsContained},
 		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
+		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
+		{"../../example/localref/chartref.yaml", "myns", "elasticsearch"},
+		{"../../example/gitref/base/chartref.yaml", "linkerd", "linkerd"},
 	} {
 		var rendered bytes.Buffer
 		absFile := filepath.Join(currDir, c.file)
 		rootDir := filepath.Join(currDir, "..", "..")
 		err := render(t, absFile, rootDir, &rendered)
-		require.NoError(t, err, "render %s", c.file)
+		require.NoError(t, err, "render %s", absFile)
 		b := rendered.Bytes()
 		l, err := readYaml(b)
 		require.NoError(t, err, "rendered yaml:\n%s", b)
@@ -67,7 +71,7 @@ func render(t *testing.T, file, rootDir string, writer io.Writer) (err error) {
 	require.NoError(t, err)
 	cfg.RootDir = rootDir
 	cfg.BaseDir = filepath.Dir(file)
-	err = Render(cfg, writer)
+	err = Render(context.Background(), cfg, writer)
 	return
 }
 

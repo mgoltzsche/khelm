@@ -3,8 +3,12 @@ package helm
 // See also https://github.com/kubernetes-sigs/kustomize/issues/880
 
 import (
-	"github.com/ghodss/yaml"
+	"bytes"
+	"io"
+	"path/filepath"
+
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 	"k8s.io/helm/pkg/manifest"
 )
 
@@ -55,26 +59,60 @@ func setNamespaceIfMissing(m *manifest.Manifest, defaultNamespace string) (err e
 	if defaultNamespace == "" {
 		return
 	}
-	obj := map[string]interface{}{}
-	if err = yaml.Unmarshal([]byte(m.Content), &obj); err != nil {
-		return errors.Wrap(err, "set missing namespace")
+	obj, err := parseObjects(bytes.NewReader([]byte(m.Content)))
+	if err != nil {
+		return errors.Errorf("%s: set namespace: %s: %q", filepath.Base(m.Name), err, m.Content)
 	}
-	kind, hasKind := obj["kind"].(string)
-	if !hasKind {
-		return errors.Errorf("object has no kind of type string: %#v", obj)
-	}
-	meta, hasMeta := obj["metadata"].(map[string]interface{})
-	if !hasMeta {
-		return errors.Errorf("object has no metadata of type map[string]interface{}: %#v", obj)
-	}
-	if !nonNamespacedKinds[kind] && (meta["namespace"] == nil || meta["namespace"] == "") {
-		meta["namespace"] = defaultNamespace
-		obj["metadata"] = meta
+	modified := ""
+	for _, o := range obj {
+		kind, hasKind := o["kind"].(string)
+		if !hasKind {
+			return errors.Errorf("%s: object has no kind of type string: %#v", filepath.Base(m.Name), o)
+		}
+		meta, err := asMap(o["metadata"])
+		if err != nil {
+			return errors.Errorf("%s: object has no valid metadata: %#v", filepath.Base(m.Name), o)
+		}
+		if !nonNamespacedKinds[kind] && (meta["namespace"] == nil || meta["namespace"] == "") {
+			meta["namespace"] = defaultNamespace
+			o["metadata"] = meta
+		}
 		var b []byte
-		if b, err = yaml.Marshal(obj); err != nil {
+		if b, err = yaml.Marshal(o); err != nil {
 			return errors.Wrap(err, "set missing namespace")
 		}
-		m.Content = string(b)
+		modified += "---\n" + string(b)
+	}
+	m.Content = modified
+	return
+}
+
+func parseObjects(f io.Reader) (obj []map[string]interface{}, err error) {
+	dec := yaml.NewDecoder(f)
+	o := map[string]interface{}{}
+	for ; err == nil; err = dec.Decode(o) {
+		if len(o) > 0 {
+			obj = append(obj, o)
+			o = map[string]interface{}{}
+		}
+	}
+	if err == io.EOF {
+		err = nil
 	}
 	return
+}
+
+func asMap(o interface{}) (m map[string]interface{}, err error) {
+	if o != nil {
+		if mc, ok := o.(map[string]interface{}); ok {
+			return mc, nil
+		} else if mc, ok := o.(map[interface{}]interface{}); ok {
+			m = map[string]interface{}{}
+			for k, v := range mc {
+				m[k.(string)] = v
+			}
+			return
+		}
+	}
+	return nil, errors.New("invalid metadata")
 }

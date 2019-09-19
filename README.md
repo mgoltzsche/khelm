@@ -33,6 +33,11 @@ These can be applied using `kubectl` directly or using [k8spkg](https://github.c
 which allows to manage their state within the cluster as well.
 
 
+## Requirements
+
+* [kustomize](https://github.com/kubernetes-sigs/kustomize) 3.0.0
+
+
 ## Install
 
 Install using curl (linux amd64):
@@ -83,3 +88,5 @@ kustomize build --enable_alpha_plugins github.com/mgoltzsche/helm-kustomize-plug
 ## Compatibility & security notice
 
 Plugin support in kustomize is still an alpha feature and likely to be changed soon.
+
+TODO: secure local file access from helm chart

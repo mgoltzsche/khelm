@@ -1,0 +1,8 @@
+apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+kind: ChartRenderer
+metadata:
+  name: linkerd
+  namespace: linkerd
+chart: github.com/linkerd/linkerd2//charts/linkerd2?ref=stable-2.5.0
+valueFiles:
+  - values.yaml
