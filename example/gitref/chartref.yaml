@@ -5,6 +5,7 @@ metadata:
   namespace: linkerd
 chart: github.com/linkerd/linkerd2//charts/linkerd2?ref=stable-2.5.0
 valueFiles:
+- values-ha.yaml
 - values.yaml
 exclude:
 - apiVersion: v1

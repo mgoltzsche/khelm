@@ -35,24 +35,26 @@ func TestRender(t *testing.T) {
 		{"../../example/localref/chartref.yaml", "myns", "elasticsearch"},
 		{"../../example/gitref/chartref.yaml", "linkerd", "linkerd"},
 	} {
-		var rendered bytes.Buffer
-		absFile := filepath.Join(currDir, c.file)
-		rootDir := filepath.Join(currDir, "..", "..")
-		err := render(t, absFile, rootDir, &rendered)
-		require.NoError(t, err, "render %s", absFile)
-		b := rendered.Bytes()
-		l, err := readYaml(b)
-		require.NoError(t, err, "rendered yaml:\n%s", b)
-		require.True(t, len(l) > 0, "%s: rendered yaml is empty", c.file)
-		require.Contains(t, rendered.String(), c.expectedContained)
-		hasExpectedNamespace := false
-		for _, o := range l {
-			if o["metadata"].(map[interface{}]interface{})["namespace"] == c.expectedNamespace {
-				hasExpectedNamespace = true
-				break
+		for _, cached := range []string{"", "cached "} {
+			var rendered bytes.Buffer
+			absFile := filepath.Join(currDir, c.file)
+			rootDir := filepath.Join(currDir, "..", "..")
+			err := render(t, absFile, rootDir, &rendered)
+			require.NoError(t, err, "render %s%s", cached, absFile)
+			b := rendered.Bytes()
+			l, err := readYaml(b)
+			require.NoError(t, err, "rendered %syaml:\n%s", cached, b)
+			require.True(t, len(l) > 0, "%s: rendered %syaml is empty", cached, c.file)
+			require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
+			hasExpectedNamespace := false
+			for _, o := range l {
+				if o["metadata"].(map[interface{}]interface{})["namespace"] == c.expectedNamespace {
+					hasExpectedNamespace = true
+					break
+				}
 			}
+			require.True(t, hasExpectedNamespace, "%s%s: should have namespace %q", cached, c.file, c.expectedNamespace)
 		}
-		require.True(t, hasExpectedNamespace, "%s: should have namespace %q", c.file, c.expectedNamespace)
 	}
 }
 

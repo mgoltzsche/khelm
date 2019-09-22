@@ -3,6 +3,7 @@ package helm
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -145,6 +146,7 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 				return
 			}
 		} else {
+			// Download file
 			g := getter.Getters[u.Scheme]
 			uri, subDir := getter.SourceDirSubdir(uri)
 			if g == nil {
@@ -154,29 +156,40 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 			if mode, err = g.ClientMode(u); err != nil {
 				return
 			}
-			var tmpDir string
-			tmpDir, err = ioutil.TempDir("", "khelm-")
-			if err != nil {
-				return
-			}
-			defer os.RemoveAll(tmpDir)
 
 			pathEndPos := strings.Index(uri, "?")
 			if pathEndPos < 0 {
 				pathEndPos = len(uri)
 			}
 			uri = uri[:pathEndPos] + "//." + uri[pathEndPos:]
+			cacheDir := filepath.Join(cfg.BaseDir, ".cache")
+			cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(uri)))
+			destDir := filepath.Join(cacheDir, cacheKey)
 
-			c := &getter.Client{
-				Dst:  tmpDir,
-				Src:  uri,
-				Ctx:  ctx,
-				Mode: mode,
+			if _, e := os.Stat(destDir); e != nil {
+				if err = os.MkdirAll(cacheDir, 0755); err != nil {
+					return
+				}
+				var tmpDir string
+				if tmpDir, err = ioutil.TempDir(cacheDir, "tmp-"); err != nil {
+					return
+				}
+				defer os.RemoveAll(tmpDir)
+
+				c := &getter.Client{
+					Dst:  tmpDir,
+					Src:  uri,
+					Ctx:  ctx,
+					Mode: mode,
+				}
+				if err = c.Get(); err != nil {
+					return
+				}
+				if err = os.Rename(tmpDir, destDir); err != nil {
+					return
+				}
 			}
-			if err = c.Get(); err != nil {
-				return
-			}
-			cfg.Chart = filepath.Join(tmpDir, filepath.FromSlash(subDir))
+			cfg.Chart, err = securejoin.SecureJoin(destDir, filepath.FromSlash(subDir))
 		}
 	}
 
@@ -337,11 +350,7 @@ func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer)
 	}
 	log.Printf("Rendering chart with name %q, namespace: %q\n", c.Name, namespace)
 
-	valPaths, err := securePaths(c.ValueFiles, c.BaseDir, c.RootDir)
-	if err != nil {
-		return errors.Wrap(err, "load values")
-	}
-	rawVals, err := h.Vals(valPaths, c.Values, "", "", "")
+	rawVals, err := h.Vals(chrt, c.ValueFiles, c.Values, c.RootDir, c.BaseDir, "", "", "")
 	if err != nil {
 		return errors.Wrap(err, "load values")
 	}
@@ -493,11 +502,11 @@ func (h *Helm) LocateChartPath(repoURL, username, password, name, version string
 
 // Vals merges values from files specified via -f/--values and
 // directly via --set or --set-string or --set-file, marshaling them to YAML
-func (h *Helm) Vals(valueFiles []string, values map[string]interface{}, CertFile, KeyFile, CAFile string) (b []byte, err error) {
+func (h *Helm) Vals(chrt *chart.Chart, valueFiles []string, values map[string]interface{}, rootDir, baseDir, certFile, keyFile, caFile string) (b []byte, err error) {
 	base := map[string]interface{}{}
 	for _, filePath := range valueFiles {
 		currentMap := map[string]interface{}{}
-		if b, err = h.readFile(filePath, CertFile, KeyFile, CAFile); err != nil {
+		if b, err = h.readValuesFile(chrt, filePath, rootDir, baseDir, certFile, keyFile, caFile); err != nil {
 			return
 		}
 		if err = yaml.Unmarshal(b, &currentMap); err != nil {
@@ -510,22 +519,36 @@ func (h *Helm) Vals(valueFiles []string, values map[string]interface{}, CertFile
 }
 
 //readFile load a file from the local directory or a remote file with a url.
-func (h *Helm) readFile(filePath, CertFile, KeyFile, CAFile string) ([]byte, error) {
-	u, _ := url.Parse(filePath)
-	p := h.getters
-
-	// TODO: verify that values file is within root
-
-	// FIXME: maybe someone handle other protocols like ftp.
-	getterConstructor, err := p.ByScheme(u.Scheme)
-
-	if err != nil {
-		return ioutil.ReadFile(filePath)
+func (h *Helm) readValuesFile(chrt *chart.Chart, filePath, rootDir, baseDir, CertFile, KeyFile, CAFile string) (b []byte, err error) {
+	u, err := url.Parse(filePath)
+	if u.Scheme == "" || strings.ToLower(u.Scheme) == "file" {
+		// Load from local file, fallback to chart file
+		var kustomizeFilePath string
+		if kustomizeFilePath, err = securePath(filePath, baseDir, rootDir); err != nil {
+			return
+		}
+		if b, err = ioutil.ReadFile(kustomizeFilePath); os.IsNotExist(err) {
+			// Fallback to chart file
+			filePath = filepath.Clean(filePath)
+			for _, f := range chrt.Files {
+				if f.GetTypeUrl() == filePath {
+					return f.GetValue(), nil
+				}
+			}
+		}
+		return
+	} else if err != nil {
+		return
 	}
 
+	// Load file from supported helm getter URL
+	getterConstructor, err := h.getters.ByScheme(u.Scheme)
+	if err != nil {
+		return
+	}
 	getter, err := getterConstructor(filePath, CertFile, KeyFile, CAFile)
 	if err != nil {
-		return []byte{}, err
+		return
 	}
 	data, err := getter.Get(filePath)
 	return data.Bytes(), err

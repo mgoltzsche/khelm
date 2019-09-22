@@ -2,4 +2,5 @@ helm-kustomize-plugin
 coverage.out
 .build-cache
 example/**/charts
+example/**/.cache
 example/*/requirements.lock
