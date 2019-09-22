@@ -33,7 +33,7 @@ func TestRender(t *testing.T) {
 		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
 		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
 		{"../../example/localref/chartref.yaml", "myns", "elasticsearch"},
-		{"../../example/gitref/base/chartref.yaml", "linkerd", "linkerd"},
+		{"../../example/gitref/chartref.yaml", "linkerd", "linkerd"},
 	} {
 		var rendered bytes.Buffer
 		absFile := filepath.Join(currDir, c.file)

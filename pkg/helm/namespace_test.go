@@ -3,33 +3,38 @@ package helm
 import (
 	"testing"
 
-	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
-	"k8s.io/helm/pkg/manifest"
-	"k8s.io/helm/pkg/releaseutil"
 )
 
-func TestHelm(t *testing.T) {
+func TestApplyDefaultNamespace(t *testing.T) {
 	defaultNamespace := "defaultns"
 	for _, c := range []struct {
 		kind              string
 		namespace         string
-		expectedNamespace interface{}
+		expectedNamespace string
 	}{
 		{"ServiceAccount", "predefinedns", "predefinedns"},
 		{"ServiceAccount", "", defaultNamespace},
-		{"ClusterRoleBinding", "", nil},
+		{"ClusterRoleBinding", "", ""},
 	} {
-		content := "apiVersion: some/version\nkind: " + c.kind + "\nmetadata:\n  name: aname\n"
-		if c.namespace != "" {
-			content += "  namespace: " + c.namespace
+		obj := K8sObjects([]*K8sObject{{
+			K8sObjectID{
+				APIVersion: "some/version",
+				Kind:       c.kind,
+				Name:       "aname",
+				Namespace:  c.namespace,
+			},
+			map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"name":      "aname",
+					"namespace": c.namespace,
+				},
+			},
+		}})
+		obj.ApplyDefaultNamespace(defaultNamespace)
+		for _, o := range obj {
+			require.Equal(t, c.kind, o.Kind, "kind")
+			require.Equal(t, c.expectedNamespace, o.Namespace, "invalid namespace (kind: %s)", c.kind)
 		}
-		m := manifest.Manifest{Content: content, Head: &releaseutil.SimpleHead{Kind: c.kind}}
-		setNamespaceIfMissing(&m, defaultNamespace)
-		o := map[string]interface{}{}
-		err := yaml.Unmarshal([]byte(m.Content), &o)
-		require.NoError(t, err)
-		namespace := o["metadata"].(map[string]interface{})["namespace"]
-		require.Equal(t, c.expectedNamespace, namespace, "kind: %s", c.kind)
 	}
 }

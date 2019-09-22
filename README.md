@@ -72,9 +72,17 @@ repository: <REPOSITORY>
 chart: <CHART_NAME>
 version: <CHART_VERSION>
 valueFiles:
-  - <VALUE_FILE>
+- <VALUE_FILE>
 value: <VALUE_MAP>
+exclude:
+- apiVersion: <APIVERSION>
+  kind: <KIND>
+  namespace: <NAMESPACE>
+  name: <NAME>
 ```
+
+The _exclude_ field allows to provide a list of selectors used to exclude
+objects from the chart that match any of them.
 
 ### Example
 

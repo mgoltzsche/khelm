@@ -1,6 +1,7 @@
 package helm
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -89,6 +90,7 @@ type RenderConfig struct {
 	Namespace  string                 `yaml:"namespace,omitempty"`
 	ValueFiles []string               `yaml:"valueFiles,omitempty"`
 	Values     map[string]interface{} `yaml:"values,omitempty"`
+	Exclude    []K8sObjectID          `yaml:"exclude"`
 	BaseDir    string                 `yaml:"-"`
 	RootDir    string                 `yaml:"-"`
 }
@@ -290,6 +292,7 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 	if c, err = chartutil.Load(chartPath); err != nil {
 		return
 	}
+
 	req, e := chartutil.LoadRequirements(c)
 	if e == nil {
 		if err = renderutil.CheckDependencies(c, req); err != nil {
@@ -350,19 +353,38 @@ func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer)
 	}
 
 	listManifests := manifest.SplitManifests(renderedTemplates)
+	exclusions := Matchers(c.Exclude)
 
 	for _, m := range sortByKind(listManifests) {
 		b := filepath.Base(m.Name)
 		if b == "NOTES.txt" || strings.HasPrefix(b, "_") || whitespaceRegex.MatchString(m.Content) {
 			continue
 		}
-		if err = setNamespaceIfMissing(&m, namespace); err != nil {
-			return errors.Wrap(err, "render chart")
+		if err = transform(&m, namespace, exclusions); err != nil {
+			return errors.WithMessage(err, filepath.Base(m.Name))
 		}
 		fmt.Fprintf(writer, "---\n# Source: %s\n", m.Name)
 		fmt.Fprintln(writer, m.Content)
 	}
+
+	for _, exclusion := range exclusions {
+		if !exclusion.Matched {
+			return errors.Errorf("exclusion selector did not match: %#v", exclusion.K8sObjectID)
+		}
+	}
+
 	return
+}
+
+func transform(m *manifest.Manifest, namespace string, excludes []*K8sObjectMatcher) error {
+	obj, err := ParseObjects(bytes.NewReader([]byte(m.Content)))
+	if err != nil {
+		return errors.Errorf("%s: %q", err, m.Content)
+	}
+	obj.ApplyDefaultNamespace(namespace)
+	obj.Remove(excludes)
+	m.Content = obj.Yaml()
+	return nil
 }
 
 func securePaths(paths []string, baseDir, rootDir string) (secured []string, err error) {
