@@ -176,6 +176,7 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 				}
 				defer os.RemoveAll(tmpDir)
 
+				log.Println("Downloading chart " + cfg.Chart)
 				c := &getter.Client{
 					Dst:  tmpDir,
 					Src:  uri,
