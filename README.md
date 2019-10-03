@@ -81,8 +81,10 @@ exclude:
   name: <NAME>
 ```
 
-The _exclude_ field allows to provide a list of selectors used to exclude
-objects from the chart that match any of them.
+* `repository` (optional): a helm repository URL.
+* `chart`: a chart name (using `repository`) or, when `repository` is not specified, a [go-getter](https://github.com/hashicorp/go-getter) URL.
+* `valueFiles`: a list of helm value file paths relative to the generator config file or to the chart.
+* `exclude`: a list of selectors used to exclude matching objects from the rendered chart.
 
 ### Example
 
@@ -95,6 +97,6 @@ kustomize build --enable_alpha_plugins github.com/mgoltzsche/helm-kustomize-plug
 
 ## Compatibility & security notice
 
-Plugin support in kustomize is still an alpha feature and likely to be changed soon.
+Plugin support in kustomize is still an alpha feature.  
 
-TODO: secure local file access from helm chart
+Helm charts may access the local file system outside the kustomization directory.

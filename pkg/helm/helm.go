@@ -162,7 +162,7 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 				pathEndPos = len(uri)
 			}
 			uri = uri[:pathEndPos] + "//." + uri[pathEndPos:]
-			cacheDir := filepath.Join(cfg.BaseDir, ".cache")
+			cacheDir := filepath.Join(cfg.BaseDir, ".cache", "url")
 			cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(uri)))
 			destDir := filepath.Join(cacheDir, cacheKey)
 

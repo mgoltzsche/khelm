@@ -10,5 +10,6 @@ valueFiles:
 exclude:
 - apiVersion: v1
   kind: Namespace
+  name: linkerd
 - apiVersion: v1
   kind: Secret

@@ -1,5 +1,3 @@
-#ControllerReplicas: 2
-
 Identity:
   TrustAnchorsPEM: none
   Issuer:
@@ -7,10 +5,3 @@ Identity:
       CrtPEM: none
       KeyPEM: none
     CrtExpiry: 2019-01-01T00:00:00
-
-# PROBLEM: certs cannot be rendered in a generic, declarative way (kubectl apply -k)
-# TODO: make it deployable declaratively
-#   The cert is distributed using multiple secrets (one for each component).
-#   -> Create a CA cert as well as one cert for each component using cert-manager
-#   -> Remove the secrets from the rendered helm completely
-#      -> Provide feature to filter the helm output
