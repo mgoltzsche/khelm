@@ -340,7 +340,7 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer) (err error) {
 	namespace := c.Namespace
 	if namespace == "" {
-		namespace = "default"
+		namespace = "default" // avoids kustomize panic due to missing namespace
 	}
 	renderOpts := renderutil.Options{
 		ReleaseOptions: chartutil.ReleaseOptions{
