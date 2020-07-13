@@ -130,67 +130,8 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 	h := NewHelm("", os.Stderr)
 
 	if cfg.Repository == "" {
-		var uri string
-		var u *url.URL
-		uri, err = getter.Detect(cfg.Chart, cfg.BaseDir, getter.Detectors)
-		u, err = urlhelper.Parse(uri)
-		if err != nil {
+		if err = loadChartFromGoGetter(ctx, cfg); err != nil {
 			return
-		}
-		if u.Scheme == "file" {
-			file := u.Path
-			if u.RawPath != "" {
-				file = u.RawPath
-			}
-			if cfg.Chart, err = securePath(file, cfg.BaseDir, cfg.BaseDir); err != nil {
-				return
-			}
-		} else {
-			// Download file
-			g := getter.Getters[u.Scheme]
-			uri, subDir := getter.SourceDirSubdir(uri)
-			if g == nil {
-				return errors.Errorf("no getter mapped for URL scheme %q", u.Scheme)
-			}
-			var mode getter.ClientMode
-			if mode, err = g.ClientMode(u); err != nil {
-				return
-			}
-
-			pathEndPos := strings.Index(uri, "?")
-			if pathEndPos < 0 {
-				pathEndPos = len(uri)
-			}
-			uri = uri[:pathEndPos] + "//." + uri[pathEndPos:]
-			cacheDir := filepath.Join(cfg.BaseDir, ".cache", "url")
-			cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(uri)))
-			destDir := filepath.Join(cacheDir, cacheKey)
-
-			if _, e := os.Stat(destDir); e != nil {
-				if err = os.MkdirAll(cacheDir, 0755); err != nil {
-					return
-				}
-				var tmpDir string
-				if tmpDir, err = ioutil.TempDir(cacheDir, "tmp-"); err != nil {
-					return
-				}
-				defer os.RemoveAll(tmpDir)
-
-				log.Println("Downloading chart " + cfg.Chart)
-				c := &getter.Client{
-					Dst:  tmpDir,
-					Src:  uri,
-					Ctx:  ctx,
-					Mode: mode,
-				}
-				if err = c.Get(); err != nil {
-					return
-				}
-				if err = os.Rename(tmpDir, destDir); err != nil {
-					return
-				}
-			}
-			cfg.Chart, err = securejoin.SecureJoin(destDir, filepath.FromSlash(subDir))
 		}
 	}
 
@@ -203,6 +144,71 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 		renderCfg.Name = chrt.Metadata.Name
 	}
 	return h.RenderChart(chrt, renderCfg, writer)
+}
+
+func loadChartFromGoGetter(ctx context.Context, cfg *GeneratorConfig) (err error) {
+	uri, err := getter.Detect(cfg.Chart, cfg.BaseDir, getter.Detectors)
+	u, err := urlhelper.Parse(uri)
+	if err != nil {
+		return
+	}
+	if u.Scheme == "file" {
+		// Use chart from local dir
+		file := u.Path
+		if u.RawPath != "" {
+			file = u.RawPath
+		}
+		if cfg.Chart, err = securePath(file, cfg.BaseDir, cfg.BaseDir); err != nil {
+			return
+		}
+	} else {
+		// Download file
+		g := getter.Getters[u.Scheme]
+		uri, subDir := getter.SourceDirSubdir(uri)
+		if g == nil {
+			return errors.Errorf("no getter mapped for URL scheme %q", u.Scheme)
+		}
+		var mode getter.ClientMode
+		if mode, err = g.ClientMode(u); err != nil {
+			return
+		}
+
+		pathEndPos := strings.Index(uri, "?")
+		if pathEndPos < 0 {
+			pathEndPos = len(uri)
+		}
+		uri = uri[:pathEndPos] + "//." + uri[pathEndPos:]
+		cacheDir := filepath.Join(cfg.BaseDir, ".cache", "url")
+		cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(uri)))
+		destDir := filepath.Join(cacheDir, cacheKey)
+
+		if _, e := os.Stat(destDir); e != nil {
+			if err = os.MkdirAll(cacheDir, 0755); err != nil {
+				return
+			}
+			var tmpDir string
+			if tmpDir, err = ioutil.TempDir(cacheDir, ".tmp-"); err != nil {
+				return
+			}
+			defer os.RemoveAll(tmpDir)
+
+			log.Println("Downloading chart", cfg.Chart)
+			c := &getter.Client{
+				Dst:  tmpDir,
+				Src:  uri,
+				Ctx:  ctx,
+				Mode: mode,
+			}
+			if err = c.Get(); err != nil {
+				return
+			}
+			if err = os.Rename(tmpDir, destDir); err != nil {
+				return
+			}
+		}
+		cfg.Chart, err = securejoin.SecureJoin(destDir, filepath.FromSlash(subDir))
+	}
+	return
 }
 
 // NewHelm constructs helm
