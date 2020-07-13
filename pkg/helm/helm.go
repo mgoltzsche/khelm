@@ -37,8 +37,9 @@ const (
 )
 
 var (
-	whitespaceRegex    = regexp.MustCompile(`^\s*$`)
-	defaultKubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
+	whitespaceRegex     = regexp.MustCompile(`^\s*$`)
+	defaultKubeVersion  = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
+	featureFlagGoGetter = os.Getenv("KUSTOMIZEHELMPLUGIN_FEATURE_GOGETTER") == "true"
 )
 
 // Helm type
@@ -129,7 +130,7 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err error) {
 	h := NewHelm("", os.Stderr)
 
-	if cfg.Repository == "" {
+	if cfg.Repository == "" && featureFlagGoGetter {
 		if err = loadChartFromGoGetter(ctx, cfg); err != nil {
 			return
 		}

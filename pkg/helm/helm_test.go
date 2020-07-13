@@ -24,18 +24,20 @@ var currDir = func() string {
 func TestRender(t *testing.T) {
 	expectedJenkinsContained := "- host: jenkins.example.org\n"
 	for _, c := range []struct {
-		file              string
-		expectedNamespace string
-		expectedContained string
+		file                string
+		expectedNamespace   string
+		expectedContained   string
+		featureFlagGoGetter bool
 	}{
-		{"../../example/jenkins/jenkins-chart.yaml", "jenkins", expectedJenkinsContained},
-		{"chartwithextvalues.yaml", "jenkins", expectedJenkinsContained},
-		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
-		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
-		{"../../example/localref/chartref.yaml", "myns", "elasticsearch"},
-		{"../../example/gitref/chartref.yaml", "linkerd", "linkerd"},
+		{"../../example/jenkins/jenkins-chart.yaml", "jenkins", expectedJenkinsContained, false},
+		{"chartwithextvalues.yaml", "jenkins", expectedJenkinsContained, false},
+		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3", false},
+		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3", false},
+		{"../../example/localref/chartref.yaml", "myns", "elasticsearch", true},
+		{"../../example/gitref/chartref.yaml", "linkerd", "linkerd", true},
 	} {
 		for _, cached := range []string{"", "cached "} {
+			featureFlagGoGetter = c.featureFlagGoGetter
 			var rendered bytes.Buffer
 			absFile := filepath.Join(currDir, c.file)
 			rootDir := filepath.Join(currDir, "..", "..")
