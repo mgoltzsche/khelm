@@ -6,6 +6,5 @@ metadata:
 repository: https://kubernetes-charts.storage.googleapis.com
 chart: jenkins
 version: 0.32.4
-#loadDependencies: true
 valueFiles:
   - values.yaml

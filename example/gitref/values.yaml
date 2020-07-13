@@ -1,0 +1,7 @@
+Identity:
+  TrustAnchorsPEM: none
+  Issuer:
+    TLS:
+      CrtPEM: none
+      KeyPEM: none
+    CrtExpiry: 2019-01-01T00:00:00

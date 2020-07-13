@@ -2,12 +2,6 @@ package helm
 
 // See also https://github.com/kubernetes-sigs/kustomize/issues/880
 
-import (
-	"github.com/ghodss/yaml"
-	"github.com/pkg/errors"
-	"k8s.io/helm/pkg/manifest"
-)
-
 var nonNamespacedKinds = func() map[string]bool {
 	m := map[string]bool{}
 	blacklist := []string{
@@ -51,30 +45,14 @@ var nonNamespacedKinds = func() map[string]bool {
 	return m
 }()
 
-func setNamespaceIfMissing(m *manifest.Manifest, defaultNamespace string) (err error) {
-	if defaultNamespace == "" {
-		return
-	}
-	obj := map[string]interface{}{}
-	if err = yaml.Unmarshal([]byte(m.Content), &obj); err != nil {
-		return errors.Wrap(err, "set missing namespace")
-	}
-	kind, hasKind := obj["kind"].(string)
-	if !hasKind {
-		return errors.Errorf("object has no kind of type string: %#v", obj)
-	}
-	meta, hasMeta := obj["metadata"].(map[string]interface{})
-	if !hasMeta {
-		return errors.Errorf("object has no metadata of type map[string]interface{}: %#v", obj)
-	}
-	if !nonNamespacedKinds[kind] && (meta["namespace"] == nil || meta["namespace"] == "") {
-		meta["namespace"] = defaultNamespace
-		obj["metadata"] = meta
-		var b []byte
-		if b, err = yaml.Marshal(obj); err != nil {
-			return errors.Wrap(err, "set missing namespace")
+// ApplyDefaultNamespace sets the default namespace on all but the black-listed kinds
+func (obj K8sObjects) ApplyDefaultNamespace(defaultNamespace string) {
+	for _, o := range obj {
+		meta, _ := asMap(o.Raw["metadata"])
+		if !nonNamespacedKinds[o.Kind] && o.Namespace == "" {
+			meta["namespace"] = defaultNamespace
+			o.Raw["metadata"] = meta
+			o.Namespace = defaultNamespace
 		}
-		m.Content = string(b)
 	}
-	return
 }

@@ -1,6 +1,9 @@
 package helm
 
 import (
+	"bytes"
+	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,10 +16,12 @@ import (
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/ghodss/yaml"
+	"github.com/hashicorp/go-getter"
+	urlhelper "github.com/hashicorp/go-getter/helper/url"
 	"github.com/pkg/errors"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/getter"
+	helmgetter "k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/manifest"
@@ -32,12 +37,14 @@ const (
 )
 
 var (
-	whitespaceRegex    = regexp.MustCompile(`^\s*$`)
-	defaultKubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
+	whitespaceRegex     = regexp.MustCompile(`^\s*$`)
+	defaultKubeVersion  = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
+	featureFlagGoGetter = os.Getenv("KUSTOMIZEHELMPLUGIN_FEATURE_GOGETTER") == "true"
 )
 
 // Helm type
 type Helm struct {
+	getters  helmgetter.Providers
 	settings environment.EnvSettings
 	out      io.Writer
 }
@@ -85,6 +92,7 @@ type RenderConfig struct {
 	Namespace  string                 `yaml:"namespace,omitempty"`
 	ValueFiles []string               `yaml:"valueFiles,omitempty"`
 	Values     map[string]interface{} `yaml:"values,omitempty"`
+	Exclude    []K8sObjectID          `yaml:"exclude"`
 	BaseDir    string                 `yaml:"-"`
 	RootDir    string                 `yaml:"-"`
 }
@@ -97,33 +105,37 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		err = yaml.Unmarshal(b, cfg)
 	}
 	if err == nil {
-		if cfg.Repository == "" {
-			err = errors.New("chart repository not specified")
+		if cfg.Namespace == "" {
+			cfg.Namespace = cfg.Metadata.Namespace
+		} else if cfg.Metadata.Namespace != "" && err == nil {
+			err = errors.New("both metadata.namespace and namespace defined")
 		}
-		if cfg.Version == "" {
-			err = errors.New("version not specified")
+		if cfg.Version == "" && cfg.Repository != "" {
+			err = errors.New("no chart version but repository specified")
 		}
 		if cfg.Chart == "" {
 			err = errors.New("chart not specified")
 		}
-		if cfg.APIVersion != generatorAPIVersion {
-			err = errors.Errorf("expected apiVersion %s but was %s", generatorAPIVersion, cfg.APIVersion)
-		}
 		if cfg.Kind != generatorKind {
 			err = errors.Errorf("expected kind %s but was %s", generatorKind, cfg.Kind)
 		}
-	}
-	if cfg.Namespace == "" {
-		cfg.Namespace = cfg.Metadata.Namespace
-	} else if cfg.Metadata.Namespace != "" && err == nil {
-		err = errors.New("both metadata.namespace and namespace defined")
+		if cfg.APIVersion != generatorAPIVersion {
+			err = errors.Errorf("expected apiVersion %s but was %s", generatorAPIVersion, cfg.APIVersion)
+		}
 	}
 	return cfg, errors.Wrap(err, "read chart renderer config")
 }
 
 // Render manifest from helm chart configuration (shorthand)
-func Render(cfg *GeneratorConfig, writer io.Writer) (err error) {
-	h := NewHelm("", writer)
+func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err error) {
+	h := NewHelm("", os.Stderr)
+
+	if cfg.Repository == "" && featureFlagGoGetter {
+		if err = loadChartFromGoGetter(ctx, cfg); err != nil {
+			return
+		}
+	}
+
 	chrt, err := h.LoadChart(&cfg.LoadChartConfig)
 	if err != nil {
 		return
@@ -135,6 +147,71 @@ func Render(cfg *GeneratorConfig, writer io.Writer) (err error) {
 	return h.RenderChart(chrt, renderCfg, writer)
 }
 
+func loadChartFromGoGetter(ctx context.Context, cfg *GeneratorConfig) (err error) {
+	uri, err := getter.Detect(cfg.Chart, cfg.BaseDir, getter.Detectors)
+	u, err := urlhelper.Parse(uri)
+	if err != nil {
+		return
+	}
+	if u.Scheme == "file" {
+		// Use chart from local dir
+		file := u.Path
+		if u.RawPath != "" {
+			file = u.RawPath
+		}
+		if cfg.Chart, err = securePath(file, cfg.BaseDir, cfg.BaseDir); err != nil {
+			return
+		}
+	} else {
+		// Download file
+		g := getter.Getters[u.Scheme]
+		uri, subDir := getter.SourceDirSubdir(uri)
+		if g == nil {
+			return errors.Errorf("no getter mapped for URL scheme %q", u.Scheme)
+		}
+		var mode getter.ClientMode
+		if mode, err = g.ClientMode(u); err != nil {
+			return
+		}
+
+		pathEndPos := strings.Index(uri, "?")
+		if pathEndPos < 0 {
+			pathEndPos = len(uri)
+		}
+		uri = uri[:pathEndPos] + "//." + uri[pathEndPos:]
+		cacheDir := filepath.Join(cfg.BaseDir, ".cache", "url")
+		cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(uri)))
+		destDir := filepath.Join(cacheDir, cacheKey)
+
+		if _, e := os.Stat(destDir); e != nil {
+			if err = os.MkdirAll(cacheDir, 0755); err != nil {
+				return
+			}
+			var tmpDir string
+			if tmpDir, err = ioutil.TempDir(cacheDir, ".tmp-"); err != nil {
+				return
+			}
+			defer os.RemoveAll(tmpDir)
+
+			log.Println("Downloading chart", cfg.Chart)
+			c := &getter.Client{
+				Dst:  tmpDir,
+				Src:  uri,
+				Ctx:  ctx,
+				Mode: mode,
+			}
+			if err = c.Get(); err != nil {
+				return
+			}
+			if err = os.Rename(tmpDir, destDir); err != nil {
+				return
+			}
+		}
+		cfg.Chart, err = securejoin.SecureJoin(destDir, filepath.FromSlash(subDir))
+	}
+	return
+}
+
 // NewHelm constructs helm
 func NewHelm(home string, out io.Writer) *Helm {
 	settings := environment.EnvSettings{
@@ -144,6 +221,7 @@ func NewHelm(home string, out io.Writer) *Helm {
 		settings.Home = helmpath.Home(home)
 	}
 	return &Helm{
+		helmgetter.All(settings), // getters(settings),
 		settings,
 		out,
 	}
@@ -193,7 +271,7 @@ func initStableRepo(cacheFile string, home helmpath.Home, settings environment.E
 		URL:   stableRepositoryURL,
 		Cache: cacheFile,
 	}
-	r, err := repo.NewChartRepository(&c, getter.All(settings))
+	r, err := repo.NewChartRepository(&c, helmgetter.All(settings))
 	if err != nil {
 		return nil, err
 	}
@@ -231,11 +309,11 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 		return
 	}
 	log.Printf("Using chart path %v", chartPath)
-
 	// Check chart requirements to make sure all dependencies are present in /charts
 	if c, err = chartutil.Load(chartPath); err != nil {
 		return
 	}
+
 	req, e := chartutil.LoadRequirements(c)
 	if e == nil {
 		if err = renderutil.CheckDependencies(c, req); err != nil {
@@ -245,7 +323,7 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 				HelmHome:   h.settings.Home,
 				Keyring:    ref.Keyring,
 				SkipUpdate: true,
-				Getters:    getter.All(h.settings),
+				Getters:    h.getters,
 			}
 			if err = man.Update(); err != nil {
 				return
@@ -269,7 +347,7 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer) (err error) {
 	namespace := c.Namespace
 	if namespace == "" {
-		namespace = "default"
+		namespace = "default" // avoids kustomize panic due to missing namespace
 	}
 	renderOpts := renderutil.Options{
 		ReleaseOptions: chartutil.ReleaseOptions{
@@ -280,11 +358,7 @@ func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer)
 	}
 	log.Printf("Rendering chart with name %q, namespace: %q\n", c.Name, namespace)
 
-	valPaths, err := securePaths(c.ValueFiles, c.BaseDir, c.RootDir)
-	if err != nil {
-		return errors.Wrap(err, "load values")
-	}
-	rawVals, err := h.Vals(valPaths, c.Values, "", "", "")
+	rawVals, err := h.Vals(chrt, c.ValueFiles, c.Values, c.RootDir, c.BaseDir, "", "", "")
 	if err != nil {
 		return errors.Wrap(err, "load values")
 	}
@@ -296,37 +370,65 @@ func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer)
 	}
 
 	listManifests := manifest.SplitManifests(renderedTemplates)
+	exclusions := Matchers(c.Exclude)
 
 	for _, m := range sortByKind(listManifests) {
 		b := filepath.Base(m.Name)
 		if b == "NOTES.txt" || strings.HasPrefix(b, "_") || whitespaceRegex.MatchString(m.Content) {
 			continue
 		}
-		if err = setNamespaceIfMissing(&m, namespace); err != nil {
-			return errors.Wrap(err, "render chart")
+		if err = transform(&m, namespace, exclusions); err != nil {
+			return errors.WithMessage(err, filepath.Base(m.Name))
 		}
 		fmt.Fprintf(writer, "---\n# Source: %s\n", m.Name)
 		fmt.Fprintln(writer, m.Content)
 	}
+
+	for _, exclusion := range exclusions {
+		if !exclusion.Matched {
+			return errors.Errorf("exclusion selector did not match: %#v", exclusion.K8sObjectID)
+		}
+	}
+
 	return
 }
 
-func securePaths(paths []string, baseDir, rootDir string) (secured []string, err error) {
-	if rootDir == "" {
-		return nil, errors.New("no root dir provided")
-	}
-	relBaseDir, err := filepath.Rel(rootDir, baseDir)
+func transform(m *manifest.Manifest, namespace string, excludes []*K8sObjectMatcher) error {
+	obj, err := ParseObjects(bytes.NewReader([]byte(m.Content)))
 	if err != nil {
-		return
+		return errors.Errorf("%s: %q", err, m.Content)
 	}
+	obj.ApplyDefaultNamespace(namespace)
+	obj.Remove(excludes)
+	m.Content = obj.Yaml()
+	return nil
+}
+
+func securePaths(paths []string, baseDir, rootDir string) (secured []string, err error) {
 	secured = make([]string, len(paths))
 	for i, path := range paths {
-		path = filepath.Join(relBaseDir, path)
-		if secured[i], err = securejoin.SecureJoin(rootDir, path); err != nil {
+		if secured[i], err = securePath(path, baseDir, rootDir); err != nil {
 			return
 		}
 	}
 	return
+}
+
+func securePath(path, baseDir, rootDir string) (secured string, err error) {
+	if rootDir == "" {
+		return "", errors.New("no root dir provided")
+	}
+	if filepath.IsAbs(path) {
+		if path, err = filepath.Rel(rootDir, path); err != nil {
+			return
+		}
+	} else {
+		if baseDir, err = filepath.Rel(rootDir, baseDir); err != nil {
+			return
+		}
+		path = filepath.Join(baseDir, path)
+	}
+	return securejoin.SecureJoin(rootDir, path)
 }
 
 // LocateChartPath looks for a chart directory in known places, and returns either the full path or an error.
@@ -374,7 +476,7 @@ func (h *Helm) LocateChartPath(repoURL, username, password, name, version string
 		HelmHome: h.settings.Home,
 		Out:      h.out,
 		Keyring:  keyring,
-		Getters:  getter.All(h.settings),
+		Getters:  h.getters,
 		Username: username,
 		Password: password,
 	}
@@ -385,7 +487,7 @@ func (h *Helm) LocateChartPath(repoURL, username, password, name, version string
 
 	if repoURL != "" {
 		chartURL, err := repo.FindChartInAuthRepoURL(repoURL, username, password, name, version,
-			certFile, keyFile, caFile, getter.All(h.settings))
+			certFile, keyFile, caFile, h.getters)
 		if err != nil {
 			return "", err
 		}
@@ -408,11 +510,11 @@ func (h *Helm) LocateChartPath(repoURL, username, password, name, version string
 
 // Vals merges values from files specified via -f/--values and
 // directly via --set or --set-string or --set-file, marshaling them to YAML
-func (h *Helm) Vals(valueFiles []string, values map[string]interface{}, CertFile, KeyFile, CAFile string) (b []byte, err error) {
+func (h *Helm) Vals(chrt *chart.Chart, valueFiles []string, values map[string]interface{}, rootDir, baseDir, certFile, keyFile, caFile string) (b []byte, err error) {
 	base := map[string]interface{}{}
 	for _, filePath := range valueFiles {
 		currentMap := map[string]interface{}{}
-		if b, err = h.readFile(filePath, CertFile, KeyFile, CAFile); err != nil {
+		if b, err = h.readValuesFile(chrt, filePath, rootDir, baseDir, certFile, keyFile, caFile); err != nil {
 			return
 		}
 		if err = yaml.Unmarshal(b, &currentMap); err != nil {
@@ -425,22 +527,36 @@ func (h *Helm) Vals(valueFiles []string, values map[string]interface{}, CertFile
 }
 
 //readFile load a file from the local directory or a remote file with a url.
-func (h *Helm) readFile(filePath, CertFile, KeyFile, CAFile string) ([]byte, error) {
-	u, _ := url.Parse(filePath)
-	p := getter.All(h.settings)
-
-	// TODO: verify that values file is within root
-
-	// FIXME: maybe someone handle other protocols like ftp.
-	getterConstructor, err := p.ByScheme(u.Scheme)
-
-	if err != nil {
-		return ioutil.ReadFile(filePath)
+func (h *Helm) readValuesFile(chrt *chart.Chart, filePath, rootDir, baseDir, CertFile, KeyFile, CAFile string) (b []byte, err error) {
+	u, err := url.Parse(filePath)
+	if u.Scheme == "" || strings.ToLower(u.Scheme) == "file" {
+		// Load from local file, fallback to chart file
+		var kustomizeFilePath string
+		if kustomizeFilePath, err = securePath(filePath, baseDir, rootDir); err != nil {
+			return
+		}
+		if b, err = ioutil.ReadFile(kustomizeFilePath); os.IsNotExist(err) {
+			// Fallback to chart file
+			filePath = filepath.Clean(filePath)
+			for _, f := range chrt.Files {
+				if f.GetTypeUrl() == filePath {
+					return f.GetValue(), nil
+				}
+			}
+		}
+		return
+	} else if err != nil {
+		return
 	}
 
+	// Load file from supported helm getter URL
+	getterConstructor, err := h.getters.ByScheme(u.Scheme)
+	if err != nil {
+		return
+	}
 	getter, err := getterConstructor(filePath, CertFile, KeyFile, CAFile)
 	if err != nil {
-		return []byte{}, err
+		return
 	}
 	data, err := getter.Get(filePath)
 	return data.Bytes(), err

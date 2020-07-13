@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/mgoltzsche/helm-kustomize-plugin/pkg/helm"
 )
@@ -35,7 +38,15 @@ func main() {
 	}
 	cfg.BaseDir, err = os.Getwd()
 	handleError(err)
-	err = helm.Render(cfg, os.Stdout)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		cancel()
+	}()
+	err = helm.Render(ctx, cfg, os.Stdout)
 	handleError(err)
 }
 

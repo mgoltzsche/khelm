@@ -33,6 +33,11 @@ These can be applied using `kubectl` directly or using [k8spkg](https://github.c
 which allows to manage their state within the cluster as well.
 
 
+## Requirements
+
+* [kustomize](https://github.com/kubernetes-sigs/kustomize) 3.0.0
+
+
 ## Install
 
 Install using curl (linux amd64):
@@ -67,9 +72,19 @@ repository: <REPOSITORY>
 chart: <CHART_NAME>
 version: <CHART_VERSION>
 valueFiles:
-  - <VALUE_FILE>
+- <VALUE_FILE>
 value: <VALUE_MAP>
+exclude:
+- apiVersion: <APIVERSION>
+  kind: <KIND>
+  namespace: <NAMESPACE>
+  name: <NAME>
 ```
+
+* `repository` (optional): a helm repository URL.
+* `chart`: a chart name (using `repository`) or, when `repository` is not specified, a [go-getter](https://github.com/hashicorp/go-getter) URL.
+* `valueFiles`: a list of helm value file paths relative to the generator config file or to the chart.
+* `exclude`: a list of selectors used to exclude matching objects from the rendered chart.
 
 ### Example
 
@@ -82,4 +97,6 @@ kustomize build --enable_alpha_plugins github.com/mgoltzsche/helm-kustomize-plug
 
 ## Compatibility & security notice
 
-Plugin support in kustomize is still an alpha feature and likely to be changed soon.
+Plugin support in kustomize is still an alpha feature.  
+
+Helm charts may access the local file system outside the kustomization directory.

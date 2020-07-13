@@ -13,7 +13,7 @@ DOCKERRUN=docker run --name helm-kustomize-plugin-build --rm \
 		-e HOME=/go \
 		-e CGO_ENABLED=0
 define GODOCKERFILE
-FROM golang:1.12-alpine3.9
+FROM golang:1.14-alpine3.12
 RUN apk add --update --no-cache make git
 RUN go get golang.org/x/lint/golint
 endef
@@ -29,8 +29,8 @@ helm-kustomize-plugin:
 	go build -a -ldflags '-s -w -extldflags "-static" $(LDFLAGS)' -tags '$(BUILDTAGS)' .
 
 install:
-	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/helm.mgoltzsche.github.com/v1/chartinflator
-	cp helm-kustomize-plugin $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/helm.mgoltzsche.github.com/v1/chartinflator/ChartInflator
+	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer
+	cp helm-kustomize-plugin $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
 
 test:
 	go test -coverprofile coverage.out -cover ./...

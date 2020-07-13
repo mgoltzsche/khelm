@@ -1,0 +1,10 @@
+apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+kind: ChartRenderer
+metadata:
+  name: sonatype-nexus
+  namespace: jenkins
+repository: https://kubernetes-charts.storage.googleapis.com
+chart: sonatype-nexus
+version: 1.16.2
+valueFiles:
+  - values.yaml

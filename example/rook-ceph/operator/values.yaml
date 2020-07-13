@@ -17,5 +17,5 @@ resources:
     cpu: 100m
     memory: 128Mi
 
-rbacEnable: true
+rbacEnable: false
 pspEnable: true
