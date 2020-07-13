@@ -13,7 +13,7 @@ DOCKERRUN=docker run --name helm-kustomize-plugin-build --rm \
 		-e HOME=/go \
 		-e CGO_ENABLED=0
 define GODOCKERFILE
-FROM golang:1.12-alpine3.10
+FROM golang:1.14-alpine3.12
 RUN apk add --update --no-cache make git
 RUN go get golang.org/x/lint/golint
 endef
