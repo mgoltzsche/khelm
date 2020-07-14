@@ -1,0 +1,9 @@
+dependencies:
+- name: webhook
+  repository: file://webhook
+  version: v0.1.0
+- name: cainjector
+  repository: file://cainjector
+  version: v0.1.0
+digest: sha256:6146778d6e3e23fd10a36664c0ae25e514d6e2b025053854b172a914e7d553a0
+generated: "2020-06-30T09:52:20.363110549-04:00"

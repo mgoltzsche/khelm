@@ -84,6 +84,7 @@ type LoadChartConfig struct {
 	CertFile string `yaml:"certFile,omitempty"`
 	KeyFile  string `yaml:"keyFile,omitempty"`
 	CaFile   string `yaml:"caFile,omitempty"`
+	LockFile string `yaml:"lockFile,omitempty"`
 }
 
 // RenderConfig defines the configuration to render a chart
@@ -287,6 +288,15 @@ func initStableRepo(cacheFile string, home helmpath.Home, settings environment.E
 	return &c, nil
 }
 
+func copyFile(src, dst string) error {
+	input, err := ioutil.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(dst, input, 0644)
+}
+
 // LoadChart download a chart or load it from cache
 func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 	if err = h.Initialize(); err != nil {
@@ -308,37 +318,32 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 	if err != nil {
 		return
 	}
+
+	if ref.LockFile != "" {
+		err = copyFile(ref.LockFile, filepath.Join(chartPath, "requirements.lock"))
+		if err != nil {
+			return
+		}
+	}
+
 	log.Printf("Using chart path %v", chartPath)
-	// Check chart requirements to make sure all dependencies are present in /charts
-	if c, err = chartutil.Load(chartPath); err != nil {
+
+	man := &downloader.Manager{
+		Out:        h.out,
+		ChartPath:  chartPath,
+		HelmHome:   h.settings.Home,
+		Keyring:    ref.Keyring,
+		SkipUpdate: true,
+		Getters:    h.getters,
+	}
+
+	err = man.Build()
+	if err != nil {
 		return
 	}
 
-	req, e := chartutil.LoadRequirements(c)
-	if e == nil {
-		if err = renderutil.CheckDependencies(c, req); err != nil {
-			man := &downloader.Manager{
-				Out:        h.out,
-				ChartPath:  chartPath,
-				HelmHome:   h.settings.Home,
-				Keyring:    ref.Keyring,
-				SkipUpdate: true,
-				Getters:    h.getters,
-			}
-			if err = man.Update(); err != nil {
-				return
-			}
-
-			// Update all dependencies which are present in /charts.
-			c, err = chartutil.Load(chartPath)
-			if err != nil {
-				return
-			}
-		}
-	} else if e != chartutil.ErrRequirementsNotFound {
-		return nil, fmt.Errorf("cannot load requirements: %v", e)
-	}
-
+	// Check chart requirements to make sure all dependencies are present in /charts
+	c, err = chartutil.Load(chartPath)
 	return
 }
 
