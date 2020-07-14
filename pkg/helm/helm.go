@@ -16,6 +16,7 @@ import (
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/ghodss/yaml"
+	any "github.com/golang/protobuf/ptypes/any"
 	"github.com/hashicorp/go-getter"
 	urlhelper "github.com/hashicorp/go-getter/helper/url"
 	"github.com/pkg/errors"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/resolver"
 )
 
 const (
@@ -84,6 +86,7 @@ type LoadChartConfig struct {
 	CertFile string `yaml:"certFile,omitempty"`
 	KeyFile  string `yaml:"keyFile,omitempty"`
 	CaFile   string `yaml:"caFile,omitempty"`
+	LockFile string `yaml:"lockFile,omitempty"`
 }
 
 // RenderConfig defines the configuration to render a chart
@@ -287,6 +290,42 @@ func initStableRepo(cacheFile string, home helmpath.Home, settings environment.E
 	return &c, nil
 }
 
+// Load a given chart, ensuring all dependencies are present in /charts
+//
+// If given a non-empty lockfilePath, the corresponding file will be injected
+// in the returned chart as requirements.lock.
+func loadChartWithLockfile(chartPath, lockfilePath string) (c *chart.Chart, err error) {
+	// Check chart requirements to make sure all dependencies are present in /charts
+	if c, err = chartutil.Load(chartPath); err != nil {
+		return
+	}
+
+	if lockfilePath != "" {
+		var data []byte
+		data, err = ioutil.ReadFile(lockfilePath)
+		if err != nil {
+			return
+		}
+
+		found := false
+		for _, f := range c.Files {
+			if f.TypeUrl == "requirements.lock" {
+				found = true
+				f.Value = data
+			}
+		}
+
+		if !found {
+			c.Files = append(c.Files, &any.Any{
+				TypeUrl: "requirements.lock",
+				Value:   data,
+			})
+		}
+	}
+
+	return
+}
+
 // LoadChart download a chart or load it from cache
 func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 	if err = h.Initialize(); err != nil {
@@ -308,14 +347,31 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 	if err != nil {
 		return
 	}
+
 	log.Printf("Using chart path %v", chartPath)
+
 	// Check chart requirements to make sure all dependencies are present in /charts
-	if c, err = chartutil.Load(chartPath); err != nil {
+	if c, err = loadChartWithLockfile(chartPath, ref.LockFile); err != nil {
 		return
 	}
 
-	req, e := chartutil.LoadRequirements(c)
-	if e == nil {
+	lock, err := chartutil.LoadRequirementsLock(c)
+	if err != nil && err != chartutil.ErrLockfileNotFound {
+		return nil, err
+	}
+
+	req, err := chartutil.LoadRequirements(c)
+	if err != nil && err != chartutil.ErrRequirementsNotFound {
+		return nil, err
+	}
+
+	if req != nil {
+		if lock != nil {
+			if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
+				return nil, fmt.Errorf("requirements.lock is out of sync with requirements.yaml")
+			}
+		}
+
 		if err = renderutil.CheckDependencies(c, req); err != nil {
 			man := &downloader.Manager{
 				Out:        h.out,
@@ -325,18 +381,16 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 				SkipUpdate: true,
 				Getters:    h.getters,
 			}
+
 			if err = man.Update(); err != nil {
 				return
 			}
 
-			// Update all dependencies which are present in /charts.
-			c, err = chartutil.Load(chartPath)
+			c, err = loadChartWithLockfile(chartPath, ref.LockFile)
 			if err != nil {
 				return
 			}
 		}
-	} else if e != chartutil.ErrRequirementsNotFound {
-		return nil, fmt.Errorf("cannot load requirements: %v", e)
 	}
 
 	return
