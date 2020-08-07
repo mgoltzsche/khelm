@@ -356,13 +356,17 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 	}
 
 	lock, err := chartutil.LoadRequirementsLock(c)
-	if err != nil && err != chartutil.ErrLockfileNotFound {
-		return nil, err
+	if err == chartutil.ErrLockfileNotFound {
+		err = nil
+	} else if err != nil {
+		return
 	}
 
 	req, err := chartutil.LoadRequirements(c)
-	if err != nil && err != chartutil.ErrRequirementsNotFound {
-		return nil, err
+	if err == chartutil.ErrRequirementsNotFound {
+		err = nil
+	} else if err != nil {
+		return
 	}
 
 	if req != nil {
