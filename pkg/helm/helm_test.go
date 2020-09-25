@@ -33,6 +33,7 @@ func TestRender(t *testing.T) {
 		{"chartwithextvalues.yaml", "jenkins", expectedJenkinsContained, false},
 		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3", false},
 		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3", false},
+		{"../../example/conditionalcr/chartref.yaml", "conditionalcrenv", "  config: fancy-config", false},
 		{"../../example/localref/chartref.yaml", "myns", "elasticsearch", true},
 		{"../../example/gitref/chartref.yaml", "linkerd", "linkerd", true},
 	} {
@@ -46,7 +47,7 @@ func TestRender(t *testing.T) {
 			b := rendered.Bytes()
 			l, err := readYaml(b)
 			require.NoError(t, err, "rendered %syaml:\n%s", cached, b)
-			require.True(t, len(l) > 0, "%s: rendered %syaml is empty", cached, c.file)
+			require.True(t, len(l) > 0, "%s: rendered result of %s is empty", cached, c.file)
 			require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
 			hasExpectedNamespace := false
 			for _, o := range l {

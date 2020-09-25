@@ -1,0 +1,9 @@
+apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+kind: ChartRenderer
+metadata:
+  name: conditionalcr
+  namespace: conditionalcrenv
+#repository: file:///go/src/github.com/mgoltzsche/helm-kustomize-plugin/example/apiversion-condition
+chart: chart
+apiVersions:
+- myfancyapi/v1

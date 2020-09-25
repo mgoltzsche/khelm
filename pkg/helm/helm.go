@@ -84,13 +84,14 @@ type LoadChartConfig struct {
 
 // RenderConfig defines the configuration to render a chart
 type RenderConfig struct {
-	Name       string                 `yaml:"name,omitempty"`
-	Namespace  string                 `yaml:"namespace,omitempty"`
-	ValueFiles []string               `yaml:"valueFiles,omitempty"`
-	Values     map[string]interface{} `yaml:"values,omitempty"`
-	Exclude    []K8sObjectID          `yaml:"exclude"`
-	BaseDir    string                 `yaml:"-"`
-	RootDir    string                 `yaml:"-"`
+	Name        string                 `yaml:"name,omitempty"`
+	Namespace   string                 `yaml:"namespace,omitempty"`
+	ValueFiles  []string               `yaml:"valueFiles,omitempty"`
+	Values      map[string]interface{} `yaml:"values,omitempty"`
+	APIVersions []string               `yaml:"apiVersions,omitempty"`
+	Exclude     []K8sObjectID          `yaml:"exclude,omitempty"`
+	BaseDir     string                 `yaml:"-"`
+	RootDir     string                 `yaml:"-"`
 }
 
 // ReadGeneratorConfig read the generator configuration
@@ -126,15 +127,22 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err error) {
 	h := NewHelm("", os.Stderr)
 
-	if cfg.Repository == "" && featureFlagGoGetter {
-		if err = loadChartFromGoGetter(ctx, cfg); err != nil {
-			return
+	if cfg.Repository == "" {
+		if featureFlagGoGetter {
+			if err = loadChartFromGoGetter(ctx, cfg); err != nil {
+				return
+			}
+		} else {
+			cfg.Chart, err = securePath(cfg.Chart, cfg.BaseDir, cfg.RootDir)
+			if err != nil {
+				return fmt.Errorf("no repository specified and invalid local chart path provided: %w", err)
+			}
 		}
 	}
 
 	chrt, err := h.LoadChart(&cfg.LoadChartConfig)
 	if err != nil {
-		return
+		return err
 	}
 	renderCfg := &cfg.RenderConfig
 	if renderCfg.Name == "" {
@@ -430,6 +438,9 @@ func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer)
 			Namespace: namespace,
 		},
 		KubeVersion: defaultKubeVersion,
+	}
+	if len(c.APIVersions) > 0 {
+		renderOpts.APIVersions = append(c.APIVersions, "v1")
 	}
 	log.Printf("Rendering chart with name %q, namespace: %q\n", c.Name, namespace)
 

@@ -1,0 +1,8 @@
+{{ if .Capabilities.APIVersions.Has "myfancyapi/v1" }}
+apiVersion: myfancyapi/v1
+kind: FancyKind
+metadata:
+  name: fancycr
+spec:
+  config: fancy-config
+{{ end }}
