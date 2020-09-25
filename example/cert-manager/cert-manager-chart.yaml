@@ -8,3 +8,4 @@ chart: cert-manager
 version: 0.9.1
 valueFiles:
 - values.yaml
+lockFile: requirements.lock

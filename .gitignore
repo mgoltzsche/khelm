@@ -4,3 +4,4 @@ coverage.out
 example/**/charts
 example/**/.cache
 example/*/requirements.lock
+!example/cert-manager/requirements.lock
