@@ -77,16 +77,9 @@ type LoadChartConfig struct {
 	Repository string `yaml:"repository"`
 	Chart      string `yaml:"chart"`
 	Version    string `yaml:"version"`
-
-	// TODO: load from some local configuration
-	Username string `yaml:"user,omitempty"`
-	Password string `yaml:"password,omitempty"`
-	Verify   bool   `yaml:"verify,omitempty"`
-	Keyring  string `yaml:"keyring,omitempty"`
-	CertFile string `yaml:"certFile,omitempty"`
-	KeyFile  string `yaml:"keyFile,omitempty"`
-	CaFile   string `yaml:"caFile,omitempty"`
-	LockFile string `yaml:"lockFile,omitempty"`
+	LockFile   string `yaml:"lockFile,omitempty"`
+	Verify     bool   `yaml:"verify,omitempty"`
+	Keyring    string `yaml:"keyring,omitempty"`
 }
 
 // RenderConfig defines the configuration to render a chart
@@ -233,7 +226,6 @@ func NewHelm(home string, out io.Writer) *Helm {
 // Initialize initialize the helm home directory.
 // Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/installer/init.go
 func (h *Helm) Initialize() (err error) {
-	// TODO: create temporary helm home?
 	if _, e := os.Stat(h.settings.Home.String()); e == nil {
 		return
 	}
@@ -256,15 +248,9 @@ func (h *Helm) Initialize() (err error) {
 		}
 	}
 
-	// Create repos
+	// Create repo file
 	repoFile := home.RepositoryFile()
 	f := repo.NewRepoFile()
-	stableRepositoryURL := "https://kubernetes-charts.storage.googleapis.com"
-	repo, err := initStableRepo(home.CacheIndex(stableRepository), home, h.settings, stableRepositoryURL)
-	if err != nil {
-		return
-	}
-	f.Add(repo)
 	return f.WriteFile(repoFile, 0644)
 }
 
@@ -326,23 +312,54 @@ func loadChartWithLockfile(chartPath, lockfilePath string) (c *chart.Chart, err 
 	return
 }
 
+type repoAuth struct {
+	Username string `yaml:"user,omitempty"`
+	Password string `yaml:"password,omitempty"`
+	CertFile string `yaml:"certFile,omitempty"`
+	KeyFile  string `yaml:"keyFile,omitempty"`
+	CAFile   string `yaml:"caFile,omitempty"`
+}
+
+func (h *Helm) findRepoAuth(repoURL string) (auth repoAuth, err error) {
+	repos, err := repo.LoadRepositoriesFile(h.settings.Home.RepositoryFile())
+	if err != nil {
+		return auth, err
+	}
+	for _, r := range repos.Repositories {
+		if r.URL == repoURL {
+			auth.Username = r.Username
+			auth.Password = r.Password
+			auth.CAFile = r.CAFile
+			auth.CertFile = r.CertFile
+			auth.KeyFile = r.KeyFile
+			return auth, nil
+		}
+	}
+	return auth, nil
+}
+
 // LoadChart download a chart or load it from cache
 func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 	if err = h.Initialize(); err != nil {
 		return
 	}
 
+	auth, err := h.findRepoAuth(ref.Repository)
+	if err != nil {
+		return
+	}
+
 	chartPath, err := h.LocateChartPath(
 		ref.Repository,
-		ref.Username,
-		ref.Password,
+		auth.Username,
+		auth.Password,
 		ref.Chart,
 		ref.Version,
 		ref.Verify,
 		ref.Keyring,
-		ref.CertFile,
-		ref.KeyFile,
-		ref.CaFile,
+		auth.CertFile,
+		auth.KeyFile,
+		auth.CAFile,
 	)
 	if err != nil {
 		return
