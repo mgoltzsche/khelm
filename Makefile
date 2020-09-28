@@ -13,7 +13,7 @@ KUSTOMIZE_VERSION ?= 3.8.7
 
 REV := $(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
 VERSION ?= $(shell echo "$$(git for-each-ref refs/tags/ --count=1 --sort=-version:refname --format='%(refname:short)' 2>/dev/null)-dev-$(REV)" | sed 's/^v//')
-HELM_VERSION := $(shell grep k8s\.io/helm go.mod | sed -E -e 's/k8s\.io\/helm|\s+|\+.*//g' -e 's/^v//')
+HELM_VERSION := $(shell grep helm\.sh/helm/ go.mod | sed -E -e 's/helm\.sh\/helm\/v3|\s+//g' -e 's/^v//')
 GO_LDFLAGS := -X main.khelmVersion=$(VERSION) -X main.helmVersion=$(HELM_VERSION)
 BUILDTAGS ?= 
 

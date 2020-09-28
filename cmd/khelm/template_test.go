@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"k8s.io/helm/pkg/repo"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 func TestTemplateCommand(t *testing.T) {
@@ -105,7 +105,7 @@ func TestTemplateCommandError(t *testing.T) {
 	defer os.Unsetenv("HELM_HOME")
 	err = os.Mkdir(repoDir, 0755)
 	require.NoError(t, err)
-	err = repo.NewRepoFile().WriteFile(filepath.Join(repoDir, "repositories.yaml"), 0644)
+	err = repo.NewFile().WriteFile(filepath.Join(repoDir, "repositories.yaml"), 0644)
 	require.NoError(t, err)
 	for _, c := range []struct {
 		name string
