@@ -1,4 +1,8 @@
-apiVersion: v1
+apiVersion: v2
 descriptionx: Elasticsearch, Fluentd, Kibana (EFK)
 name: efk-wrapper
 version: 0.2.0
+dependencies:
+- name: efk
+  version: "~0.1.0"
+  repository: "file://../localref/elk"

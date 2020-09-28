@@ -3,40 +3,9 @@ module github.com/mgoltzsche/helm-kustomize-plugin
 go 1.14
 
 require (
-	cloud.google.com/go v0.45.1
-	github.com/BurntSushi/toml v0.3.1
-	github.com/Masterminds/goutils v1.1.0
-	github.com/Masterminds/semver v1.5.0
-	github.com/Masterminds/sprig v2.22.0+incompatible
-	github.com/aws/aws-sdk-go v1.15.78
 	github.com/cyphar/filepath-securejoin v0.2.2
-	github.com/davecgh/go-spew v1.1.1
-	github.com/ghodss/yaml v1.0.0
-	github.com/gobwas/glob v0.2.3
-	github.com/golang/protobuf v1.3.2
-	github.com/google/uuid v1.1.1
-	github.com/googleapis/gax-go/v2 v2.0.5
-	github.com/hashicorp/go-getter v1.4.1
-	github.com/huandu/xstrings v1.3.2
-	github.com/imdario/mergo v0.3.9
-	github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8
-	github.com/mitchellh/copystructure v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/pmezard/go-difflib v1.0.0
-	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.4.0
-	github.com/ulikunitz/xz v0.5.5
-	go.opencensus.io v0.22.0
-	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
-	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
-	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/text v0.3.2
-	google.golang.org/api v0.9.0
-	google.golang.org/appengine v1.6.1
-	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55
-	google.golang.org/grpc v1.21.1
-	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/apimachinery v0.18.5
-	k8s.io/client-go v11.0.0+incompatible
-	k8s.io/helm v2.16.9+incompatible
+	github.com/stretchr/testify v1.6.1
+	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
+	helm.sh/helm/v3 v3.3.4
 )

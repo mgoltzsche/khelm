@@ -10,7 +10,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 var currDir = func() string {
@@ -33,8 +36,8 @@ func TestRender(t *testing.T) {
 		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
 		{"../../example/cert-manager/cert-manager-chart.yaml", "cert-manager", "chart: cainjector-v0.9.1"},
 		{"../../example/apiversions-condition/chartref.yaml", "apiversions-condition-env", "  config: fancy-config"},
-		{"../../example/localref/chartref.yaml", "myns", "elasticsearch"},
 		{"../../example/localrefref/chartref.yaml", "myotherns", "elasticsearch"},
+		{"../../example/localref/chartref.yaml", "myns", "elasticsearch"},
 		{"../../example/values-inheritance/chartref.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
 	} {
 		for _, cached := range []string{"", "cached "} {
@@ -50,7 +53,7 @@ func TestRender(t *testing.T) {
 			require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
 			hasExpectedNamespace := false
 			for _, o := range l {
-				if o["metadata"].(map[interface{}]interface{})["namespace"] == c.expectedNamespace {
+				if o["metadata"].(map[string]interface{})["namespace"] == c.expectedNamespace {
 					hasExpectedNamespace = true
 					break
 				}
@@ -75,6 +78,25 @@ func TestRenderError(t *testing.T) {
 		err := render(t, file, rootDir, &bytes.Buffer{})
 		require.Error(t, err, "render %s", file)
 	}
+}
+
+func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
+	settings := cli.New()
+	entry, repos, err := useRepo("https://charts.rook.io/stable", settings, getter.All(settings))
+	require.NoError(t, err, "use repo")
+	err = repos.Close()
+	require.NoError(t, err, "repos.Close()")
+	idxFile := indexFile(entry, settings.RepositoryCache)
+	idx, err := repo.LoadIndexFile(idxFile)
+	require.NoError(t, err, "load index file")
+	idx.Entries = nil
+	err = idx.WriteFile(idxFile, 0644)
+	require.NoError(t, err, "write index file")
+
+	file := filepath.Join(currDir, "../../example/rook-ceph/operator/rook-ceph-chart.yaml")
+	rootDir := filepath.Join(currDir, "..", "..")
+	err = render(t, file, rootDir, &bytes.Buffer{})
+	require.NoError(t, err, "render %s with outdated index", file)
 }
 
 func render(t *testing.T, file, rootDir string, writer io.Writer) (err error) {

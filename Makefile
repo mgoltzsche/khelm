@@ -26,7 +26,7 @@ build: golang-image
 		make helm-kustomize-plugin BUILDTAGS=$(BUILDTAGS)
 
 helm-kustomize-plugin:
-	go build -a -ldflags '-s -w -extldflags "-static" $(LDFLAGS)' -tags '$(BUILDTAGS)' .
+	CGO_ENABLED=0 go build -a -ldflags '-s -w -extldflags "-static" $(LDFLAGS)' -tags '$(BUILDTAGS)' .
 
 install:
 	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer
