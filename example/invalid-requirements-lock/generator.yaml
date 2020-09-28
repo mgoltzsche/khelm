@@ -1,4 +1,4 @@
-apiVersion: khelm.mgoltzsche.github.com/v1
+apiVersion: khelm.mgoltzsche.github.com/v2
 kind: ChartRenderer
 metadata:
   name: invalid-requirements-example

@@ -10,17 +10,18 @@ import (
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"k8s.io/client-go/util/homedir"
-	"k8s.io/helm/pkg/chartutil"
 )
 
 const (
 	// GeneratorAPIVersion specifies the apiVersion field value supported by the generator
-	GeneratorAPIVersion = "khelm.mgoltzsche.github.com/v1"
+	GeneratorAPIVersion = "khelm.mgoltzsche.github.com/v2"
 	// GeneratorKind specifies the API kind field value supported by the generator
-	GeneratorKind          = "ChartRenderer"
-	oldGeneratorAPIVersion = "helm.kustomize.mgoltzsche.github.com/v1"
+	GeneratorKind = "ChartRenderer"
 )
+
+// TODO: move these changes into v1 version: rootdir, basedir, releaseName; GeneratorConfig just used for parsing but not passed through to Render()
 
 // GeneratorConfig define the kustomize plugin's input file content
 type GeneratorConfig struct {
@@ -52,7 +53,7 @@ func NewChartConfig() (cfg *ChartConfig) {
 
 func (cfg *ChartConfig) applyDefaults() {
 	if cfg.KubeVersion == "" {
-		cfg.KubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
+		cfg.KubeVersion = chartutil.DefaultCapabilities.KubeVersion.Version
 	}
 	if cfg.Values == nil {
 		cfg.Values = map[string]interface{}{}
@@ -79,6 +80,7 @@ type RendererConfig struct {
 	Values         map[string]interface{} `yaml:"values,omitempty"`
 	KubeVersion    string                 `yaml:"kubeVersion,omitempty"`
 	APIVersions    []string               `yaml:"apiVersions,omitempty"`
+	ExcludeCRDs    bool                   `yaml:"excludeCRDs,omitempty"` // TODO: test this option
 	Exclude        []ResourceSelector     `yaml:"exclude,omitempty"`
 	NamespacedOnly bool                   `yaml:"namespacedOnly,omitempty"`
 	ForceNamespace string                 `yaml:"forceNamespace,omitempty"`
@@ -125,7 +127,7 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		}
 		cfg.applyDefaults()
 		errs := []string{}
-		if cfg.APIVersion != GeneratorAPIVersion && cfg.APIVersion != oldGeneratorAPIVersion {
+		if cfg.APIVersion != GeneratorAPIVersion {
 			errs = append(errs, fmt.Sprintf("expected apiVersion %s but was %s", GeneratorAPIVersion, cfg.APIVersion))
 		}
 		if cfg.Kind != GeneratorKind {

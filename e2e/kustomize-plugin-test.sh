@@ -9,7 +9,7 @@ echo
 TMP_DIR="$(mktemp -d)"
 STATUS=0
 (
-	PLUGIN_DIR=$TMP_DIR/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
+	PLUGIN_DIR=$TMP_DIR/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer
 	set -ex
 	mkdir -p $PLUGIN_DIR
 	cp build/bin/khelm $PLUGIN_DIR/ChartRenderer

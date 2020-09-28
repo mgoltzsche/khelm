@@ -2,28 +2,26 @@ package helm
 
 import (
 	"os"
+	"path/filepath"
 
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/helmpath"
 )
 
 // Helm maintains the helm environment state
 type Helm struct {
 	TrustAnyRepository *bool
-	Settings           environment.EnvSettings
+	Settings           cli.EnvSettings
 	Getters            getter.Providers
 }
 
 // NewHelm creates a new helm environment
 func NewHelm() *Helm {
-	helmHome := os.Getenv("HELM_HOME")
-	if helmHome == "" {
-		helmHome = environment.DefaultHelmHome
+	settings := cli.New()
+	if helmHome := os.Getenv("HELM_HOME"); helmHome != "" && os.Getenv(helmpath.ConfigHomeEnvVar) == "" {
+		// Fallback for old helm env var
+		settings.RepositoryConfig = filepath.Join(helmHome, "repository", "repositories.yaml")
 	}
-	h := &Helm{Settings: environment.EnvSettings{
-		Home: helmpath.Home(helmHome),
-	}}
-	h.Getters = getter.All(h.Settings)
-	return h
+	return &Helm{Settings: *settings, Getters: getter.All(settings)}
 }

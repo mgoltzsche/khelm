@@ -92,22 +92,22 @@ Though plugin support in kustomize is still an alpha feature and may be removed 
 
 Install using curl (linux amd64):
 ```sh
-mkdir -p $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
-curl -fsSL https://github.com/mgoltzsche/khelm/releases/latest/download/khelm-linux-amd64 > $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
-chmod u+x $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
+mkdir -p $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer
+curl -fsSL https://github.com/mgoltzsche/khelm/releases/latest/download/khelm-linux-amd64 > $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer/ChartRenderer
+chmod u+x $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer/ChartRenderer
 ```
 or using `go`:
 ```sh
-go get github.com/mgoltzsche/khelm/cmd/khelm
-mkdir -p $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
-mv $GOPATH/bin/khelm $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
+go get github.com/mgoltzsche/khelm/v2/cmd/khelm
+mkdir -p $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer
+mv $GOPATH/bin/khelm $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer/ChartRenderer
 ```
 
 #### Plugin usage example
 
 A _plugin descriptor_ specifies the helm repository, chart, version and values that should be used in a kubernetes-style resource can be referenced in the `generators` section of a `kustomization.yaml` and can look as follows:
 ```yaml
-apiVersion: khelm.mgoltzsche.github.com/v1
+apiVersion: khelm.mgoltzsche.github.com/v2
 kind: ChartRenderer
 metadata:
   name: cert-manager # fallback for `name`
@@ -151,7 +151,7 @@ docker run mgoltzsche/khelm:latest template cert-manager --version=0.9.x --repo=
 
 ### Go API
 
-The khelm Go API `github.com/mgoltzsche/khelm/pkg/helm` provides a simple templating interface on top of the Helm Go API.
+The khelm Go API `github.com/mgoltzsche/khelm/v2/pkg/helm` provides a simple templating interface on top of the Helm Go API.
 It exposes a `Helm` struct that provides a `Render()` function that returns the rendered resources as `kyaml` objects.
 
 ## Configuration options
@@ -166,8 +166,9 @@ It exposes a `Helm` struct that provides a `Render()` function that returns the 
 | `apiVersions` | `--api-versions` | Kubernetes api versions used for Capabilities.APIVersions. |
 | `kubeVersion` | `--kube-version` | Kubernetes version used for Capabilities.KubeVersion. |
 | `name` | `--name` | Release name used to render the chart. |
-| `verify` | `--verify` | If enabled verifies the signature of all charts using the `keyring` (see [Helm 2 provenance and integrity](https://v2.helm.sh/docs/provenance/)). |
+| `verify` | `--verify` | If enabled verifies the signature of all charts using the `keyring` (see [Helm 3 provenance and integrity](https://helm.sh/docs/topics/provenance/)). |
 | `keyring` | `--keyring` | GnuPG keyring file (default `~/.gnupg/pubring.gpg`). |
+| `excludeCRDs` | `--skip-crds` | If true Custom Resource Definitions are excluded from the output. |
 | `exclude` |  | List of resource selectors that exclude matching resources from the output. Fails if a selector doesn't match any resource. |
 | `exclude[].apiVersion` |  | Excludes resources by apiVersion. |
 | `exclude[].kind` |  | Excludes resources by kind. |

@@ -13,6 +13,7 @@ RUN go build -o khelm -ldflags "-X main.khelmVersion=$KHELM_VERSION -X main.helm
 
 FROM alpine:3.12
 RUN mkdir /helm && chown root:nobody /helm && chmod 775 /helm
-ENV HELM_HOME=/helm
+ENV HELM_REPOSITORY_CONFIG=/helm/repository/repositories.yaml
+ENV HELM_REPOSITORY_CACHE=/helm/cache
 COPY --from=build /usr/local/bin/khelm /usr/local/bin/khelmfn
 ENTRYPOINT ["/usr/local/bin/khelmfn"]

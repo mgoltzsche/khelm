@@ -11,10 +11,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/getter"
-	cli "k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/repo"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/downloader"
+	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 // locateChart fetches the chart if not present in cache and returns its path.
@@ -42,7 +42,7 @@ func locateChart(ctx context.Context, cfg *LoaderConfig, repos repositoryConfig,
 		return "", errors.Wrap(err, "failed to make chart URL absolute")
 	}
 
-	chartCacheDir := filepath.Join(settings.Home.Archive(), "khelm")
+	chartCacheDir := filepath.Join(settings.RepositoryCache, "khelm")
 	cacheFile, err := cacheFilePath(chartURL, cv, chartCacheDir)
 	if err != nil {
 		return "", errors.Wrap(err, "derive chart cache file")
@@ -65,12 +65,16 @@ func locateChart(ctx context.Context, cfg *LoaderConfig, repos repositoryConfig,
 	log.Printf("Downloading chart %s %s from repo %s", cfg.Chart, cv.Version, repoEntry.URL)
 
 	dl := downloader.ChartDownloader{
-		Out:      log.Writer(),
-		Keyring:  cfg.Keyring,
-		Getters:  getters,
-		Username: repoEntry.Username,
-		Password: repoEntry.Password,
-		HelmHome: settings.Home,
+		Out:     log.Writer(),
+		Keyring: cfg.Keyring,
+		Getters: getters,
+		Options: []getter.Option{
+			getter.WithBasicAuth(repoEntry.Username, repoEntry.Password),
+			getter.WithTLSClientConfig(repoEntry.CertFile, repoEntry.KeyFile, repoEntry.CAFile),
+			getter.WithInsecureSkipVerifyTLS(repoEntry.InsecureSkipTLSverify),
+		},
+		RepositoryConfig: settings.RepositoryConfig,
+		RepositoryCache:  settings.RepositoryCache,
 	}
 	if cfg.Verify {
 		dl.Verify = downloader.VerifyAlways
