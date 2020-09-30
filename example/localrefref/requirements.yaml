@@ -1,0 +1,4 @@
+dependencies:
+- name: efk
+  version: "0.1.0"
+  repository: "file://../localref/elk"

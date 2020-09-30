@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -25,19 +26,32 @@ func main() {
 		fmt.Fprintf(os.Stderr, "helm-kustomize-plugin usage: %s [FILE]\n\nENV VARS:\n  %s\n  [%s]\n\nprovided args: %+v\n", os.Args[0], envRoot, envConfig, os.Args[1:])
 		os.Exit(1)
 	}
+	wd, err := os.Getwd()
+	handleError(err)
+	var baseDir string
 	if rawCfg == "" {
-		b, err := ioutil.ReadFile(os.Args[1])
+		generatorConfigFile := os.Args[1]
+		b, err := ioutil.ReadFile(generatorConfigFile)
 		handleError(err)
 		rawCfg = string(b)
+		baseDir = filepath.Dir(generatorConfigFile)
+		if !filepath.IsAbs(baseDir) {
+			baseDir = filepath.Join(wd, baseDir)
+		}
 	}
 	cfg, err := helm.ReadGeneratorConfig(strings.NewReader(rawCfg))
 	handleError(err)
+	if baseDir == "" {
+		baseDir = wd
+	}
+	cfg.BaseDir = baseDir
 	cfg.RootDir = os.Getenv(envRoot)
 	if cfg.RootDir == "" {
-		handleError(fmt.Errorf("no %s env var provided", envRoot))
+		cfg.RootDir = baseDir
 	}
-	cfg.BaseDir, err = os.Getwd()
-	handleError(err)
+	if !filepath.IsAbs(cfg.RootDir) {
+		handleError(fmt.Errorf("env var %s must specify absolute path", envRoot))
+	}
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)

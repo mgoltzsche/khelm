@@ -1,0 +1,6 @@
+apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+kind: ChartRenderer
+metadata:
+  name: mychart
+  namespace: myotherns
+chart: .

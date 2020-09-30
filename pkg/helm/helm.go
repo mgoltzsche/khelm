@@ -3,7 +3,6 @@ package helm
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,8 +16,6 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/ghodss/yaml"
 	any "github.com/golang/protobuf/ptypes/any"
-	"github.com/hashicorp/go-getter"
-	urlhelper "github.com/hashicorp/go-getter/helper/url"
 	"github.com/pkg/errors"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
@@ -33,15 +30,13 @@ import (
 )
 
 const (
-	stableRepository    = "stable"
 	generatorAPIVersion = "helm.kustomize.mgoltzsche.github.com/v1"
 	generatorKind       = "ChartRenderer"
 )
 
 var (
-	whitespaceRegex     = regexp.MustCompile(`^\s*$`)
-	defaultKubeVersion  = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
-	featureFlagGoGetter = os.Getenv("KUSTOMIZEHELMPLUGIN_FEATURE_GOGETTER") == "true"
+	whitespaceRegex    = regexp.MustCompile(`^\s*$`)
+	defaultKubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
 )
 
 // Helm type
@@ -128,15 +123,12 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 	h := NewHelm("", os.Stderr)
 
 	if cfg.Repository == "" {
-		if featureFlagGoGetter {
-			if err = loadChartFromGoGetter(ctx, cfg); err != nil {
-				return
-			}
-		} else {
-			cfg.Chart, err = securePath(cfg.Chart, cfg.BaseDir, cfg.RootDir)
-			if err != nil {
-				return fmt.Errorf("no repository specified and invalid local chart path provided: %w", err)
-			}
+		if cfg.Chart != "." && !strings.HasPrefix(cfg.Chart, "./") {
+			return fmt.Errorf("chart name must start with ./ if no repository specified")
+		}
+		cfg.Chart, err = securePath(cfg.Chart, cfg.BaseDir, cfg.RootDir)
+		if err != nil {
+			return fmt.Errorf("no repository specified and invalid local chart path provided: %w", err)
 		}
 	}
 
@@ -149,71 +141,6 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 		renderCfg.Name = chrt.Metadata.Name
 	}
 	return h.RenderChart(chrt, renderCfg, writer)
-}
-
-func loadChartFromGoGetter(ctx context.Context, cfg *GeneratorConfig) (err error) {
-	uri, err := getter.Detect(cfg.Chart, cfg.BaseDir, getter.Detectors)
-	u, err := urlhelper.Parse(uri)
-	if err != nil {
-		return
-	}
-	if u.Scheme == "file" {
-		// Use chart from local dir
-		file := u.Path
-		if u.RawPath != "" {
-			file = u.RawPath
-		}
-		if cfg.Chart, err = securePath(file, cfg.BaseDir, cfg.BaseDir); err != nil {
-			return
-		}
-	} else {
-		// Download file
-		g := getter.Getters[u.Scheme]
-		uri, subDir := getter.SourceDirSubdir(uri)
-		if g == nil {
-			return errors.Errorf("no getter mapped for URL scheme %q", u.Scheme)
-		}
-		var mode getter.ClientMode
-		if mode, err = g.ClientMode(u); err != nil {
-			return
-		}
-
-		pathEndPos := strings.Index(uri, "?")
-		if pathEndPos < 0 {
-			pathEndPos = len(uri)
-		}
-		uri = uri[:pathEndPos] + "//." + uri[pathEndPos:]
-		cacheDir := filepath.Join(cfg.BaseDir, ".cache", "url")
-		cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(uri)))
-		destDir := filepath.Join(cacheDir, cacheKey)
-
-		if _, e := os.Stat(destDir); e != nil {
-			if err = os.MkdirAll(cacheDir, 0755); err != nil {
-				return
-			}
-			var tmpDir string
-			if tmpDir, err = ioutil.TempDir(cacheDir, ".tmp-"); err != nil {
-				return
-			}
-			defer os.RemoveAll(tmpDir)
-
-			log.Println("Downloading chart", cfg.Chart)
-			c := &getter.Client{
-				Dst:  tmpDir,
-				Src:  uri,
-				Ctx:  ctx,
-				Mode: mode,
-			}
-			if err = c.Get(); err != nil {
-				return
-			}
-			if err = os.Rename(tmpDir, destDir); err != nil {
-				return
-			}
-		}
-		cfg.Chart, err = securejoin.SecureJoin(destDir, filepath.FromSlash(subDir))
-	}
-	return
 }
 
 // NewHelm constructs helm
@@ -260,28 +187,6 @@ func (h *Helm) Initialize() (err error) {
 	repoFile := home.RepositoryFile()
 	f := repo.NewRepoFile()
 	return f.WriteFile(repoFile, 0644)
-}
-
-func initStableRepo(cacheFile string, home helmpath.Home, settings environment.EnvSettings, stableRepositoryURL string) (*repo.Entry, error) {
-	c := repo.Entry{
-		Name:  stableRepository,
-		URL:   stableRepositoryURL,
-		Cache: cacheFile,
-	}
-	r, err := repo.NewChartRepository(&c, helmgetter.All(settings))
-	if err != nil {
-		return nil, err
-	}
-
-	if _, e := os.Stat(cacheFile); e == nil {
-		return &c, nil
-	}
-
-	if err := r.DownloadIndexFile(cacheFile); err != nil {
-		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
-	}
-
-	return &c, nil
 }
 
 // Load a given chart, ensuring all dependencies are present in /charts
