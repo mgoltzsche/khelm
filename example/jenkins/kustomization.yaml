@@ -1,2 +1,2 @@
 generators:
-  - jenkins-chart.yaml
+- jenkins-chart.yaml
