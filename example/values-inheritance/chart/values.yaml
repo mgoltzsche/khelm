@@ -1,0 +1,4 @@
+example:
+  inherited: "inherited value"
+  overrideFile: "default value from file"
+  overrideValue: "default value"

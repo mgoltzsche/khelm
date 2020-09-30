@@ -1,0 +1,3 @@
+example:
+  overrideFile: "overwritten by file"
+  overrideValue: "overwritten by file"

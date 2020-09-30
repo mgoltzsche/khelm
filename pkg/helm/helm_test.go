@@ -35,6 +35,7 @@ func TestRender(t *testing.T) {
 		{"../../example/apiversions-condition/chartref.yaml", "apiversions-condition-env", "  config: fancy-config"},
 		{"../../example/localref/chartref.yaml", "myns", "elasticsearch"},
 		{"../../example/localrefref/chartref.yaml", "myotherns", "elasticsearch"},
+		{"../../example/values-inheritance/chartref.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
 	} {
 		for _, cached := range []string{"", "cached "} {
 			var rendered bytes.Buffer

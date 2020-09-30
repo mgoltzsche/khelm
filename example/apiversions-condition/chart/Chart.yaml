@@ -1,4 +1,4 @@
 apiVersion: v1
 description: example chart using an apiversion condition
-name: conditionalcr
+name: apiversions-condition
 version: 0.1.0
