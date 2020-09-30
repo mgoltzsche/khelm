@@ -60,10 +60,21 @@ func TestRender(t *testing.T) {
 	}
 }
 
-func TestRenderReject(t *testing.T) {
+func TestRenderRejectFileOutsideProjectDir(t *testing.T) {
 	file := filepath.Join(currDir, "chartwithextvalues.yaml")
 	err := render(t, file, currDir, &bytes.Buffer{})
 	require.Error(t, err, "render %s within %s", file, currDir)
+}
+
+func TestRenderError(t *testing.T) {
+	for _, file := range []string{
+		"../../example/invalid-requirements-lock/chartref.yaml",
+	} {
+		file = filepath.Join(currDir, file)
+		rootDir := filepath.Join(currDir, "..", "..")
+		err := render(t, file, rootDir, &bytes.Buffer{})
+		require.Error(t, err, "render %s", file)
+	}
 }
 
 func render(t *testing.T, file, rootDir string, writer io.Writer) (err error) {

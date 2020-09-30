@@ -1,0 +1,4 @@
+apiVersion: v1
+description: example chart with mismatching requirements.lock
+name: invalid-requirements-example
+version: 0.1.0

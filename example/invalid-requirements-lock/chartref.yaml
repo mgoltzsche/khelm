@@ -1,0 +1,6 @@
+apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+kind: ChartRenderer
+metadata:
+  name: invalid-requirements-example
+  namespace: invalid-requirements-example-env
+chart: .
