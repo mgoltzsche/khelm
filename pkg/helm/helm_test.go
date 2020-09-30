@@ -31,7 +31,7 @@ func TestRender(t *testing.T) {
 		{"../../example/jenkins/jenkins-chart.yaml", "jenkins", expectedJenkinsContained},
 		{"chartwithextvalues.yaml", "jenkins", expectedJenkinsContained},
 		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
-		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
+		{"../../example/cert-manager/cert-manager-chart.yaml", "cert-manager", "chart: cainjector-v0.9.1"},
 		{"../../example/apiversions-condition/chartref.yaml", "apiversions-condition-env", "  config: fancy-config"},
 		{"../../example/localref/chartref.yaml", "myns", "elasticsearch"},
 		{"../../example/localrefref/chartref.yaml", "myotherns", "elasticsearch"},

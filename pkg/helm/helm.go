@@ -62,7 +62,6 @@ type K8sMetadata struct {
 
 // ChartConfig define chart lookup and render config
 type ChartConfig struct {
-	HelmHome string `yaml: "helmHome"`
 	LoadChartConfig
 	RenderConfig
 }
@@ -129,6 +128,12 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 		cfg.Chart, err = securePath(cfg.Chart, cfg.BaseDir, cfg.RootDir)
 		if err != nil {
 			return fmt.Errorf("no repository specified and invalid local chart path provided: %w", err)
+		}
+	}
+	if cfg.LockFile != "" {
+		cfg.LockFile, err = securePath(cfg.LockFile, cfg.BaseDir, cfg.RootDir)
+		if err != nil {
+			return fmt.Errorf("lockFile: %w", err)
 		}
 	}
 
