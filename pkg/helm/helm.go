@@ -29,11 +29,6 @@ import (
 	"k8s.io/helm/pkg/resolver"
 )
 
-const (
-	generatorAPIVersion = "helm.kustomize.mgoltzsche.github.com/v1"
-	generatorKind       = "ChartRenderer"
-)
-
 var (
 	whitespaceRegex    = regexp.MustCompile(`^\s*$`)
 	defaultKubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
@@ -44,77 +39,6 @@ type Helm struct {
 	getters  helmgetter.Providers
 	settings environment.EnvSettings
 	out      io.Writer
-}
-
-// GeneratorConfig define the kustomize plugin's input file content
-type GeneratorConfig struct {
-	APIVersion string      `yaml:"apiVersion"`
-	Kind       string      `yaml:"kind"`
-	Metadata   K8sMetadata `yaml:"metadata"`
-	ChartConfig
-}
-
-// K8sMetadata define the name to be kubernetes object schema conform
-type K8sMetadata struct {
-	Name      string `yaml:"name"`
-	Namespace string `yaml:"namespace,omitempty"`
-}
-
-// ChartConfig define chart lookup and render config
-type ChartConfig struct {
-	LoadChartConfig
-	RenderConfig
-}
-
-// LoadChartConfig define the configuration to load a chart
-type LoadChartConfig struct {
-	Repository string `yaml:"repository"`
-	Chart      string `yaml:"chart"`
-	Version    string `yaml:"version"`
-	LockFile   string `yaml:"lockFile,omitempty"`
-	Verify     bool   `yaml:"verify,omitempty"`
-	Keyring    string `yaml:"keyring,omitempty"`
-}
-
-// RenderConfig defines the configuration to render a chart
-type RenderConfig struct {
-	Name        string                 `yaml:"name,omitempty"`
-	Namespace   string                 `yaml:"namespace,omitempty"`
-	ValueFiles  []string               `yaml:"valueFiles,omitempty"`
-	Values      map[string]interface{} `yaml:"values,omitempty"`
-	APIVersions []string               `yaml:"apiVersions,omitempty"`
-	Exclude     []K8sObjectID          `yaml:"exclude,omitempty"`
-	BaseDir     string                 `yaml:"-"`
-	RootDir     string                 `yaml:"-"`
-}
-
-// ReadGeneratorConfig read the generator configuration
-func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
-	b, err := ioutil.ReadAll(reader)
-	if err == nil {
-		cfg = &GeneratorConfig{}
-		err = yaml.Unmarshal(b, cfg)
-	}
-	if err == nil {
-		if cfg.Namespace == "" {
-			cfg.Namespace = cfg.Metadata.Namespace
-		} else if cfg.Metadata.Namespace != "" && err == nil {
-			err = errors.New("both metadata.namespace and namespace defined")
-		}
-		if cfg.Version == "" && cfg.Repository != "" {
-			err = errors.New("no chart version but repository specified")
-		}
-		if cfg.Chart == "" {
-			err = errors.New("chart not specified")
-		}
-		if cfg.Kind != generatorKind {
-			err = errors.Errorf("expected kind %s but was %s", generatorKind, cfg.Kind)
-		}
-		if cfg.APIVersion != generatorAPIVersion {
-			err = errors.Errorf("expected apiVersion %s but was %s", generatorAPIVersion, cfg.APIVersion)
-		}
-	}
-	return cfg, errors.Wrap(err, "read chart renderer config")
 }
 
 // Render manifest from helm chart configuration (shorthand)

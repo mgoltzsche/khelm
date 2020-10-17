@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var currDir = func() string {
@@ -50,7 +50,7 @@ func TestRender(t *testing.T) {
 			require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
 			hasExpectedNamespace := false
 			for _, o := range l {
-				if o["metadata"].(map[interface{}]interface{})["namespace"] == c.expectedNamespace {
+				if o["metadata"].(map[string]interface{})["namespace"] == c.expectedNamespace {
 					hasExpectedNamespace = true
 					break
 				}
