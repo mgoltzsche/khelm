@@ -15,7 +15,6 @@ import (
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/ghodss/yaml"
-	any "github.com/golang/protobuf/ptypes/any"
 	"github.com/pkg/errors"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
@@ -52,12 +51,6 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 		cfg.Chart, err = securePath(cfg.Chart, cfg.BaseDir, cfg.RootDir)
 		if err != nil {
 			return fmt.Errorf("no repository specified and invalid local chart path provided: %w", err)
-		}
-	}
-	if cfg.LockFile != "" {
-		cfg.LockFile, err = securePath(cfg.LockFile, cfg.BaseDir, cfg.RootDir)
-		if err != nil {
-			return fmt.Errorf("lockFile: %w", err)
 		}
 	}
 
@@ -118,42 +111,6 @@ func (h *Helm) Initialize() (err error) {
 	return f.WriteFile(repoFile, 0644)
 }
 
-// Load a given chart, ensuring all dependencies are present in /charts
-//
-// If given a non-empty lockfilePath, the corresponding file will be injected
-// in the returned chart as requirements.lock.
-func loadChartWithLockfile(chartPath, lockfilePath string) (c *chart.Chart, err error) {
-	// Check chart requirements to make sure all dependencies are present in /charts
-	if c, err = chartutil.Load(chartPath); err != nil {
-		return
-	}
-
-	if lockfilePath != "" {
-		var data []byte
-		data, err = ioutil.ReadFile(lockfilePath)
-		if err != nil {
-			return
-		}
-
-		found := false
-		for _, f := range c.Files {
-			if f.TypeUrl == "requirements.lock" {
-				found = true
-				f.Value = data
-			}
-		}
-
-		if !found {
-			c.Files = append(c.Files, &any.Any{
-				TypeUrl: "requirements.lock",
-				Value:   data,
-			})
-		}
-	}
-
-	return
-}
-
 type repoAuth struct {
 	Username string `yaml:"user,omitempty"`
 	Password string `yaml:"password,omitempty"`
@@ -209,8 +166,7 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 
 	log.Printf("Using chart path %v", chartPath)
 
-	// Check chart requirements to make sure all dependencies are present in /charts
-	if c, err = loadChartWithLockfile(chartPath, ref.LockFile); err != nil {
+	if c, err = chartutil.Load(chartPath); err != nil {
 		return
 	}
 
@@ -249,8 +205,7 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 				return
 			}
 
-			c, err = loadChartWithLockfile(chartPath, ref.LockFile)
-			if err != nil {
+			if c, err = chartutil.Load(chartPath); err != nil {
 				return
 			}
 		}
