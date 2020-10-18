@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
-	helmgetter "k8s.io/helm/pkg/getter"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/manifest"
@@ -33,16 +33,9 @@ var (
 	defaultKubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
 )
 
-// Helm type
-type Helm struct {
-	getters  helmgetter.Providers
-	settings environment.EnvSettings
-	out      io.Writer
-}
-
 // Render manifest from helm chart configuration (shorthand)
 func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err error) {
-	h := NewHelm("", os.Stderr)
+	h := newHelm("", os.Stderr)
 
 	if cfg.Repository == "" {
 		if cfg.Chart != "." && !strings.HasPrefix(cfg.Chart, "./") {
@@ -65,16 +58,23 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 	return h.RenderChart(chrt, renderCfg, writer)
 }
 
+// Helm type
+type helm struct {
+	getters  getter.Providers
+	settings environment.EnvSettings
+	out      io.Writer
+}
+
 // NewHelm constructs helm
-func NewHelm(home string, out io.Writer) *Helm {
+func newHelm(home string, out io.Writer) *helm {
 	settings := environment.EnvSettings{
 		Home: helmpath.Home(environment.DefaultHelmHome),
 	}
 	if home != "" {
 		settings.Home = helmpath.Home(home)
 	}
-	return &Helm{
-		helmgetter.All(settings), // getters(settings),
+	return &helm{
+		getter.All(settings), // getters(settings),
 		settings,
 		out,
 	}
@@ -82,7 +82,7 @@ func NewHelm(home string, out io.Writer) *Helm {
 
 // Initialize initialize the helm home directory.
 // Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/installer/init.go
-func (h *Helm) Initialize() (err error) {
+func (h *helm) Initialize() (err error) {
 	if _, e := os.Stat(h.settings.Home.String()); e == nil {
 		return
 	}
@@ -119,7 +119,7 @@ type repoAuth struct {
 	CAFile   string `yaml:"caFile,omitempty"`
 }
 
-func (h *Helm) findRepoAuth(repoURL string) (auth repoAuth, err error) {
+func (h *helm) findRepoAuth(repoURL string) (auth repoAuth, err error) {
 	repos, err := repo.LoadRepositoriesFile(h.settings.Home.RepositoryFile())
 	if err != nil {
 		return auth, err
@@ -138,7 +138,7 @@ func (h *Helm) findRepoAuth(repoURL string) (auth repoAuth, err error) {
 }
 
 // LoadChart download a chart or load it from cache
-func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
+func (h *helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 	if err = h.Initialize(); err != nil {
 		return
 	}
@@ -216,7 +216,7 @@ func (h *Helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 
 // RenderChart manifest
 // Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/template.go
-func (h *Helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer) (err error) {
+func (h *helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer) (err error) {
 	namespace := c.Namespace
 	if namespace == "" {
 		namespace = "default" // avoids kustomize panic due to missing namespace
@@ -317,7 +317,7 @@ func securePath(path, baseDir, rootDir string) (secured string, err error) {
 // - URL
 //
 // If 'verify' is true, this will attempt to also verify the chart.
-func (h *Helm) LocateChartPath(repoURL, username, password, name, version string, verify bool, keyring,
+func (h *helm) LocateChartPath(repoURL, username, password, name, version string, verify bool, keyring,
 	certFile, keyFile, caFile string) (string, error) {
 	name = strings.TrimSpace(name)
 	version = strings.TrimSpace(version)
@@ -385,7 +385,7 @@ func (h *Helm) LocateChartPath(repoURL, username, password, name, version string
 
 // Vals merges values from files specified via -f/--values and
 // directly via --set or --set-string or --set-file, marshaling them to YAML
-func (h *Helm) Vals(chrt *chart.Chart, valueFiles []string, values map[string]interface{}, rootDir, baseDir, certFile, keyFile, caFile string) (b []byte, err error) {
+func (h *helm) Vals(chrt *chart.Chart, valueFiles []string, values map[string]interface{}, rootDir, baseDir, certFile, keyFile, caFile string) (b []byte, err error) {
 	base := map[string]interface{}{}
 	for _, filePath := range valueFiles {
 		currentMap := map[string]interface{}{}
@@ -402,7 +402,7 @@ func (h *Helm) Vals(chrt *chart.Chart, valueFiles []string, values map[string]in
 }
 
 //readFile load a file from the local directory or a remote file with a url.
-func (h *Helm) readValuesFile(chrt *chart.Chart, filePath, rootDir, baseDir, CertFile, KeyFile, CAFile string) (b []byte, err error) {
+func (h *helm) readValuesFile(chrt *chart.Chart, filePath, rootDir, baseDir, CertFile, KeyFile, CAFile string) (b []byte, err error) {
 	u, err := url.Parse(filePath)
 	if u.Scheme == "" || strings.ToLower(u.Scheme) == "file" {
 		// Load from local file, fallback to chart file
