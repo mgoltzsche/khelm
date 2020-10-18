@@ -151,7 +151,7 @@ func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, re
 		idx := repo.NewIndexFile()
 		idx.APIVersion = "v1"
 		idx.Entries = map[string]repo.ChartVersions{
-			f.config.Chart: repo.ChartVersions{{
+			f.config.Chart: {{
 				Metadata: &chart.Metadata{
 					ApiVersion: "v1",
 					AppVersion: f.config.Version,
