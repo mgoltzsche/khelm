@@ -24,39 +24,43 @@ var currDir = func() string {
 func TestRender(t *testing.T) {
 	expectedJenkinsContained := "- host: jenkins.example.org\n"
 	for _, c := range []struct {
+		name              string
 		file              string
 		expectedNamespace string
 		expectedContained string
 	}{
-		{"../../example/jenkins/jenkins-chart.yaml", "jenkins", expectedJenkinsContained},
-		{"chartwithextvalues.yaml", "jenkins", expectedJenkinsContained},
-		{"../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
-		{"../../example/cert-manager/cert-manager-chart.yaml", "cert-manager", "chart: cainjector-v0.9.1"},
-		{"../../example/apiversions-condition/chartref.yaml", "apiversions-condition-env", "  config: fancy-config"},
-		{"../../example/localref/chartref.yaml", "myns", "elasticsearch"},
-		{"../../example/localrefref/chartref.yaml", "myotherns", "elasticsearch"},
-		{"../../example/values-inheritance/chartref.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
+		{"jenkins", "../../example/jenkins/jenkins-chart.yaml", "jenkins", expectedJenkinsContained},
+		{"values-external", "chartwithextvalues.yaml", "jenkins", expectedJenkinsContained},
+		{"rook-ceph", "../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
+		{"cert-manager", "../../example/cert-manager/cert-manager-chart.yaml", "cert-manager", "chart: cainjector-v0.9.1"},
+		{"apiversions-condition", "../../example/apiversions-condition/chartref.yaml", "apiversions-condition-env", "  config: fancy-config"},
+		{"local-chart-with-remote-dependency", "../../example/localref/chartref.yaml", "myns", "elasticsearch"},
+		{"local-chart-with-local-dependency", "../../example/localrefref/chartref.yaml", "myotherns", "elasticsearch"},
+		{"values-inheritance", "../../example/values-inheritance/chartref.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
+		{"unsupported-field", "../../example/unsupported-field/chartref.yaml", "rook-ceph-system", "rook-ceph"},
 	} {
-		for _, cached := range []string{"", "cached "} {
-			var rendered bytes.Buffer
-			absFile := filepath.Join(currDir, c.file)
-			rootDir := filepath.Join(currDir, "..", "..")
-			err := render(t, absFile, rootDir, &rendered)
-			require.NoError(t, err, "render %s%s", cached, absFile)
-			b := rendered.Bytes()
-			l, err := readYaml(b)
-			require.NoError(t, err, "rendered %syaml:\n%s", cached, b)
-			require.True(t, len(l) > 0, "%s: rendered result of %s is empty", cached, c.file)
-			require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
-			hasExpectedNamespace := false
-			for _, o := range l {
-				if o["metadata"].(map[string]interface{})["namespace"] == c.expectedNamespace {
-					hasExpectedNamespace = true
-					break
+		t.Run(c.name, func(t *testing.T) {
+			for _, cached := range []string{"", "cached "} {
+				var rendered bytes.Buffer
+				absFile := filepath.Join(currDir, c.file)
+				rootDir := filepath.Join(currDir, "..", "..")
+				err := render(t, absFile, rootDir, &rendered)
+				require.NoError(t, err, "render %s%s", cached, absFile)
+				b := rendered.Bytes()
+				l, err := readYaml(b)
+				require.NoError(t, err, "rendered %syaml:\n%s", cached, b)
+				require.True(t, len(l) > 0, "%s: rendered result of %s is empty", cached, c.file)
+				require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
+				hasExpectedNamespace := false
+				for _, o := range l {
+					if o["metadata"].(map[string]interface{})["namespace"] == c.expectedNamespace {
+						hasExpectedNamespace = true
+						break
+					}
 				}
+				require.True(t, hasExpectedNamespace, "%s%s: should have namespace %q", cached, c.file, c.expectedNamespace)
 			}
-			require.True(t, hasExpectedNamespace, "%s%s: should have namespace %q", cached, c.file, c.expectedNamespace)
-		}
+		})
 	}
 }
 

@@ -1,0 +1,11 @@
+apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+kind: ChartRenderer
+metadata:
+  name: rook-ceph
+  namespace: rook-ceph-system
+repository: https://charts.rook.io/stable
+chart: rook-ceph
+version: 0.9.3
+values:
+  rbacEnable: false
+unsupportedField: unsupported-value
