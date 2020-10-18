@@ -3,14 +3,23 @@ package helm
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	helmyaml "github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
+
 	"gopkg.in/yaml.v3"
+	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/repo"
 )
 
 var currDir = func() string {
@@ -44,7 +53,7 @@ func TestRender(t *testing.T) {
 				var rendered bytes.Buffer
 				absFile := filepath.Join(currDir, c.file)
 				rootDir := filepath.Join(currDir, "..", "..")
-				err := render(t, absFile, rootDir, &rendered)
+				err := renderFile(t, absFile, rootDir, &rendered)
 				require.NoError(t, err, "render %s%s", cached, absFile)
 				b := rendered.Bytes()
 				l, err := readYaml(b)
@@ -66,7 +75,7 @@ func TestRender(t *testing.T) {
 
 func TestRenderRejectFileOutsideProjectDir(t *testing.T) {
 	file := filepath.Join(currDir, "chartwithextvalues.yaml")
-	err := render(t, file, currDir, &bytes.Buffer{})
+	err := renderFile(t, file, currDir, &bytes.Buffer{})
 	require.Error(t, err, "render %s within %s", file, currDir)
 }
 
@@ -76,13 +85,110 @@ func TestRenderError(t *testing.T) {
 	} {
 		file = filepath.Join(currDir, file)
 		rootDir := filepath.Join(currDir, "..", "..")
-		err := render(t, file, rootDir, &bytes.Buffer{})
+		err := renderFile(t, file, rootDir, &bytes.Buffer{})
 		require.Error(t, err, "render %s", file)
 	}
 }
 
-func render(t *testing.T, file, rootDir string, writer io.Writer) (err error) {
-	log.SetFlags(0)
+// TODO: enable this when repo indices of preconfigured repos are fetched
+func disabledTestRenderRepositoryCredentials(t *testing.T) {
+	// Make sure a fake chart exists that the fake server can serve
+	rootDir := filepath.Join(currDir, "..", "..")
+	err := renderFile(t, filepath.Join(rootDir, "example/localrefref/chartref.yaml"), rootDir, &bytes.Buffer{})
+	require.NoError(t, err)
+	fakeChartTgz := filepath.Join(currDir, "../../example/localrefref/charts/efk-0.1.1.tgz")
+
+	// Create input chart config and fake private chart server
+	var cfg GeneratorConfig
+	cfg.Chart = "private-chart"
+	cfg.Version = fmt.Sprintf("0.0.%d", time.Now().Unix())
+	cfg.RootDir = currDir
+	cfg.BaseDir = currDir
+	repoEntry := &repo.Entry{
+		Name:     "myprivaterepo",
+		Username: "fakeuser",
+		Password: "fakepassword",
+	}
+	srv := httptest.NewServer(&fakePrivateChartServerHandler{repoEntry, &cfg.LoadChartConfig, fakeChartTgz})
+	defer srv.Close()
+	cfg.Repository = srv.URL
+	repoEntry.URL = cfg.Repository
+
+	// Generate temp repository configuration pointing to fake private server
+	tmpHelmHome, err := ioutil.TempDir("", "helmrndr-home-")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpHelmHome)
+	origHelmHome := os.Getenv("HELM_HOME")
+	err = os.Setenv("HELM_HOME", tmpHelmHome)
+	require.NoError(t, err)
+	defer os.Setenv("HELM_HOME", origHelmHome)
+	repos := repo.NewRepoFile()
+	repos.Add(repoEntry)
+	b, err := yaml.Marshal(repos)
+	require.NoError(t, err)
+	err = os.Mkdir(filepath.Join(tmpHelmHome, "repository"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tmpHelmHome, "repository", "repositories.yaml"), b, 0644)
+	require.NoError(t, err)
+
+	err = render(t, &cfg, &bytes.Buffer{})
+	require.NoError(t, err, "render chart with repository credentials")
+}
+
+type fakePrivateChartServerHandler struct {
+	repo         *repo.Entry
+	config       *LoadChartConfig
+	fakeChartTgz string
+}
+
+func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
+	usr, pwd, ok := req.BasicAuth()
+	if !ok || usr != f.repo.Username || pwd != f.repo.Password {
+		writer.WriteHeader(401)
+		return
+	}
+	chartFilePath := fmt.Sprintf("/%s-%s.tgz", f.config.Chart, f.config.Version)
+	switch req.RequestURI {
+	case "/index.yaml":
+		idx := repo.NewIndexFile()
+		idx.APIVersion = "v1"
+		idx.Entries = map[string]repo.ChartVersions{
+			f.config.Chart: repo.ChartVersions{{
+				Metadata: &chart.Metadata{
+					ApiVersion: "v1",
+					AppVersion: f.config.Version,
+					Version:    f.config.Version,
+					Name:       f.config.Chart,
+				},
+				URLs: []string{f.repo.URL + chartFilePath},
+			}},
+		}
+		b, err := helmyaml.Marshal(idx)
+		if err != nil {
+			log.Println("ERROR: fake server:", err)
+			writer.WriteHeader(500)
+			return
+		}
+		writer.WriteHeader(200)
+		writer.Write(b)
+		return
+	case chartFilePath:
+		writer.WriteHeader(200)
+		f, err := os.Open(f.fakeChartTgz)
+		if err == nil {
+			defer f.Close()
+			_, err = io.Copy(writer, f)
+		}
+		if err != nil {
+			log.Println("ERROR: fake server:", err)
+		}
+		return
+	}
+	log.Println("ERROR: fake server received unexpected request:", req.RequestURI)
+	writer.WriteHeader(404)
+}
+
+func renderFile(t *testing.T, file, rootDir string, writer io.Writer) error {
 	f, err := os.Open(file)
 	require.NoError(t, err)
 	defer f.Close()
@@ -90,8 +196,12 @@ func render(t *testing.T, file, rootDir string, writer io.Writer) (err error) {
 	require.NoError(t, err)
 	cfg.RootDir = rootDir
 	cfg.BaseDir = filepath.Dir(file)
-	err = Render(context.Background(), cfg, writer)
-	return
+	return render(t, cfg, writer)
+}
+
+func render(t *testing.T, cfg *GeneratorConfig, writer io.Writer) error {
+	log.SetFlags(0)
+	return Render(context.Background(), cfg, writer)
 }
 
 func readYaml(y []byte) (l []map[string]interface{}, err error) {

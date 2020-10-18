@@ -66,8 +66,12 @@ type helm struct {
 
 // NewHelm constructs helm
 func newHelm(home string, out io.Writer) *helm {
+	helmHome := os.Getenv("HELM_HOME")
+	if helmHome == "" {
+		helmHome = environment.DefaultHelmHome
+	}
 	settings := environment.EnvSettings{
-		Home: helmpath.Home(environment.DefaultHelmHome),
+		Home: helmpath.Home(helmHome),
 	}
 	if home != "" {
 		settings.Home = helmpath.Home(home)
