@@ -1,9 +1,7 @@
 package helm
 
 import (
-	"bytes"
 	"io"
-	"io/ioutil"
 	"log"
 
 	"github.com/pkg/errors"
@@ -40,6 +38,7 @@ type LoadChartConfig struct {
 	Repository string `yaml:"repository,omitempty"`
 	Chart      string `yaml:"chart"`
 	Version    string `yaml:"version,omitempty"`
+	LockFile   string `yaml:"lockFile,omitempty"` // deprecated
 	Verify     bool   `yaml:"verify,omitempty"`
 	Keyring    string `yaml:"keyring,omitempty"`
 }
@@ -59,22 +58,9 @@ type RenderConfig struct {
 // ReadGeneratorConfig read the generator configuration
 func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 	cfg = &GeneratorConfig{}
-	data, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec := yaml.NewDecoder(reader)
 	dec.KnownFields(true)
 	err = dec.Decode(cfg)
-	if err != nil {
-		// Accept unknown fields but warn about them
-		dec = yaml.NewDecoder(bytes.NewReader(data))
-		e := dec.Decode(cfg)
-		if e == nil {
-			log.Printf("WARNING: chart renderer config %s in %s contains unsupported fields: %s", cfg.Metadata.Name, cfg.BaseDir, err)
-			err = nil
-		}
-	}
 	if err == nil {
 		e := dec.Decode(cfg)
 		if e == nil {
@@ -84,6 +70,10 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		}
 	}
 	if err == nil {
+		if cfg.LockFile != "" {
+			cfg.LockFile = ""
+			log.Println("WARNING: chart renderer config specifies deprecated field 'lockFile' - not supported anymore and the field will be removed with the next schema version")
+		}
 		if cfg.Namespace == "" {
 			cfg.Namespace = cfg.Metadata.Namespace
 		} else if cfg.Metadata.Namespace != "" && err == nil {

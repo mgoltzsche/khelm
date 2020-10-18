@@ -16,7 +16,6 @@ import (
 
 	helmyaml "github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
-
 	"gopkg.in/yaml.v3"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/repo"
@@ -46,7 +45,6 @@ func TestRender(t *testing.T) {
 		{"local-chart-with-remote-dependency", "../../example/localref/chartref.yaml", "myns", "elasticsearch"},
 		{"local-chart-with-local-dependency", "../../example/localrefref/chartref.yaml", "myotherns", "elasticsearch"},
 		{"values-inheritance", "../../example/values-inheritance/chartref.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
-		{"unsupported-field", "../../example/unsupported-field/chartref.yaml", "rook-ceph-system", "rook-ceph"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			for _, cached := range []string{"", "cached "} {
@@ -193,7 +191,7 @@ func renderFile(t *testing.T, file, rootDir string, writer io.Writer) error {
 	require.NoError(t, err)
 	defer f.Close()
 	cfg, err := ReadGeneratorConfig(f)
-	require.NoError(t, err)
+	require.NoError(t, err, "ReadGeneratorConfig(%s)", file)
 	cfg.RootDir = rootDir
 	cfg.BaseDir = filepath.Dir(file)
 	return render(t, cfg, writer)
