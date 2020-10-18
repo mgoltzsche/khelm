@@ -42,8 +42,8 @@ func TestRender(t *testing.T) {
 		{"rook-ceph", "../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
 		{"cert-manager", "../../example/cert-manager/cert-manager-chart.yaml", "cert-manager", "chart: cainjector-v0.9.1"},
 		{"apiversions-condition", "../../example/apiversions-condition/chartref.yaml", "apiversions-condition-env", "  config: fancy-config"},
-		{"local-chart-with-remote-dependency", "../../example/localref/chartref.yaml", "myns", "elasticsearch"},
-		{"local-chart-with-local-dependency", "../../example/localrefref/chartref.yaml", "myotherns", "elasticsearch"},
+		{"local-chart-with-remote-dependency", "../../example/localref/chartref.yaml", "myns", "http://efk-elasticsearch-client:9200"},
+		{"local-chart-with-local-dependency", "../../example/localrefref/chartref.yaml", "myotherns", "http://efk-elasticsearch-client:9200"},
 		{"values-inheritance", "../../example/values-inheritance/chartref.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
