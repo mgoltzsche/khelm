@@ -2,6 +2,7 @@ package helm
 
 import (
 	"io"
+	"log"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -37,6 +38,7 @@ type LoadChartConfig struct {
 	Repository string `yaml:"repository,omitempty"`
 	Chart      string `yaml:"chart"`
 	Version    string `yaml:"version,omitempty"`
+	LockFile   string `yaml:"lockFile,omitempty"`
 	Verify     bool   `yaml:"verify,omitempty"`
 	Keyring    string `yaml:"keyring,omitempty"`
 }
@@ -68,6 +70,10 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		}
 	}
 	if err == nil {
+		if cfg.LockFile != "" {
+			cfg.LockFile = ""
+			log.Println("WARNING: chart renderer config specifies deprecated field 'lockFile' - not supported anymore and the field will be removed with the next schema version")
+		}
 		if cfg.Namespace == "" {
 			cfg.Namespace = cfg.Metadata.Namespace
 		} else if cfg.Metadata.Namespace != "" && err == nil {
