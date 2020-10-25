@@ -89,8 +89,7 @@ func TestRenderError(t *testing.T) {
 	}
 }
 
-// TODO: enable this when repo indices of preconfigured repos are fetched
-func disabledTestRenderRepositoryCredentials(t *testing.T) {
+func TestRenderRepositoryCredentials(t *testing.T) {
 	// Make sure a fake chart exists that the fake server can serve
 	rootDir := filepath.Join(currDir, "..", "..")
 	err := renderFile(t, filepath.Join(rootDir, "example/localrefref/chartref.yaml"), rootDir, &bytes.Buffer{})
@@ -100,6 +99,7 @@ func disabledTestRenderRepositoryCredentials(t *testing.T) {
 	// Create input chart config and fake private chart server
 	var cfg ChartConfig
 	cfg.Chart = "private-chart"
+	cfg.ReleaseName = "myrelease"
 	cfg.Version = fmt.Sprintf("0.0.%d", time.Now().Unix())
 	cfg.RootDir = currDir
 	cfg.BaseDir = currDir
@@ -114,7 +114,7 @@ func disabledTestRenderRepositoryCredentials(t *testing.T) {
 	repoEntry.URL = cfg.Repository
 
 	// Generate temp repository configuration pointing to fake private server
-	tmpHelmHome, err := ioutil.TempDir("", "helmrndr-home-")
+	tmpHelmHome, err := ioutil.TempDir("", "helmr-test-home-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpHelmHome)
 	origHelmHome := os.Getenv("HELM_HOME")
@@ -159,7 +159,8 @@ func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, re
 					Version:    f.config.Version,
 					Name:       f.config.Chart,
 				},
-				URLs: []string{f.repo.URL + chartFilePath},
+				Digest: "0000000000000000",
+				URLs:   []string{f.repo.URL + chartFilePath},
 			}},
 		}
 		b, err := helmyaml.Marshal(idx)

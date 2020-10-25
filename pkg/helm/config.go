@@ -2,9 +2,11 @@ package helm
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"strings"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -59,12 +61,26 @@ type RendererConfig struct {
 	Exclude     []K8sObjectID          `yaml:"exclude,omitempty"`
 }
 
+// Validate validates the chart renderer config
+func (cfg *ChartConfig) Validate() (errs []string) {
+	if cfg.Chart == "" {
+		errs = append(errs, "chart not specified")
+	}
+	if cfg.Version == "" && cfg.Repository != "" {
+		errs = append(errs, "no chart version but repository specified")
+	}
+	if cfg.ReleaseName == "" {
+		errs = append(errs, "releaseName not specified")
+	}
+	return
+}
+
 // ReadGeneratorConfig read the generator configuration
 func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 	cfg = &GeneratorConfig{}
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "read chart renderer config")
 	}
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
@@ -89,30 +105,26 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 	if err == nil {
 		if cfg.Namespace == "" {
 			cfg.Namespace = cfg.Metadata.Namespace
-		} else if cfg.Metadata.Namespace != "" && err == nil {
-			err = errors.New("both metadata.namespace and namespace defined")
 		}
-		if cfg.ReleaseName == "" && cfg.Name != "" {
-			log.Printf("WARNING: chart config %q field \"name\" is deprecated in favour of \"releaseName\"", cfg.Metadata.Name)
+		if cfg.Name != "" {
+			log.Printf("WARNING: chart %q: field \"name\" is deprecated in favour of \"releaseName\"", cfg.Metadata.Name)
+		}
+		if cfg.ReleaseName == "" {
 			cfg.ReleaseName = cfg.Name
 		}
 		if cfg.ReleaseName == "" {
 			cfg.ReleaseName = cfg.Metadata.Name
 		}
-		if cfg.ReleaseName == "" {
-			err = errors.New("releaseName not specified")
-		}
-		if cfg.Version == "" && cfg.Repository != "" {
-			err = errors.New("no chart version but repository specified")
-		}
-		if cfg.Chart == "" {
-			err = errors.New("chart not specified")
+		errs := []string{}
+		if cfg.APIVersion != GeneratorAPIVersion {
+			errs = append(errs, fmt.Sprintf("expected apiVersion %s but was %s", GeneratorAPIVersion, cfg.APIVersion))
 		}
 		if cfg.Kind != GeneratorKind {
-			err = errors.Errorf("expected kind %s but was %s", GeneratorKind, cfg.Kind)
+			errs = append(errs, fmt.Sprintf("expected kind %s but was %s", GeneratorKind, cfg.Kind))
 		}
-		if cfg.APIVersion != GeneratorAPIVersion {
-			err = errors.Errorf("expected apiVersion %s but was %s", GeneratorAPIVersion, cfg.APIVersion)
+		errs = append(errs, cfg.Validate()...)
+		if len(errs) > 0 {
+			return nil, errors.Errorf("invalid chart renderer config:\n\t* %s", strings.Join(errs, "\n\t* "))
 		}
 	}
 	return cfg, errors.Wrap(err, "read chart renderer config")

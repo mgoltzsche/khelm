@@ -37,22 +37,18 @@ func Render(ctx context.Context, cfg *ChartConfig, writer io.Writer) (err error)
 	h := newHelm("", os.Stderr)
 
 	if cfg.Repository == "" {
-		if cfg.Chart != "." && !strings.HasPrefix(cfg.Chart, "./") {
-			return fmt.Errorf("chart name must start with ./ if no repository specified")
+		if cfg.Chart != "." && !(strings.HasPrefix(cfg.Chart, "./") || cfg.Chart != ".." && strings.HasPrefix(cfg.Chart, "../")) {
+			return errors.New("chart name must start with ./ if no repository specified")
 		}
 		cfg.Chart, err = securePath(cfg.Chart, cfg.BaseDir, cfg.RootDir)
 		if err != nil {
-			return fmt.Errorf("no repository specified and invalid local chart path provided: %w", err)
+			return errors.Wrap(err, "no repository specified and invalid local chart path provided")
 		}
 	}
 
 	chrt, err := h.LoadChart(&cfg.LoaderConfig)
 	if err != nil {
 		return err
-	}
-	renderCfg := &cfg.RendererConfig
-	if renderCfg.ReleaseName == "" {
-		renderCfg.ReleaseName = chrt.Metadata.Name
 	}
 	return h.RenderChart(chrt, cfg, writer)
 }
@@ -122,49 +118,21 @@ type repoAuth struct {
 	CAFile   string `yaml:"caFile,omitempty"`
 }
 
-func (h *helm) findRepoAuth(repoURL string) (auth repoAuth, err error) {
-	repos, err := repo.LoadRepositoriesFile(h.settings.Home.RepositoryFile())
-	if err != nil {
-		return auth, err
-	}
-	for _, r := range repos.Repositories {
-		if r.URL == repoURL {
-			auth.Username = r.Username
-			auth.Password = r.Password
-			auth.CAFile = r.CAFile
-			auth.CertFile = r.CertFile
-			auth.KeyFile = r.KeyFile
-			return auth, nil
-		}
-	}
-	return auth, nil
-}
-
 // LoadChart download a chart or load it from cache
 func (h *helm) LoadChart(ref *LoaderConfig) (c *chart.Chart, err error) {
 	if err = h.Initialize(); err != nil {
 		return
 	}
 
-	auth, err := h.findRepoAuth(ref.Repository)
-	if err != nil {
-		return
-	}
-
 	chartPath, err := h.LocateChartPath(
 		ref.Repository,
-		auth.Username,
-		auth.Password,
 		ref.Chart,
 		ref.Version,
 		ref.Verify,
 		ref.Keyring,
-		auth.CertFile,
-		auth.KeyFile,
-		auth.CAFile,
 	)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	log.Printf("Using chart path %v", chartPath)
@@ -190,7 +158,7 @@ func (h *helm) LoadChart(ref *LoaderConfig) (c *chart.Chart, err error) {
 	if req != nil {
 		if lock != nil {
 			if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
-				return nil, fmt.Errorf("requirements.lock is out of sync with requirements.yaml")
+				return nil, errors.New("requirements.lock is out of sync with requirements.yaml")
 			}
 		}
 
@@ -293,8 +261,7 @@ func transform(m *manifest.Manifest, namespace string, excludes []*K8sObjectMatc
 // - URL
 //
 // If 'verify' is true, this will attempt to also verify the chart.
-func (h *helm) LocateChartPath(repoURL, username, password, name, version string, verify bool, keyring,
-	certFile, keyFile, caFile string) (string, error) {
+func (h *helm) LocateChartPath(repoURL, name, version string, verify bool, keyring string) (string, error) {
 	name = strings.TrimSpace(name)
 	version = strings.TrimSpace(version)
 	if fi, err := os.Stat(name); err == nil {
@@ -314,7 +281,7 @@ func (h *helm) LocateChartPath(repoURL, username, password, name, version string
 	}
 
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
-		return name, fmt.Errorf("path %q not found", name)
+		return name, errors.Errorf("path %q not found", name)
 	}
 
 	crepo := filepath.Join(h.settings.Home.Repository(), name)
@@ -323,26 +290,45 @@ func (h *helm) LocateChartPath(repoURL, username, password, name, version string
 		return filepath.Abs(crepo)
 	}
 
+	repos, err := reposForURLs(&h.settings, h.getters, map[string]struct{}{repoURL: {}})
+	if err != nil {
+		return "", err
+	}
+	tmpRepos, err := repos.Apply()
+	if err != nil {
+		return "", err
+	}
+	defer tmpRepos.Close()
+	if err = tmpRepos.UpdateIndex(); err != nil {
+		return "", err
+	}
+	h.settings.Home = tmpRepos.HelmHome()
+	/*isRange, err := isVersionRange(cfg.Version)
+	if err != nil {
+		return err
+	}
+	if isRange {
+		if err = repos.UpdateIndex(); err != nil {
+			return err
+		}
+	}*/
+
+	r, err := repos.EntryByURL(repoURL)
+	if err != nil {
+		return "", err
+	}
+
 	dl := downloader.ChartDownloader{
 		HelmHome: h.settings.Home,
 		Out:      h.out,
 		Keyring:  keyring,
 		Getters:  h.getters,
-		Username: username,
-		Password: password,
+		Username: r.Username,
+		Password: r.Password,
 	}
 
 	if verify {
 		dl.Verify = downloader.VerifyAlways
-	}
-
-	if repoURL != "" {
-		chartURL, err := repo.FindChartInAuthRepoURL(repoURL, username, password, name, version,
-			certFile, keyFile, caFile, h.getters)
-		if err != nil {
-			return "", err
-		}
-		name = chartURL
 	}
 
 	if _, err := os.Stat(h.settings.Home.Archive()); os.IsNotExist(err) {
@@ -350,10 +336,10 @@ func (h *helm) LocateChartPath(repoURL, username, password, name, version string
 	}
 
 	log.Printf("Downloading chart %q version %q with user: %q, passwd: %v, keyring: %q\n", name, version, dl.Username, dl.Password != "", dl.Keyring)
-	filename, _, err := dl.DownloadTo(name, version, h.settings.Home.Archive())
+	filename, _, err := dl.DownloadTo(fmt.Sprintf("%s/%s", r.Name, name), version, h.settings.Home.Archive())
 
 	if err != nil {
-		return filename, err
+		return filename, errors.Wrapf(err, "download chart %s %s", name, version)
 	}
 
 	return filepath.Abs(filename)
@@ -369,7 +355,7 @@ func (h *helm) Vals(chrt *chart.Chart, valueFiles []string, values map[string]in
 			return
 		}
 		if err = yaml.Unmarshal(b, &currentMap); err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %s", filePath, err)
+			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
 		mergeValues(base, currentMap)
 	}
