@@ -75,8 +75,8 @@ func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (*repo
 	repoURLMap := map[string]*repo.Entry{}
 	repos, err := repo.LoadRepositoriesFile(repoFile)
 	if err != nil {
-		if !os.IsNotExist(errors.Cause(err)) {
-			return nil, err
+		if _, e := os.Stat(repoFile); e != nil && !os.IsNotExist(e) {
+			return nil, errors.Wrapf(err, "load %s", repoFile)
 		}
 		repos = repo.NewRepoFile()
 	}
@@ -102,10 +102,10 @@ func (f *repositories) repoIndex(entry *repo.Entry) (*repo.IndexFile, error) {
 			}
 			idx, err = repo.LoadIndexFile(idxFile)
 			if err != nil {
-				return nil, err
+				return nil, errors.WithStack(err)
 			}
 		} else {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 	}
 	f.indexFiles[entry.Name] = idx
@@ -291,13 +291,13 @@ func (f *tempRepositories) Close() error {
 func downloadIndexFile(entry *repo.Entry, cacheDir string, getters getter.Providers) error {
 	r, err := repo.NewChartRepository(entry, getters)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	log.Printf("Downloading repo index of %s", entry.URL)
 	idxFile := indexFile(entry, cacheDir)
 	err = os.MkdirAll(filepath.Dir(idxFile), 0755)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	err = r.DownloadIndexFile(idxFile)
 	if err != nil {
@@ -313,7 +313,7 @@ func indexFile(entry *repo.Entry, cacheDir string) string {
 func urlToHash(str string) (string, error) {
 	hash := crypto.SHA256.New()
 	if _, err := io.Copy(hash, bytes.NewReader([]byte(str))); err != nil {
-		return "", nil
+		return "", errors.Wrap(err, "urlToHash")
 	}
 	name := hex.EncodeToString(hash.Sum(nil))
 	return strings.ToLower(strings.TrimRight(name, "=")), nil

@@ -17,6 +17,9 @@ import (
 	helmyaml "github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+	"k8s.io/helm/pkg/getter"
+	cli "k8s.io/helm/pkg/helm/environment"
+	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/repo"
 )
@@ -42,8 +45,8 @@ func TestRender(t *testing.T) {
 		{"rook-ceph", "../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
 		{"cert-manager", "../../example/cert-manager/cert-manager-chart.yaml", "cert-manager", "chart: cainjector-v0.9.1"},
 		{"apiversions-condition", "../../example/apiversions-condition/chartref.yaml", "apiversions-condition-env", "  config: fancy-config"},
+		{"local-chart-with-local-dependency-and-transitive-remote", "../../example/localrefref/chartref.yaml", "myotherns", "http://efk-elasticsearch-client:9200"},
 		{"local-chart-with-remote-dependency", "../../example/localref/chartref.yaml", "myns", "http://efk-elasticsearch-client:9200"},
-		{"local-chart-with-local-dependency", "../../example/localrefref/chartref.yaml", "myotherns", "http://efk-elasticsearch-client:9200"},
 		{"values-inheritance", "../../example/values-inheritance/chartref.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
 		{"unsupported-field", "../../example/unsupported-field/chartref.yaml", "rook-ceph-system", "rook-ceph"},
 	} {
@@ -88,6 +91,81 @@ func TestRenderError(t *testing.T) {
 		require.Error(t, err, "render %s", file)
 	}
 }
+func TestRenderRebuildsLocalDependencies(t *testing.T) {
+	rootDir := filepath.Join(currDir, "..", "..")
+	tplDir := filepath.Join(rootDir, "example/localref/elk/templates")
+	tplFile := filepath.Join(tplDir, "changed.yaml")
+	configFile := filepath.Join(rootDir, "example/localrefref/chartref.yaml")
+	os.RemoveAll(tplDir)
+
+	// Render once to ensure the dependency has been built already
+	err := renderFile(t, configFile, rootDir, &bytes.Buffer{})
+	require.NoError(t, err, "1st render")
+
+	// Change the dependency
+	err = os.Mkdir(tplDir, 0755)
+	require.NoError(t, err)
+	defer os.RemoveAll(tplDir)
+	data := []byte("apiVersion: fancyapi/v1\nkind: FancyKind\nmetadata:\n  name: sth\nchangedField: changed-value")
+	err = ioutil.WriteFile(tplFile, data, 0644)
+	require.NoError(t, err)
+
+	// Render again and verify that the dependency is rebuilt
+	var rendered bytes.Buffer
+	err = renderFile(t, configFile, rootDir, &rendered)
+	require.NoError(t, err, "render after dependency has changed")
+	require.Contains(t, rendered.String(), "changedField: changed-value", "local dependency changes should be reflected within the rendered output")
+}
+
+func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "khelm-test-")
+	defer os.RemoveAll(tmpDir)
+	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
+	repoURL := "https://charts.rook.io/stable"
+	repos, err := reposForURLs(&settings, getter.All(settings), map[string]struct{}{repoURL: {}})
+	require.NoError(t, err, "use repo")
+	entry, err := repos.EntryByURL(repoURL)
+	require.NoError(t, err, "repos.EntryByURL()")
+	err = repos.Close()
+	require.NoError(t, err, "repos.Close()")
+	err = os.MkdirAll(settings.Home.Cache(), 0755)
+	require.NoError(t, err)
+	idxFile := indexFile(entry, settings.Home.Cache())
+	idx := repo.NewIndexFile() // write empty index file to cause not found error
+	err = idx.WriteFile(idxFile, 0644)
+	require.NoError(t, err, "write empty index file")
+
+	file := filepath.Join(currDir, "../../example/rook-ceph/operator/rook-ceph-chart.yaml")
+	rootDir := filepath.Join(currDir, "..", "..")
+	err = renderFile(t, file, rootDir, &bytes.Buffer{})
+	require.NoError(t, err, "render %s with outdated index", file)
+}
+
+func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "khelm-test-")
+	defer os.RemoveAll(tmpDir)
+	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
+	repoURL := "https://kubernetes-charts.storage.googleapis.com"
+	repos, err := reposForURLs(&settings, getter.All(settings), map[string]struct{}{repoURL: {}})
+	require.NoError(t, err, "use repo")
+	entry, err := repos.EntryByURL(repoURL)
+	require.NoError(t, err, "repos.EntryByURL()")
+	err = repos.Close()
+	require.NoError(t, err, "repos.Close()")
+	err = os.MkdirAll(settings.Home.Cache(), 0755)
+	require.NoError(t, err)
+	idxFile := indexFile(entry, settings.Home.Cache())
+	idx := repo.NewIndexFile() // write empty index file to cause not found error
+	err = idx.WriteFile(idxFile, 0644)
+	require.NoError(t, err, "write empty index file")
+	err = os.RemoveAll("../../example/localref/elk/charts")
+	require.NoError(t, err, "remove charts")
+
+	file := filepath.Join(currDir, "../../example/localref/chartref.yaml")
+	rootDir := filepath.Join(currDir, "..", "..")
+	err = renderFile(t, file, rootDir, &bytes.Buffer{})
+	require.NoError(t, err, "render %s with outdated index", file)
+}
 
 func TestRenderRepositoryCredentials(t *testing.T) {
 	// Make sure a fake chart exists that the fake server can serve
@@ -114,7 +192,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	repoEntry.URL = cfg.Repository
 
 	// Generate temp repository configuration pointing to fake private server
-	tmpHelmHome, err := ioutil.TempDir("", "helmr-test-home-")
+	tmpHelmHome, err := ioutil.TempDir("", "khelm-test-home-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpHelmHome)
 	origHelmHome := os.Getenv("HELM_HOME")
