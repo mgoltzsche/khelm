@@ -60,7 +60,7 @@ func main() {
 		<-sigs
 		cancel()
 	}()
-	err = helm.Render(ctx, cfg, os.Stdout)
+	err = helm.Render(ctx, &cfg.ChartConfig, os.Stdout)
 	handleError(err)
 }
 

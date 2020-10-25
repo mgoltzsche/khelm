@@ -45,6 +45,7 @@ func TestRender(t *testing.T) {
 		{"local-chart-with-remote-dependency", "../../example/localref/chartref.yaml", "myns", "http://efk-elasticsearch-client:9200"},
 		{"local-chart-with-local-dependency", "../../example/localrefref/chartref.yaml", "myotherns", "http://efk-elasticsearch-client:9200"},
 		{"values-inheritance", "../../example/values-inheritance/chartref.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
+		{"unsupported-field", "../../example/unsupported-field/chartref.yaml", "rook-ceph-system", "rook-ceph"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			for _, cached := range []string{"", "cached "} {
@@ -97,7 +98,7 @@ func disabledTestRenderRepositoryCredentials(t *testing.T) {
 	fakeChartTgz := filepath.Join(currDir, "../../example/localrefref/charts/efk-0.1.1.tgz")
 
 	// Create input chart config and fake private chart server
-	var cfg GeneratorConfig
+	var cfg ChartConfig
 	cfg.Chart = "private-chart"
 	cfg.Version = fmt.Sprintf("0.0.%d", time.Now().Unix())
 	cfg.RootDir = currDir
@@ -107,7 +108,7 @@ func disabledTestRenderRepositoryCredentials(t *testing.T) {
 		Username: "fakeuser",
 		Password: "fakepassword",
 	}
-	srv := httptest.NewServer(&fakePrivateChartServerHandler{repoEntry, &cfg.LoadChartConfig, fakeChartTgz})
+	srv := httptest.NewServer(&fakePrivateChartServerHandler{repoEntry, &cfg.LoaderConfig, fakeChartTgz})
 	defer srv.Close()
 	cfg.Repository = srv.URL
 	repoEntry.URL = cfg.Repository
@@ -135,7 +136,7 @@ func disabledTestRenderRepositoryCredentials(t *testing.T) {
 
 type fakePrivateChartServerHandler struct {
 	repo         *repo.Entry
-	config       *LoadChartConfig
+	config       *LoaderConfig
 	fakeChartTgz string
 }
 
@@ -194,10 +195,10 @@ func renderFile(t *testing.T, file, rootDir string, writer io.Writer) error {
 	require.NoError(t, err, "ReadGeneratorConfig(%s)", file)
 	cfg.RootDir = rootDir
 	cfg.BaseDir = filepath.Dir(file)
-	return render(t, cfg, writer)
+	return render(t, &cfg.ChartConfig, writer)
 }
 
-func render(t *testing.T, cfg *GeneratorConfig, writer io.Writer) error {
+func render(t *testing.T, cfg *ChartConfig, writer io.Writer) error {
 	log.SetFlags(0)
 	return Render(context.Background(), cfg, writer)
 }

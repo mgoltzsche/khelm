@@ -1,7 +1,9 @@
 package helm
 
 import (
+	"bytes"
 	"io"
+	"io/ioutil"
 	"log"
 
 	"github.com/pkg/errors"
@@ -9,8 +11,10 @@ import (
 )
 
 const (
-	generatorAPIVersion = "helm.kustomize.mgoltzsche.github.com/v1"
-	generatorKind       = "ChartRenderer"
+	// GeneratorAPIVersion specifies the apiVersion field value supported by the generator
+	GeneratorAPIVersion = "helm.kustomize.mgoltzsche.github.com/v1"
+	// GeneratorKind specifies the API kind field value supported by the generator
+	GeneratorKind = "ChartRenderer"
 )
 
 // GeneratorConfig define the kustomize plugin's input file content
@@ -29,38 +33,51 @@ type K8sMetadata struct {
 
 // ChartConfig define chart lookup and render config
 type ChartConfig struct {
-	LoadChartConfig `yaml:",inline"`
-	RenderConfig    `yaml:",inline"`
+	LoaderConfig   `yaml:",inline"`
+	RendererConfig `yaml:",inline"`
+	BaseDir        string `yaml:"-"`
+	RootDir        string `yaml:"-"`
 }
 
-// LoadChartConfig define the configuration to load a chart
-type LoadChartConfig struct {
+// LoaderConfig define the configuration to load a chart
+type LoaderConfig struct {
 	Repository string `yaml:"repository,omitempty"`
 	Chart      string `yaml:"chart"`
 	Version    string `yaml:"version,omitempty"`
-	LockFile   string `yaml:"lockFile,omitempty"` // deprecated
 	Verify     bool   `yaml:"verify,omitempty"`
 	Keyring    string `yaml:"keyring,omitempty"`
 }
 
-// RenderConfig defines the configuration to render a chart
-type RenderConfig struct {
-	Name        string                 `yaml:"name,omitempty"`
+// RendererConfig defines the configuration to render a chart
+type RendererConfig struct {
+	Name        string                 `yaml:"name,omitempty"` // deprecated releaseName alias
+	ReleaseName string                 `yaml:"releaseName,omitempty"`
 	Namespace   string                 `yaml:"namespace,omitempty"`
 	ValueFiles  []string               `yaml:"valueFiles,omitempty"`
 	Values      map[string]interface{} `yaml:"values,omitempty"`
 	APIVersions []string               `yaml:"apiVersions,omitempty"`
 	Exclude     []K8sObjectID          `yaml:"exclude,omitempty"`
-	BaseDir     string                 `yaml:"-"`
-	RootDir     string                 `yaml:"-"`
 }
 
 // ReadGeneratorConfig read the generator configuration
 func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 	cfg = &GeneratorConfig{}
-	dec := yaml.NewDecoder(reader)
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
 	err = dec.Decode(cfg)
+	if err != nil {
+		// Accept unknown fields but warn about them
+		dec = yaml.NewDecoder(bytes.NewReader(data))
+		e := dec.Decode(cfg)
+		if e == nil {
+			log.Printf("WARNING: chart %s contains unsupported fields: %s", cfg.Metadata.Name, err)
+			err = nil
+		}
+	}
 	if err == nil {
 		e := dec.Decode(cfg)
 		if e == nil {
@@ -70,14 +87,20 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		}
 	}
 	if err == nil {
-		if cfg.LockFile != "" {
-			cfg.LockFile = ""
-			log.Println("WARNING: chart renderer config specifies deprecated field 'lockFile' - not supported anymore and the field will be removed with the next schema version")
-		}
 		if cfg.Namespace == "" {
 			cfg.Namespace = cfg.Metadata.Namespace
 		} else if cfg.Metadata.Namespace != "" && err == nil {
 			err = errors.New("both metadata.namespace and namespace defined")
+		}
+		if cfg.ReleaseName == "" && cfg.Name != "" {
+			log.Printf("WARNING: chart config %q field \"name\" is deprecated in favour of \"releaseName\"", cfg.Metadata.Name)
+			cfg.ReleaseName = cfg.Name
+		}
+		if cfg.ReleaseName == "" {
+			cfg.ReleaseName = cfg.Metadata.Name
+		}
+		if cfg.ReleaseName == "" {
+			err = errors.New("releaseName not specified")
 		}
 		if cfg.Version == "" && cfg.Repository != "" {
 			err = errors.New("no chart version but repository specified")
@@ -85,11 +108,11 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		if cfg.Chart == "" {
 			err = errors.New("chart not specified")
 		}
-		if cfg.Kind != generatorKind {
-			err = errors.Errorf("expected kind %s but was %s", generatorKind, cfg.Kind)
+		if cfg.Kind != GeneratorKind {
+			err = errors.Errorf("expected kind %s but was %s", GeneratorKind, cfg.Kind)
 		}
-		if cfg.APIVersion != generatorAPIVersion {
-			err = errors.Errorf("expected apiVersion %s but was %s", generatorAPIVersion, cfg.APIVersion)
+		if cfg.APIVersion != GeneratorAPIVersion {
+			err = errors.Errorf("expected apiVersion %s but was %s", GeneratorAPIVersion, cfg.APIVersion)
 		}
 	}
 	return cfg, errors.Wrap(err, "read chart renderer config")

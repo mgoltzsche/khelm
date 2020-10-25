@@ -33,7 +33,7 @@ var (
 )
 
 // Render manifest from helm chart configuration (shorthand)
-func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err error) {
+func Render(ctx context.Context, cfg *ChartConfig, writer io.Writer) (err error) {
 	h := newHelm("", os.Stderr)
 
 	if cfg.Repository == "" {
@@ -46,15 +46,15 @@ func Render(ctx context.Context, cfg *GeneratorConfig, writer io.Writer) (err er
 		}
 	}
 
-	chrt, err := h.LoadChart(&cfg.LoadChartConfig)
+	chrt, err := h.LoadChart(&cfg.LoaderConfig)
 	if err != nil {
 		return err
 	}
-	renderCfg := &cfg.RenderConfig
-	if renderCfg.Name == "" {
-		renderCfg.Name = chrt.Metadata.Name
+	renderCfg := &cfg.RendererConfig
+	if renderCfg.ReleaseName == "" {
+		renderCfg.ReleaseName = chrt.Metadata.Name
 	}
-	return h.RenderChart(chrt, renderCfg, writer)
+	return h.RenderChart(chrt, cfg, writer)
 }
 
 // Helm type
@@ -141,7 +141,7 @@ func (h *helm) findRepoAuth(repoURL string) (auth repoAuth, err error) {
 }
 
 // LoadChart download a chart or load it from cache
-func (h *helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
+func (h *helm) LoadChart(ref *LoaderConfig) (c *chart.Chart, err error) {
 	if err = h.Initialize(); err != nil {
 		return
 	}
@@ -219,14 +219,14 @@ func (h *helm) LoadChart(ref *LoadChartConfig) (c *chart.Chart, err error) {
 
 // RenderChart manifest
 // Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/template.go
-func (h *helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer) (err error) {
+func (h *helm) RenderChart(chrt *chart.Chart, c *ChartConfig, writer io.Writer) (err error) {
 	namespace := c.Namespace
 	if namespace == "" {
 		namespace = "default" // avoids kustomize panic due to missing namespace
 	}
 	renderOpts := renderutil.Options{
 		ReleaseOptions: chartutil.ReleaseOptions{
-			Name:      c.Name,
+			Name:      c.ReleaseName,
 			Namespace: namespace,
 		},
 		KubeVersion: defaultKubeVersion,
@@ -234,7 +234,7 @@ func (h *helm) RenderChart(chrt *chart.Chart, c *RenderConfig, writer io.Writer)
 	if len(c.APIVersions) > 0 {
 		renderOpts.APIVersions = append(c.APIVersions, "v1")
 	}
-	log.Printf("Rendering chart with name %q, namespace: %q\n", c.Name, namespace)
+	log.Printf("Rendering chart with name %q, namespace: %q\n", c.ReleaseName, namespace)
 
 	rawVals, err := h.Vals(chrt, c.ValueFiles, c.Values, c.RootDir, c.BaseDir, "", "", "")
 	if err != nil {

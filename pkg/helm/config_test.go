@@ -22,5 +22,5 @@ func TestReadGeneratorConfigUnsupportedField(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 	_, err = ReadGeneratorConfig(f)
-	require.Error(t, err)
+	require.NoError(t, err)
 }
