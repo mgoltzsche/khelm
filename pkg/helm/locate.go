@@ -26,12 +26,17 @@ func locateChart(cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSet
 		return name, errors.Errorf("path %q not found", name)
 	}
 
-	cv, err := repos.ResolveChartVersion(name, version, cfg.Repository)
+	repoEntry, err := repos.Get(cfg.Repository)
 	if err != nil {
 		return "", err
 	}
 
-	chartURL, err := repo.ResolveReferenceURL(cfg.Repository, cv.URLs[0])
+	cv, err := repos.ResolveChartVersion(name, version, repoEntry.URL)
+	if err != nil {
+		return "", err
+	}
+
+	chartURL, err := repo.ResolveReferenceURL(repoEntry.URL, cv.URLs[0])
 	if err != nil {
 		return "", errors.Wrap(err, "failed to make chart URL absolute")
 	}
@@ -52,21 +57,16 @@ func locateChart(cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSet
 		return cacheFile, nil
 	}
 
-	log.Printf("Downloading chart %s from repo %s", cfg.Chart, cfg.Repository)
+	log.Printf("Downloading chart %s %s from repo %s", cfg.Chart, cv.Version, repoEntry.URL)
 
-	entry, err := repos.EntryByURL(cfg.Repository)
-	if err != nil {
-		return "", err
-	}
 	dl := downloader.ChartDownloader{
 		Out:      os.Stdout,
 		Keyring:  cfg.Keyring,
 		Getters:  getters,
-		Username: entry.Username,
-		Password: entry.Password,
+		Username: repoEntry.Username,
+		Password: repoEntry.Password,
 		HelmHome: settings.Home,
 	}
-	// TODO: make sure caFile, certFile and keyFile are used here
 	if cfg.Verify {
 		dl.Verify = downloader.VerifyAlways
 	}
@@ -75,7 +75,7 @@ func locateChart(cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSet
 	if err = os.MkdirAll(destDir, 0755); err != nil {
 		return "", err
 	}
-	filename, _, err := dl.DownloadTo(chartURL, version, destDir)
+	filename, _, err := dl.DownloadTo(chartURL, cv.Version, destDir)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to download chart %q with version %s", cfg.Chart, version)
 	}

@@ -1,6 +1,7 @@
 package helm
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,6 +19,7 @@ func TestReadGeneratorConfig(t *testing.T) {
 }
 
 func TestReadGeneratorConfigUnsupportedField(t *testing.T) {
+	log.SetFlags(0)
 	f, err := os.Open(filepath.Join(currDir, "../../example/unsupported-field/chartref.yaml"))
 	require.NoError(t, err)
 	defer f.Close()

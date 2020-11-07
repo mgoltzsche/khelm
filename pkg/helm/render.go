@@ -30,6 +30,15 @@ var (
 
 // Render manifest from helm chart configuration (shorthand)
 func Render(ctx context.Context, cfg *ChartConfig, writer io.Writer) (err error) {
+	if cfg.RootDir == "" {
+		cfg.RootDir = string(filepath.Separator)
+	}
+	if cfg.BaseDir == "" {
+		cfg.BaseDir, err = os.Getwd()
+		if err != nil {
+			return errors.Wrap(err, "base dir not provided, cannot derive it from working dir: %w")
+		}
+	}
 	helmHome := os.Getenv("HELM_HOME")
 	if helmHome == "" {
 		helmHome = environment.DefaultHelmHome

@@ -42,7 +42,7 @@ func TestRender(t *testing.T) {
 	}{
 		{"jenkins", "../../example/jenkins/jenkins-chart.yaml", "jenkins", expectedJenkinsContained},
 		{"values-external", "chartwithextvalues.yaml", "jenkins", expectedJenkinsContained},
-		{"rook-ceph", "../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
+		{"rook-ceph-version-range", "../../example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
 		{"cert-manager", "../../example/cert-manager/cert-manager-chart.yaml", "cert-manager", "chart: cainjector-v0.9.1"},
 		{"apiversions-condition", "../../example/apiversions-condition/chartref.yaml", "apiversions-condition-env", "  config: fancy-config"},
 		{"local-chart-with-local-dependency-and-transitive-remote", "../../example/localrefref/chartref.yaml", "myotherns", "http://efk-elasticsearch-client:9200"},
@@ -124,7 +124,7 @@ func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
 	repoURL := "https://charts.rook.io/stable"
 	repos, err := reposForURLs(&settings, getter.All(settings), map[string]struct{}{repoURL: {}})
 	require.NoError(t, err, "use repo")
-	entry, err := repos.EntryByURL(repoURL)
+	entry, err := repos.Get(repoURL)
 	require.NoError(t, err, "repos.EntryByURL()")
 	err = repos.Close()
 	require.NoError(t, err, "repos.Close()")
@@ -148,8 +148,8 @@ func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
 	repoURL := "https://kubernetes-charts.storage.googleapis.com"
 	repos, err := reposForURLs(&settings, getter.All(settings), map[string]struct{}{repoURL: {}})
 	require.NoError(t, err, "use repo")
-	entry, err := repos.EntryByURL(repoURL)
-	require.NoError(t, err, "repos.EntryByURL()")
+	entry, err := repos.Get(repoURL)
+	require.NoError(t, err, "repos.Get()")
 	err = repos.Close()
 	require.NoError(t, err, "repos.Close()")
 	err = os.MkdirAll(settings.Home.Cache(), 0755)
@@ -188,8 +188,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	}
 	srv := httptest.NewServer(&fakePrivateChartServerHandler{repoEntry, &cfg.LoaderConfig, fakeChartTgz})
 	defer srv.Close()
-	cfg.Repository = srv.URL
-	repoEntry.URL = cfg.Repository
+	repoEntry.URL = srv.URL
 
 	// Generate temp repository configuration pointing to fake private server
 	tmpHelmHome, err := ioutil.TempDir("", "khelm-test-home-")
@@ -208,8 +207,20 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	err = ioutil.WriteFile(filepath.Join(tmpHelmHome, "repository", "repositories.yaml"), b, 0644)
 	require.NoError(t, err)
 
-	err = render(t, &cfg, &bytes.Buffer{})
-	require.NoError(t, err, "render chart with repository credentials")
+	for _, c := range []struct {
+		name string
+		repo string
+	}{
+		{"url", repoEntry.URL},
+		{"alias", "@" + repoEntry.Name},
+		{"aliasScheme", "alias:" + repoEntry.Name},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			cfg.Repository = c.repo
+			err = render(t, &cfg, &bytes.Buffer{})
+			require.NoError(t, err, "render chart with repository credentials")
+		})
+	}
 }
 
 type fakePrivateChartServerHandler struct {

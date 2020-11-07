@@ -24,8 +24,8 @@ import (
 type repositoryConfig interface {
 	io.Closer
 	HelmHome() helmpath.Home
-	ResolveChartVersion(name, version, repoURL string) (*repo.ChartVersion, error)
-	EntryByURL(repoURL string) (*repo.Entry, error)
+	ResolveChartVersion(name, version, repo string) (*repo.ChartVersion, error)
+	Get(repo string) (*repo.Entry, error)
 	UpdateIndex() error
 	DownloadIndexFilesIfNotExist() error
 }
@@ -117,7 +117,7 @@ func (f *repositories) clearRepoIndex(entry *repo.Entry) {
 }
 
 func (f *repositories) ResolveChartVersion(name, version, repoURL string) (*repo.ChartVersion, error) {
-	entry, err := f.EntryByURL(repoURL)
+	entry, err := f.Get(repoURL)
 	if err != nil {
 		return nil, err
 	}
@@ -168,32 +168,26 @@ func (f *repositories) Close() error {
 	return nil
 }
 
-func (f *repositories) EntryByURL(repoURL string) (*repo.Entry, error) {
-	if entry := f.repoURLMap[repoURL]; entry != nil {
+func (f *repositories) Get(repo string) (*repo.Entry, error) {
+	isName := false
+	if strings.HasPrefix(repo, "alias:") {
+		repo = repo[6:]
+		isName = true
+	}
+	if strings.HasPrefix(repo, "@") {
+		repo = repo[1:]
+		isName = true
+	}
+	if isName {
+		if entry, _ := f.repos.Get(repo); entry != nil {
+			return entry, nil
+		}
+		return nil, errors.Errorf("repo name %q is not registered in repositories.yaml", repo)
+	}
+	if entry := f.repoURLMap[repo]; entry != nil {
 		return entry, nil
 	}
-	return nil, errors.Errorf("repo URL %q is not registered in repositories.yaml", repoURL)
-}
-
-func (f *repositories) addRepositoryURL(repoURL string) (*repo.Entry, error) {
-	for _, repo := range f.repos.Repositories {
-		f.repoURLMap[repo.URL] = repo
-	}
-	name, err := urlToHash(repoURL)
-	if err != nil {
-		return nil, err
-	}
-	if existing := f.repoURLMap[repoURL]; existing != nil {
-		return existing, nil
-	}
-	entry := &repo.Entry{
-		Name: name,
-		URL:  repoURL,
-	}
-	f.repos.Add(entry)
-	f.repoURLMap[entry.URL] = entry
-	f.entriesAdded = true
-	return entry, nil
+	return nil, errors.Errorf("repo URL %q is not registered in repositories.yaml", repo)
 }
 
 func (f *repositories) DownloadIndexFilesIfNotExist() error {
@@ -217,27 +211,59 @@ func (f *repositories) UpdateIndex() error {
 	return nil
 }
 
-func (f *repositories) setRepositoriesFromURLs(repoURLMap map[string]struct{}) error {
-	requiredRepos := repo.NewRepoFile()
-	for _, repo := range f.repos.Repositories {
-		if _, ok := repoURLMap[repo.URL]; ok {
-			requiredRepos.Add(repo)
-			delete(repoURLMap, repo.URL)
+func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}) error {
+	requiredRepos := make([]*repo.Entry, 0, len(repoURLs))
+	repoURLMap := map[string]*repo.Entry{}
+	for u := range repoURLs {
+		repo, _ := f.Get(u)
+		if repo != nil {
+			u = repo.URL
+		} else if strings.HasPrefix(u, "alias:") || strings.HasPrefix(u, "@") {
+			return errors.Errorf("repository %q not found in repositories.yaml", u)
+		}
+		repoURLMap[u] = repo
+	}
+	for _, entry := range f.repos.Repositories {
+		if repo := repoURLMap[entry.URL]; repo != nil {
+			requiredRepos = append(requiredRepos, repo)
 		}
 	}
-	f.repos.Repositories = requiredRepos.Repositories
-	repoURLs := make([]string, 0, len(repoURLMap))
-	for u := range repoURLMap {
-		repoURLs = append(repoURLs, u)
-		f.entriesAdded = true
+	f.repos.Repositories = requiredRepos
+	newURLs := make([]string, 0, len(repoURLMap))
+	for u, knownRepo := range repoURLMap {
+		if knownRepo == nil {
+			newURLs = append(newURLs, u)
+			f.entriesAdded = true
+		}
 	}
-	sort.Strings(repoURLs)
-	for _, repoURL := range repoURLs {
+	sort.Strings(newURLs)
+	for _, repoURL := range newURLs {
 		if _, err := f.addRepositoryURL(repoURL); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (f *repositories) addRepositoryURL(repoURL string) (*repo.Entry, error) {
+	for _, repo := range f.repos.Repositories {
+		f.repoURLMap[repo.URL] = repo
+	}
+	name, err := urlToHash(repoURL)
+	if err != nil {
+		return nil, err
+	}
+	if existing := f.repoURLMap[repoURL]; existing != nil {
+		return existing, nil
+	}
+	entry := &repo.Entry{
+		Name: name,
+		URL:  repoURL,
+	}
+	f.repos.Add(entry)
+	f.repoURLMap[entry.URL] = entry
+	f.entriesAdded = true
+	return entry, nil
 }
 
 type tempRepositories struct {

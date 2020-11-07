@@ -5,6 +5,6 @@ metadata:
   namespace: rook-ceph-system
 repository: https://charts.rook.io/stable
 chart: rook-ceph
-version: 0.9.3
+version: 0.9.x
 valueFiles:
   - values.yaml

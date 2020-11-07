@@ -43,11 +43,12 @@ type ChartConfig struct {
 
 // LoaderConfig define the configuration to load a chart
 type LoaderConfig struct {
-	Repository string `yaml:"repository,omitempty"`
-	Chart      string `yaml:"chart"`
-	Version    string `yaml:"version,omitempty"`
-	Verify     bool   `yaml:"verify,omitempty"`
-	Keyring    string `yaml:"keyring,omitempty"`
+	Repository    string `yaml:"repository,omitempty"`
+	Chart         string `yaml:"chart"`
+	Version       string `yaml:"version,omitempty"`
+	Verify        bool   `yaml:"verify,omitempty"`
+	Keyring       string `yaml:"keyring,omitempty"`
+	AcceptAnyRepo bool   `yaml:"-"`
 }
 
 // RendererConfig defines the configuration to render a chart
