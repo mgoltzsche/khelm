@@ -28,7 +28,8 @@ func loadChart(ctx context.Context, cfg *ChartConfig, settings *cli.EnvSettings,
 }
 
 func loadRemoteChart(ctx context.Context, cfg *ChartConfig, settings *cli.EnvSettings, getters getter.Providers) (*chart.Chart, error) {
-	repos, err := reposForURLs(settings, getters, map[string]struct{}{cfg.Repository: {}})
+	repoURLs := map[string]struct{}{cfg.Repository: {}}
+	repos, err := reposForURLs(repoURLs, cfg.AllowUnknownRepositories, settings, getters)
 	if err != nil {
 		return nil, err
 	}
@@ -69,25 +70,25 @@ func buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig, settings *cli
 		return nil, err
 	}
 
-	// Write temporary repository configuration that includes all dependencies
-	tmpRepos, err := tempReposForDependencies(settings, getters, dependencies)
+	// Create (temporary) repository configuration that includes all dependencies
+	repos, err := reposForDependencies(dependencies, cfg.AllowUnknownRepositories, settings, getters)
 	if err != nil {
 		return nil, errors.Wrap(err, "init temp repositories.yaml")
 	}
-	defer tmpRepos.Close()
+	defer repos.Close()
 
 	// Download/update repo indices
 	if needsRepoIndexUpdate {
-		err = tmpRepos.UpdateIndex()
+		err = repos.UpdateIndex()
 	} else {
-		err = tmpRepos.DownloadIndexFilesIfNotExist()
+		err = repos.DownloadIndexFilesIfNotExist()
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	// Build local charts recursively
-	needsReload, err := buildLocalCharts(localCharts, &cfg.LoaderConfig, tmpRepos, getters, settings)
+	needsReload, err := buildLocalCharts(localCharts, &cfg.LoaderConfig, repos, getters, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "build/fetch dependencies")
 	}

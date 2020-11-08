@@ -21,6 +21,15 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
+type unknownRepoError struct {
+	error
+}
+
+func IsUnknownRepository(err error) bool {
+	_, ok := errors.Cause(err).(*unknownRepoError)
+	return ok
+}
+
 type repositoryConfig interface {
 	io.Closer
 	HelmHome() helmpath.Home
@@ -30,25 +39,25 @@ type repositoryConfig interface {
 	DownloadIndexFilesIfNotExist() error
 }
 
-func reposForURLs(settings *cli.EnvSettings, getters getter.Providers, repoURLs map[string]struct{}) (*repositories, error) {
+func reposForURLs(repoURLs map[string]struct{}, allowUnknownRepos bool, settings *cli.EnvSettings, getters getter.Providers) (*repositories, error) {
 	repos, err := newRepositories(settings, getters)
 	if err != nil {
 		return nil, err
 	}
-	err = repos.setRepositoriesFromURLs(repoURLs)
+	err = repos.setRepositoriesFromURLs(repoURLs, allowUnknownRepos)
 	if err != nil {
 		return nil, err
 	}
 	return repos, nil
 }
 
-// tempRepositoriesWithDependencies create temporary repositories.yaml and configure settings with it.
-func tempReposForDependencies(settings *cli.EnvSettings, getters getter.Providers, deps []*chartutil.Dependency) (repositoryConfig, error) {
+// reposForDependencies create temporary repositories.yaml and configure settings with it.
+func reposForDependencies(deps []*chartutil.Dependency, allowUnknownRepos bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
 	repoURLs := map[string]struct{}{}
 	for _, d := range deps {
 		repoURLs[d.Repository] = struct{}{}
 	}
-	r, err := reposForURLs(settings, getters, repoURLs)
+	r, err := reposForURLs(repoURLs, allowUnknownRepos, settings, getters)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +220,7 @@ func (f *repositories) UpdateIndex() error {
 	return nil
 }
 
-func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}) error {
+func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, allowUnknownRepos bool) error {
 	requiredRepos := make([]*repo.Entry, 0, len(repoURLs))
 	repoURLMap := map[string]*repo.Entry{}
 	for u := range repoURLs {
@@ -220,6 +229,8 @@ func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}) err
 			u = repo.URL
 		} else if strings.HasPrefix(u, "alias:") || strings.HasPrefix(u, "@") {
 			return errors.Errorf("repository %q not found in repositories.yaml", u)
+		} else if !allowUnknownRepos {
+			return &unknownRepoError{errors.Errorf("repository %q not found in repositories.yaml and usage of unknown repositories is disabled", u)}
 		}
 		repoURLMap[u] = repo
 	}

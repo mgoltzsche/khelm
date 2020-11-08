@@ -55,7 +55,7 @@ func TestRender(t *testing.T) {
 				var rendered bytes.Buffer
 				absFile := filepath.Join(currDir, c.file)
 				rootDir := filepath.Join(currDir, "..", "..")
-				err := renderFile(t, absFile, rootDir, &rendered)
+				err := renderFile(t, absFile, true, rootDir, &rendered)
 				require.NoError(t, err, "render %s%s", cached, absFile)
 				b := rendered.Bytes()
 				l, err := readYaml(b)
@@ -77,20 +77,24 @@ func TestRender(t *testing.T) {
 
 func TestRenderRejectFileOutsideProjectDir(t *testing.T) {
 	file := filepath.Join(currDir, "chartwithextvalues.yaml")
-	err := renderFile(t, file, currDir, &bytes.Buffer{})
+	err := renderFile(t, file, true, currDir, &bytes.Buffer{})
 	require.Error(t, err, "render %s within %s", file, currDir)
 }
 
-func TestRenderError(t *testing.T) {
-	for _, file := range []string{
-		"../../example/invalid-requirements-lock/chartref.yaml",
-	} {
-		file = filepath.Join(currDir, file)
-		rootDir := filepath.Join(currDir, "..", "..")
-		err := renderFile(t, file, rootDir, &bytes.Buffer{})
-		require.Error(t, err, "render %s", file)
-	}
+func TestRenderUnknownRepositoryForbidden(t *testing.T) {
+	file := filepath.Join(currDir, "../../example/rook-ceph/operator/rook-ceph-chart.yaml")
+	rootDir := filepath.Join(currDir, "..", "..")
+	err := renderFile(t, file, false, rootDir, &bytes.Buffer{})
+	require.Error(t, err, file)
 }
+
+func TestRenderInvalidRequirementsLock(t *testing.T) {
+	file := filepath.Join(currDir, "../../example/invalid-requirements-lock/chartref.yaml")
+	rootDir := filepath.Join(currDir, "..", "..")
+	err := renderFile(t, file, true, rootDir, &bytes.Buffer{})
+	require.Error(t, err, "render %s", file)
+}
+
 func TestRenderRebuildsLocalDependencies(t *testing.T) {
 	rootDir := filepath.Join(currDir, "..", "..")
 	tplDir := filepath.Join(rootDir, "example/localref/elk/templates")
@@ -99,7 +103,7 @@ func TestRenderRebuildsLocalDependencies(t *testing.T) {
 	os.RemoveAll(tplDir)
 
 	// Render once to ensure the dependency has been built already
-	err := renderFile(t, configFile, rootDir, &bytes.Buffer{})
+	err := renderFile(t, configFile, true, rootDir, &bytes.Buffer{})
 	require.NoError(t, err, "1st render")
 
 	// Change the dependency
@@ -112,7 +116,7 @@ func TestRenderRebuildsLocalDependencies(t *testing.T) {
 
 	// Render again and verify that the dependency is rebuilt
 	var rendered bytes.Buffer
-	err = renderFile(t, configFile, rootDir, &rendered)
+	err = renderFile(t, configFile, true, rootDir, &rendered)
 	require.NoError(t, err, "render after dependency has changed")
 	require.Contains(t, rendered.String(), "changedField: changed-value", "local dependency changes should be reflected within the rendered output")
 }
@@ -122,7 +126,7 @@ func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
 	repoURL := "https://charts.rook.io/stable"
-	repos, err := reposForURLs(&settings, getter.All(settings), map[string]struct{}{repoURL: {}})
+	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, true, &settings, getter.All(settings))
 	require.NoError(t, err, "use repo")
 	entry, err := repos.Get(repoURL)
 	require.NoError(t, err, "repos.EntryByURL()")
@@ -137,7 +141,7 @@ func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
 
 	file := filepath.Join(currDir, "../../example/rook-ceph/operator/rook-ceph-chart.yaml")
 	rootDir := filepath.Join(currDir, "..", "..")
-	err = renderFile(t, file, rootDir, &bytes.Buffer{})
+	err = renderFile(t, file, true, rootDir, &bytes.Buffer{})
 	require.NoError(t, err, "render %s with outdated index", file)
 }
 
@@ -146,7 +150,7 @@ func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
 	repoURL := "https://kubernetes-charts.storage.googleapis.com"
-	repos, err := reposForURLs(&settings, getter.All(settings), map[string]struct{}{repoURL: {}})
+	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, true, &settings, getter.All(settings))
 	require.NoError(t, err, "use repo")
 	entry, err := repos.Get(repoURL)
 	require.NoError(t, err, "repos.Get()")
@@ -163,14 +167,14 @@ func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
 
 	file := filepath.Join(currDir, "../../example/localref/chartref.yaml")
 	rootDir := filepath.Join(currDir, "..", "..")
-	err = renderFile(t, file, rootDir, &bytes.Buffer{})
+	err = renderFile(t, file, true, rootDir, &bytes.Buffer{})
 	require.NoError(t, err, "render %s with outdated index", file)
 }
 
 func TestRenderRepositoryCredentials(t *testing.T) {
 	// Make sure a fake chart exists that the fake server can serve
 	rootDir := filepath.Join(currDir, "..", "..")
-	err := renderFile(t, filepath.Join(rootDir, "example/localrefref/chartref.yaml"), rootDir, &bytes.Buffer{})
+	err := renderFile(t, filepath.Join(rootDir, "example/localrefref/chartref.yaml"), true, rootDir, &bytes.Buffer{})
 	require.NoError(t, err)
 	fakeChartTgz := filepath.Join(currDir, "../../example/localrefref/charts/efk-0.1.1.tgz")
 
@@ -277,7 +281,7 @@ func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, re
 	writer.WriteHeader(404)
 }
 
-func renderFile(t *testing.T, file, rootDir string, writer io.Writer) error {
+func renderFile(t *testing.T, file string, allowUnknownRepos bool, rootDir string, writer io.Writer) error {
 	f, err := os.Open(file)
 	require.NoError(t, err)
 	defer f.Close()
@@ -285,6 +289,7 @@ func renderFile(t *testing.T, file, rootDir string, writer io.Writer) error {
 	require.NoError(t, err, "ReadGeneratorConfig(%s)", file)
 	cfg.RootDir = rootDir
 	cfg.BaseDir = filepath.Dir(file)
+	cfg.AllowUnknownRepositories = allowUnknownRepos
 	return render(t, &cfg.ChartConfig, writer)
 }
 

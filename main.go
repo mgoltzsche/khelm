@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -15,8 +16,9 @@ import (
 )
 
 const (
-	envConfig = "KUSTOMIZE_PLUGIN_CONFIG_STRING"
-	envRoot   = "KUSTOMIZE_PLUGIN_CONFIG_ROOT"
+	envConfig            = "KUSTOMIZE_PLUGIN_CONFIG_STRING"
+	envRoot              = "KUSTOMIZE_PLUGIN_CONFIG_ROOT"
+	envAllowUnknownRepos = "HELMR_ALLOW_UNKOWN_REPOSITORIES"
 )
 
 func main() {
@@ -46,6 +48,13 @@ func main() {
 	}
 	cfg.BaseDir = baseDir
 	cfg.RootDir = os.Getenv(envRoot)
+	cfg.AllowUnknownRepositories = true
+	if allowUnknownReposStr, ok := os.LookupEnv(envAllowUnknownRepos); ok {
+		cfg.AllowUnknownRepositories, err = strconv.ParseBool(allowUnknownReposStr)
+		if err != nil {
+			handleError(fmt.Errorf("parse env var %s: %w", envAllowUnknownRepos, err))
+		}
+	}
 	if cfg.RootDir == "" {
 		cfg.RootDir = baseDir
 	}
@@ -61,6 +70,9 @@ func main() {
 		cancel()
 	}()
 	err = helm.Render(ctx, &cfg.ChartConfig, os.Stdout)
+	if helm.IsUnknownRepository(err) {
+		err = fmt.Errorf("%w - set env var %s=true to enable", err, envAllowUnknownRepos)
+	}
 	handleError(err)
 }
 
