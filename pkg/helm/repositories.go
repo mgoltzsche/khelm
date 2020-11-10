@@ -25,6 +25,17 @@ type unknownRepoError struct {
 	error
 }
 
+func (e *unknownRepoError) Format(s fmt.State, verb rune) {
+	f, isFormatter := e.error.(interface {
+		Format(s fmt.State, verb rune)
+	})
+	if isFormatter {
+		f.Format(s, verb)
+		return
+	}
+	fmt.Fprintf(s, "%s", e.error)
+}
+
 func IsUnknownRepository(err error) bool {
 	_, ok := errors.Cause(err).(*unknownRepoError)
 	return ok
@@ -285,7 +296,7 @@ type tempRepositories struct {
 func newTempRepositories(r *repositories) (tmp *tempRepositories, err error) {
 	tmpDir, err := ioutil.TempDir("", "helm-home-")
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	defer func() {
 		if err != nil {
@@ -296,23 +307,23 @@ func newTempRepositories(r *repositories) (tmp *tempRepositories, err error) {
 		cacheDir := filepath.Join(string(r.dir), dir)
 		err = os.MkdirAll(filepath.Dir(cacheDir), 0755)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		tmpCacheLink := filepath.Join(tmpDir, dir)
 		err = os.MkdirAll(filepath.Dir(tmpCacheLink), 0755)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		err = os.Symlink(cacheDir, tmpCacheLink)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 	}
 	tmpHome := helmpath.Home(tmpDir)
 	reposFile := tmpHome.RepositoryFile()
 	err = r.repos.WriteFile(reposFile, 0640)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return &tempRepositories{r, tmpHome}, nil
 }

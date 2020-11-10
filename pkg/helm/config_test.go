@@ -10,7 +10,7 @@ import (
 )
 
 func TestReadGeneratorConfig(t *testing.T) {
-	f, err := os.Open(filepath.Join(currDir, "../../example/invalid-requirements-lock/chartref.yaml"))
+	f, err := os.Open(filepath.Join(rootDir, "example/invalid-requirements-lock/chartref.yaml"))
 	require.NoError(t, err)
 	defer f.Close()
 	cfg, err := ReadGeneratorConfig(f)
@@ -20,7 +20,7 @@ func TestReadGeneratorConfig(t *testing.T) {
 
 func TestReadGeneratorConfigUnsupportedField(t *testing.T) {
 	log.SetFlags(0)
-	f, err := os.Open(filepath.Join(currDir, "../../example/unsupported-field/chartref.yaml"))
+	f, err := os.Open(filepath.Join(rootDir, "example/unsupported-field/chartref.yaml"))
 	require.NoError(t, err)
 	defer f.Close()
 	_, err = ReadGeneratorConfig(f)

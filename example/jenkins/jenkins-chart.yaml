@@ -8,3 +8,4 @@ chart: jenkins
 version: 0.32.4
 valueFiles:
   - values.yaml
+clusterScoped: true # because it contains a ClusterRoleBinding

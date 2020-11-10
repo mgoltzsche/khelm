@@ -4,5 +4,7 @@ metadata:
   name: mychart
   namespace: myns
 chart: ../no-namespace
-unsupportedField: unsupported-value
-name: xyz
+exclude:
+- apiVersion: v1
+  kind: ConfigMap
+  name: none-existing

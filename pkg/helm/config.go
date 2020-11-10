@@ -35,31 +35,31 @@ type K8sMetadata struct {
 
 // ChartConfig define chart lookup and render config
 type ChartConfig struct {
-	LoaderConfig   `yaml:",inline"`
-	RendererConfig `yaml:",inline"`
-	BaseDir        string `yaml:"-"`
-	RootDir        string `yaml:"-"`
+	LoaderConfig             `yaml:",inline"`
+	RendererConfig           `yaml:",inline"`
+	AllowUnknownRepositories bool   `yaml:"-"`
+	BaseDir                  string `yaml:"-"`
 }
 
 // LoaderConfig define the configuration to load a chart
 type LoaderConfig struct {
-	Repository            string `yaml:"repository,omitempty"`
-	Chart                 string `yaml:"chart"`
-	Version               string `yaml:"version,omitempty"`
-	Verify                bool   `yaml:"verify,omitempty"`
-	Keyring               string `yaml:"keyring,omitempty"`
-	AllowUnknownRepositories bool   `yaml:"-"`
+	Repository string `yaml:"repository,omitempty"`
+	Chart      string `yaml:"chart"`
+	Version    string `yaml:"version,omitempty"`
+	Verify     bool   `yaml:"verify,omitempty"`
+	Keyring    string `yaml:"keyring,omitempty"`
 }
 
 // RendererConfig defines the configuration to render a chart
 type RendererConfig struct {
-	Name        string                 `yaml:"name,omitempty"` // deprecated releaseName alias
-	ReleaseName string                 `yaml:"releaseName,omitempty"`
-	Namespace   string                 `yaml:"namespace,omitempty"`
-	ValueFiles  []string               `yaml:"valueFiles,omitempty"`
-	Values      map[string]interface{} `yaml:"values,omitempty"`
-	APIVersions []string               `yaml:"apiVersions,omitempty"`
-	Exclude     []K8sObjectID          `yaml:"exclude,omitempty"`
+	Name          string                 `yaml:"name,omitempty"` // deprecated releaseName alias
+	ReleaseName   string                 `yaml:"releaseName,omitempty"`
+	Namespace     string                 `yaml:"namespace,omitempty"`
+	ValueFiles    []string               `yaml:"valueFiles,omitempty"`
+	Values        map[string]interface{} `yaml:"values,omitempty"`
+	APIVersions   []string               `yaml:"apiVersions,omitempty"`
+	Exclude       []ResourceSelector     `yaml:"exclude,omitempty"`
+	ClusterScoped bool                   `yaml:"clusterScoped,omitempty"`
 }
 
 // Validate validates the chart renderer config

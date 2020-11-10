@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -21,47 +20,48 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/repo"
+	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
 var (
 	whitespaceRegex    = regexp.MustCompile(`^\s*$`)
 	defaultKubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
+	Debug, _           = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 )
 
 // Render manifest from helm chart configuration (shorthand)
-func Render(ctx context.Context, cfg *ChartConfig, writer io.Writer) (err error) {
-	if cfg.RootDir == "" {
-		cfg.RootDir = string(filepath.Separator)
+func Render(ctx context.Context, cfg *ChartConfig) (r []*yaml.RNode, err error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	if cfg.BaseDir == "" {
-		cfg.BaseDir, err = os.Getwd()
-		if err != nil {
-			return errors.Wrap(err, "base dir not provided, cannot derive it from working dir: %w")
-		}
+		cfg.BaseDir = wd
+	} else if !filepath.IsAbs(cfg.BaseDir) {
+		cfg.BaseDir = filepath.Join(wd, cfg.BaseDir)
 	}
 	helmHome := os.Getenv("HELM_HOME")
 	if helmHome == "" {
 		helmHome = environment.DefaultHelmHome
 	}
-	debug, _ := strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 	settings := environment.EnvSettings{
 		Home:  helmpath.Home(helmHome),
-		Debug: debug,
+		Debug: Debug,
 	}
 	getters := getter.All(settings)
 
 	if err = initializeHelmHome(settings.Home); err != nil {
-		return err
+		return nil, err
 	}
 
 	chartRequested, err := loadChart(ctx, cfg, &settings, getters)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	log.Printf("Rendering chart %s %s", chartRequested.Metadata.Name, chartRequested.Metadata.Version)
+	log.Printf("Rendering chart %s %s with release name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, cfg.ReleaseName, cfg.Namespace)
 
-	return renderChart(chartRequested, cfg, getters, writer)
+	return renderChart(chartRequested, cfg, getters)
 }
 
 // Initialize initialize the helm home directory.
@@ -78,7 +78,7 @@ func initializeHelmHome(home helmpath.Home) (err error) {
 		home.Archive(),
 	} {
 		if err = os.MkdirAll(dir, 0755); err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 	}
 
@@ -86,18 +86,15 @@ func initializeHelmHome(home helmpath.Home) (err error) {
 	if _, err = os.Stat(home.RepositoryFile()); err != nil && os.IsNotExist(err) {
 		log.Printf("Initializing empty %s", home.RepositoryFile())
 		f := repo.NewRepoFile()
-		return f.WriteFile(home.RepositoryFile(), 0644)
+		err = f.WriteFile(home.RepositoryFile(), 0644)
 	}
-	return err
+	return errors.WithStack(err)
 }
 
 // renderChart renders a manifest from the given chart and values
 // Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/template.go
-func renderChart(chrt *chart.Chart, c *ChartConfig, getters getter.Providers, writer io.Writer) (err error) {
+func renderChart(chrt *chart.Chart, c *ChartConfig, getters getter.Providers) (r []*yaml.RNode, err error) {
 	namespace := c.Namespace
-	if namespace == "" {
-		namespace = "default" // avoids kustomize panic due to missing namespace
-	}
 	renderOpts := renderutil.Options{
 		ReleaseOptions: chartutil.ReleaseOptions{
 			Name:      c.ReleaseName,
@@ -108,54 +105,47 @@ func renderChart(chrt *chart.Chart, c *ChartConfig, getters getter.Providers, wr
 	if len(c.APIVersions) > 0 {
 		renderOpts.APIVersions = append(c.APIVersions, "v1")
 	}
-	log.Printf("Rendering chart with name %q, namespace: %q\n", c.ReleaseName, namespace)
 
-	rawVals, err := vals(chrt, c.ValueFiles, c.Values, c.RootDir, c.BaseDir, getters, "", "", "")
+	rawVals, err := vals(chrt, c.ValueFiles, c.Values, c.BaseDir, getters, "", "", "")
 	if err != nil {
-		return errors.Wrap(err, "load values")
+		return nil, errors.Wrap(err, "load values")
 	}
 	config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
 
 	renderedTemplates, err := renderutil.Render(chrt, config, renderOpts)
 	if err != nil {
-		return errors.Wrap(err, "render chart")
+		return nil, errors.Wrap(err, "render chart")
 	}
 
 	listManifests := manifest.SplitManifests(renderedTemplates)
-	exclusions := Matchers(c.Exclude)
 
 	if len(listManifests) == 0 {
-		return errors.Errorf("chart %s does not contain any manifests - chart built? templates present?", chrt.Metadata.Name)
+		return nil, errors.Errorf("chart %s does not contain any manifests - chart built? templates present?", chrt.Metadata.Name)
 	}
 
+	transformer := manifestTransformer{
+		Namespace:          namespace,
+		Excludes:           Matchers(c.Exclude),
+		AllowClusterScoped: c.ClusterScoped,
+		OutputPath:         "output",
+	}
+
+	r = make([]*yaml.RNode, 0, len(listManifests))
 	for _, m := range sortByKind(listManifests) {
 		b := filepath.Base(m.Name)
 		if b == "NOTES.txt" || strings.HasPrefix(b, "_") || whitespaceRegex.MatchString(m.Content) {
 			continue
 		}
-		if err = transform(&m, namespace, exclusions); err != nil {
-			return errors.WithMessage(err, filepath.Base(m.Name))
+		transformed, err := transformer.TransformManifest(bytes.NewReader([]byte(m.Content)))
+		if err != nil {
+			return nil, errors.WithMessage(err, filepath.Base(m.Name))
 		}
-		fmt.Fprintf(writer, "---\n# Source: %s\n", m.Name)
-		fmt.Fprintln(writer, m.Content)
+		r = append(r, transformed...)
 	}
 
-	for _, exclusion := range exclusions {
-		if !exclusion.Matched {
-			return errors.Errorf("exclusion selector did not match: %#v", exclusion.K8sObjectID)
-		}
+	if err = transformer.Excludes.RequireAllMatched(); err != nil {
+		return nil, errors.Wrap(err, "resource exclusion selector")
 	}
 
 	return
-}
-
-func transform(m *manifest.Manifest, namespace string, excludes []*K8sObjectMatcher) error {
-	obj, err := ParseObjects(bytes.NewReader([]byte(m.Content)))
-	if err != nil {
-		return errors.Errorf("%s: %q", err, m.Content)
-	}
-	obj.ApplyDefaultNamespace(namespace)
-	obj.Remove(excludes)
-	m.Content = obj.Yaml()
-	return nil
 }

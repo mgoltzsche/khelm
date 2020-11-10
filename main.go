@@ -3,64 +3,95 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 
-	"github.com/mgoltzsche/helm-kustomize-plugin/pkg/helm"
+	"github.com/mgoltzsche/helmr/pkg/helm"
+	"github.com/pkg/errors"
+	"sigs.k8s.io/kustomize/kyaml/fn/framework"
+	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
 const (
 	envConfig            = "KUSTOMIZE_PLUGIN_CONFIG_STRING"
 	envRoot              = "KUSTOMIZE_PLUGIN_CONFIG_ROOT"
-	envAllowUnknownRepos = "HELMR_ALLOW_UNKOWN_REPOSITORIES"
+	envAllowUnknownRepos = "HELMR_ALLOW_UNKNOWN_REPOSITORIES"
+	envDebug             = "HELMR_DEBUG"
 )
 
 func main() {
 	log.SetFlags(0)
-	rawCfg := os.Getenv(envConfig)
-	if len(os.Args) != 2 && rawCfg == "" {
-		fmt.Fprintf(os.Stderr, "helm-kustomize-plugin usage: %s [FILE]\n\nENV VARS:\n  %s\n  [%s]\n\nprovided args: %+v\n", os.Args[0], envRoot, envConfig, os.Args[1:])
+	debug, _ := strconv.ParseBool(os.Getenv(envDebug))
+	helm.Debug = helm.Debug || debug
+
+	// Detect kustomize plugin config
+	kustomizeGenCfgYAML, isKustomizePlugin := os.LookupEnv(envConfig)
+	allowUnknownRepos := true
+	if isKustomizePlugin {
+		allowUnknownRepos = false
+	}
+	var err error
+	if allowUnknownReposStr, ok := os.LookupEnv(envAllowUnknownRepos); ok {
+		allowUnknownRepos, err = strconv.ParseBool(allowUnknownReposStr)
+		if err != nil {
+			handleError(errors.Wrapf(err, "parse env var %s", envAllowUnknownRepos))
+		}
+	}
+
+	// Run as kustomize plugin (if called as such)
+	if isKustomizePlugin {
+		err = runAsKustomizePlugin(kustomizeGenCfgYAML, allowUnknownRepos)
+		handleError(err)
+		return
+	}
+
+	// Run (kpt function) CLI
+	kptFnCfg := kptFunctionConfigMap{}
+	resourceList := &framework.ResourceList{FunctionConfig: &kptFnCfg}
+	cmd := framework.Command(resourceList, func() (err error) {
+		rendered, err := render(&kptFnCfg.Data, allowUnknownRepos)
+		if err != nil {
+			return err
+		}
+		resourceList.Items = rendered
+		return nil
+	})
+	if err := cmd.Execute(); err != nil {
+		os.Stderr.WriteString("\n")
+		logStackTrace(err)
 		os.Exit(1)
 	}
-	wd, err := os.Getwd()
-	handleError(err)
-	var baseDir string
-	if rawCfg == "" {
-		generatorConfigFile := os.Args[1]
-		b, err := ioutil.ReadFile(generatorConfigFile)
-		handleError(err)
-		rawCfg = string(b)
-		baseDir = filepath.Dir(generatorConfigFile)
-		if !filepath.IsAbs(baseDir) {
-			baseDir = filepath.Join(wd, baseDir)
+}
+
+func runAsKustomizePlugin(cfgYAML string, allowUnknownRepos bool) error {
+	cfg, err := helm.ReadGeneratorConfig(strings.NewReader(cfgYAML))
+	if err != nil {
+		return err
+	}
+	resources, err := render(&cfg.ChartConfig, allowUnknownRepos)
+	if err != nil {
+		return err
+	}
+	enc := yaml.NewEncoder(os.Stdout)
+	for _, r := range resources {
+		if err = enc.Encode(r.Document()); err != nil {
+			return err
 		}
 	}
-	cfg, err := helm.ReadGeneratorConfig(strings.NewReader(rawCfg))
-	handleError(err)
-	if baseDir == "" {
-		baseDir = wd
-	}
-	cfg.BaseDir = baseDir
-	cfg.RootDir = os.Getenv(envRoot)
-	cfg.AllowUnknownRepositories = true
-	if allowUnknownReposStr, ok := os.LookupEnv(envAllowUnknownRepos); ok {
-		cfg.AllowUnknownRepositories, err = strconv.ParseBool(allowUnknownReposStr)
-		if err != nil {
-			handleError(fmt.Errorf("parse env var %s: %w", envAllowUnknownRepos, err))
-		}
-	}
-	if cfg.RootDir == "" {
-		cfg.RootDir = baseDir
-	}
-	if !filepath.IsAbs(cfg.RootDir) {
-		handleError(fmt.Errorf("env var %s must specify absolute path", envRoot))
-	}
+	return enc.Close()
+}
+
+type kptFunctionConfigMap struct {
+	//Data map[string]string
+	Data helm.ChartConfig
+}
+
+func render(cfg *helm.ChartConfig, allowUnknownRepos bool) ([]*yaml.RNode, error) {
+	cfg.AllowUnknownRepositories = allowUnknownRepos
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
@@ -69,16 +100,52 @@ func main() {
 		<-sigs
 		cancel()
 	}()
-	err = helm.Render(ctx, &cfg.ChartConfig, os.Stdout)
+	rendered, err := helm.Render(ctx, cfg)
 	if helm.IsUnknownRepository(err) {
-		err = fmt.Errorf("%w - set env var %s=true to enable", err, envAllowUnknownRepos)
+		log.Printf("HINT: access to unknown repositories can be enabled using env var %s=true", envAllowUnknownRepos)
 	}
-	handleError(err)
+	return rendered, err
 }
 
 func handleError(err error) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, os.Args[0]+": %s\n", err)
-		os.Exit(2)
+		logStackTrace(err)
+		log.Fatalf("%s: %s", os.Args[0], err)
 	}
+}
+
+func logStackTrace(err error) {
+	if helm.Debug {
+		if e := traceableRootCause(err); e != nil {
+			if s := fmt.Sprintf("%+v", e); s != err.Error() {
+				log.Println(s)
+			}
+		}
+	}
+}
+
+// traceableRootCause unwraps the deepest error that provides a stack trace
+func traceableRootCause(err error) error {
+	// Unwrap Go 1.13 error or github.com/pkg/errors error
+	cause := errors.Unwrap(err)
+	if cause != nil && cause != err {
+		rootCause := traceableRootCause(cause)
+		if hasMoreInfo(rootCause, cause) {
+			return rootCause
+		}
+		if hasMoreInfo(cause, err) {
+			return cause
+		}
+	}
+	return err
+}
+
+func hasMoreInfo(err, than error) bool {
+	s := than.Error()
+	for _, l := range strings.Split(fmt.Sprintf("%+v", err), "\n") {
+		if !strings.Contains(s, l) {
+			return true
+		}
+	}
+	return false
 }

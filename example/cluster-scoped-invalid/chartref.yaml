@@ -3,6 +3,5 @@ kind: ChartRenderer
 metadata:
   name: mychart
   namespace: myns
-chart: ../no-namespace
-unsupportedField: unsupported-value
-name: xyz
+chart: ../cluster-scoped
+clusterScoped: false

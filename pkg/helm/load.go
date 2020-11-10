@@ -54,13 +54,10 @@ func buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig, settings *cli
 	if cfg.Chart != "." && !(strings.HasPrefix(cfg.Chart, "./") || cfg.Chart != ".." && strings.HasPrefix(cfg.Chart, "../")) {
 		return nil, errors.Errorf("chart name must start with ./ if no repository specified but %q provided", cfg.Chart)
 	}
-	chartPath, err := securePath(cfg.Chart, cfg.BaseDir, cfg.RootDir)
-	if err != nil {
-		return nil, errors.Wrap(err, "no repository specified and invalid local chart path provided")
-	}
+	chartPath := absPath(cfg.Chart, cfg.BaseDir)
 	chartRequested, err := chartutil.Load(chartPath)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	localCharts := make([]localChart, 0, 1)
@@ -133,11 +130,11 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *ChartConf
 	name := fmt.Sprintf("%s %s", meta.Name, meta.Version)
 	lock, err := chartutil.LoadRequirementsLock(chartRequested)
 	if err != nil && err != chartutil.ErrLockfileNotFound {
-		return false, err
+		return false, errors.WithStack(err)
 	}
 	req, err := chartutil.LoadRequirements(chartRequested)
 	if err != nil && err != chartutil.ErrRequirementsNotFound {
-		return false, err
+		return false, errors.WithStack(err)
 	}
 	var reqDeps []*chartutil.Dependency
 	if req != nil && req.Dependencies != nil {
@@ -148,17 +145,14 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *ChartConf
 		if strings.HasPrefix(dep.Repository, "file://") {
 			hasLocalDependencies = true
 			depChartPath := strings.TrimPrefix(dep.Repository, "file://")
-			depChartPath, err := securePath(depChartPath, cfg.BaseDir, cfg.RootDir)
-			if err != nil {
-				return false, errors.Wrapf(err, "chart %s dependency %s repository", name, dep.Name)
-			}
+			depChartPath = absPath(depChartPath, chartPath)
 			depChart, err := chartutil.LoadDir(depChartPath)
 			if err != nil {
-				return false, err
+				return false, errors.Wrapf(err, "load chart %s dependency %s from dir %s", name, dep.Name, depChartPath)
 			}
 			needsUpdate, err := collectCharts(depChart, depChartPath, cfg, localCharts, deps, depth+1)
 			if err != nil {
-				return false, err
+				return false, errors.WithStack(err)
 			}
 			if needsUpdate {
 				needsRepoIndexUpdate = true
@@ -228,7 +222,7 @@ func buildChartDependencies(chartRequested *chart.Chart, chartPath string, cfg *
 	// Workaround for leftover tmpcharts dir (which makes Build() fail)
 	err := os.RemoveAll(filepath.Join(chartPath, "tmpcharts"))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	// Downloads dependencies - respecting requirements.lock if present
@@ -238,5 +232,5 @@ func buildChartDependencies(chartRequested *chart.Chart, chartPath string, cfg *
 			err = man.Build()
 		}
 	}
-	return err
+	return errors.WithStack(err)
 }

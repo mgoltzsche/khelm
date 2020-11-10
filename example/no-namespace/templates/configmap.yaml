@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myconfiga
+data:
+  key: a
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myconfigb
+data:
+  key: b

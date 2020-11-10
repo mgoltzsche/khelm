@@ -15,11 +15,11 @@ import (
 
 // vals merges values from files specified via -f/--values and
 // directly via --set or --set-string or --set-file, marshaling them to YAML
-func vals(chrt *chart.Chart, valueFiles []string, values map[string]interface{}, rootDir, baseDir string, getters getter.Providers, certFile, keyFile, caFile string) (b []byte, err error) {
+func vals(chrt *chart.Chart, valueFiles []string, values map[string]interface{}, baseDir string, getters getter.Providers, certFile, keyFile, caFile string) (b []byte, err error) {
 	base := map[string]interface{}{}
 	for _, filePath := range valueFiles {
 		currentMap := map[string]interface{}{}
-		if b, err = readValuesFile(chrt, filePath, rootDir, baseDir, getters, certFile, keyFile, caFile); err != nil {
+		if b, err = readValuesFile(chrt, filePath, baseDir, getters, certFile, keyFile, caFile); err != nil {
 			return
 		}
 		if err = yaml.Unmarshal(b, &currentMap); err != nil {
@@ -32,14 +32,11 @@ func vals(chrt *chart.Chart, valueFiles []string, values map[string]interface{},
 }
 
 // readValuesFile load a file from the local directory or a remote file with a url.
-func readValuesFile(chrt *chart.Chart, filePath, rootDir, baseDir string, getters getter.Providers, CertFile, KeyFile, CAFile string) (b []byte, err error) {
+func readValuesFile(chrt *chart.Chart, filePath, baseDir string, getters getter.Providers, CertFile, KeyFile, CAFile string) (b []byte, err error) {
 	u, err := url.Parse(filePath)
 	if u.Scheme == "" || strings.ToLower(u.Scheme) == "file" {
 		// Load from local file, fallback to chart file
-		var kustomizeFilePath string
-		if kustomizeFilePath, err = securePath(filePath, baseDir, rootDir); err != nil {
-			return
-		}
+		kustomizeFilePath := absPath(filePath, baseDir)
 		if b, err = ioutil.ReadFile(kustomizeFilePath); os.IsNotExist(err) {
 			// Fallback to chart file
 			filePath = filepath.Clean(filePath)

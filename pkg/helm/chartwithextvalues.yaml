@@ -7,4 +7,5 @@ repository: https://kubernetes-charts.storage.googleapis.com
 chart: jenkins
 version: 0.32.4
 valueFiles:
-  - ../../../example/jenkins/values.yaml
+  - ../../example/jenkins/values.yaml
+clusterScoped: true

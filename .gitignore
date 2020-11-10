@@ -1,4 +1,5 @@
 helm-kustomize-plugin
+helmr
 coverage.out
 .build-cache
 example/**/charts

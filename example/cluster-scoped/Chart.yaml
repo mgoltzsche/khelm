@@ -1,0 +1,4 @@
+apiVersion: v1
+description: example chart with cluster-scoped resource
+name: cluster-scoped
+version: 0.1.0
