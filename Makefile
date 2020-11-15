@@ -2,7 +2,7 @@ IMAGE?=mgoltzsche/helmr
 
 LDFLAGS?=''
 USER=$(shell id -u)
-PKG=github.com/mgoltzsche/helm-kustomize-plugin
+PKG=github.com/mgoltzsche/helmr
 
 BUILDTAGS?=
 

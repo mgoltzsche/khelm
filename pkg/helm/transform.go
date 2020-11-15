@@ -3,19 +3,11 @@ package helm
 import (
 	"fmt"
 	"io"
-	"path"
-	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
 	"sigs.k8s.io/kustomize/kyaml/openapi"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
-)
-
-const (
-	apiVersionConfigKubernetesIO = "config.kubernetes.io"
-	annotationIndex              = apiVersionConfigKubernetesIO + "/index"
-	annotationPath               = apiVersionConfigKubernetesIO + "/path"
 )
 
 type manifestTransformer struct {
@@ -36,6 +28,10 @@ func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.R
 			break
 		}
 
+		if o.IsNilOrEmpty() {
+			continue
+		}
+
 		meta, err := o.GetMeta()
 		if err != nil {
 			break
@@ -44,18 +40,6 @@ func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.R
 		// Filter excluded resources
 		if t.Excludes.MatchAny(&meta) {
 			continue
-		}
-
-		// Set kpt order and path annotations
-		outPath := path.Join(t.OutputPath, fmt.Sprintf("%s-%s.yaml", strings.ToLower(meta.Kind), meta.Name))
-		lookupAnnotations := yaml.LookupCreate(yaml.MappingNode, yaml.MetadataField, yaml.AnnotationsField)
-		err = o.PipeE(lookupAnnotations, yaml.FieldSetter{Name: annotationIndex, StringValue: strconv.Itoa(len(r))})
-		if err != nil {
-			break
-		}
-		err = o.PipeE(lookupAnnotations, yaml.FieldSetter{Name: annotationPath, StringValue: outPath})
-		if err != nil {
-			break
 		}
 
 		// Set namespace

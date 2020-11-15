@@ -36,6 +36,7 @@ func (e *unknownRepoError) Format(s fmt.State, verb rune) {
 	fmt.Fprintf(s, "%s", e.error)
 }
 
+// IsUnknownRepository return true if the provided error is an unknown repository error
 func IsUnknownRepository(err error) bool {
 	_, ok := errors.Cause(err).(*unknownRepoError)
 	return ok
@@ -50,7 +51,7 @@ type repositoryConfig interface {
 	DownloadIndexFilesIfNotExist() error
 }
 
-func reposForURLs(repoURLs map[string]struct{}, allowUnknownRepos bool, settings *cli.EnvSettings, getters getter.Providers) (*repositories, error) {
+func reposForURLs(repoURLs map[string]struct{}, allowUnknownRepos *bool, settings *cli.EnvSettings, getters getter.Providers) (*repositories, error) {
 	repos, err := newRepositories(settings, getters)
 	if err != nil {
 		return nil, err
@@ -63,7 +64,7 @@ func reposForURLs(repoURLs map[string]struct{}, allowUnknownRepos bool, settings
 }
 
 // reposForDependencies create temporary repositories.yaml and configure settings with it.
-func reposForDependencies(deps []*chartutil.Dependency, allowUnknownRepos bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
+func reposForDependencies(deps []*chartutil.Dependency, allowUnknownRepos *bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
 	repoURLs := map[string]struct{}{}
 	for _, d := range deps {
 		repoURLs[d.Repository] = struct{}{}
@@ -98,10 +99,10 @@ func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (*repo
 		if _, e := os.Stat(repoFile); e != nil && !os.IsNotExist(e) {
 			return nil, errors.Wrapf(err, "load %s", repoFile)
 		}
-		repos = repo.NewRepoFile()
-	}
-	for _, r := range repos.Repositories {
-		repoURLMap[r.URL] = r
+	} else {
+		for _, r := range repos.Repositories {
+			repoURLMap[r.URL] = r
+		}
 	}
 	cacheDir := settings.Home.Cache()
 	return &repositories{settings.Home, repos, repoURLMap, getters, cacheDir, false, map[string]*repo.IndexFile{}}, nil
@@ -231,7 +232,7 @@ func (f *repositories) UpdateIndex() error {
 	return nil
 }
 
-func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, allowUnknownRepos bool) error {
+func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, allowUnknownRepos *bool) error {
 	requiredRepos := make([]*repo.Entry, 0, len(repoURLs))
 	repoURLMap := map[string]*repo.Entry{}
 	for u := range repoURLs {
@@ -240,16 +241,19 @@ func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, all
 			u = repo.URL
 		} else if strings.HasPrefix(u, "alias:") || strings.HasPrefix(u, "@") {
 			return errors.Errorf("repository %q not found in repositories.yaml", u)
-		} else if !allowUnknownRepos {
+		} else if allowUnknownRepos != nil && !*allowUnknownRepos || allowUnknownRepos == nil && f.repos != nil {
 			return &unknownRepoError{errors.Errorf("repository %q not found in repositories.yaml and usage of unknown repositories is disabled", u)}
 		}
 		repoURLMap[u] = repo
 	}
-	for _, entry := range f.repos.Repositories {
-		if repo := repoURLMap[entry.URL]; repo != nil {
-			requiredRepos = append(requiredRepos, repo)
+	if f.repos != nil {
+		for _, entry := range f.repos.Repositories {
+			if repo := repoURLMap[entry.URL]; repo != nil {
+				requiredRepos = append(requiredRepos, repo)
+			}
 		}
 	}
+	f.repos = repo.NewRepoFile()
 	f.repos.Repositories = requiredRepos
 	newURLs := make([]string, 0, len(repoURLMap))
 	for u, knownRepo := range repoURLMap {
@@ -282,6 +286,7 @@ func (f *repositories) addRepositoryURL(repoURL string) (*repo.Entry, error) {
 		Name: name,
 		URL:  repoURL,
 	}
+	entry.Cache = indexFile(entry, f.cacheDir)
 	f.repos.Add(entry)
 	f.repoURLMap[entry.URL] = entry
 	f.entriesAdded = true
@@ -342,7 +347,10 @@ func downloadIndexFile(entry *repo.Entry, cacheDir string, getters getter.Provid
 		return errors.WithStack(err)
 	}
 	log.Printf("Downloading repo index of %s", entry.URL)
-	idxFile := indexFile(entry, cacheDir)
+	idxFile := entry.Cache
+	if idxFile == "" {
+		idxFile = indexFile(entry, cacheDir)
+	}
 	err = os.MkdirAll(filepath.Dir(idxFile), 0755)
 	if err != nil {
 		return errors.WithStack(err)

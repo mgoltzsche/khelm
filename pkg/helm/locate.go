@@ -20,7 +20,6 @@ import (
 // with efficient caching)
 func locateChart(cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (string, error) {
 	name := cfg.Chart
-	version := cfg.Version
 
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
 		return name, errors.Errorf("path %q not found", name)
@@ -31,7 +30,7 @@ func locateChart(cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSet
 		return "", err
 	}
 
-	cv, err := repos.ResolveChartVersion(name, version, repoEntry.URL)
+	cv, err := repos.ResolveChartVersion(name, cfg.Version, repoEntry.URL)
 	if err != nil {
 		return "", err
 	}
@@ -77,7 +76,7 @@ func locateChart(cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSet
 	}
 	filename, _, err := dl.DownloadTo(chartURL, cv.Version, destDir)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to download chart %q with version %s", cfg.Chart, version)
+		return "", errors.Wrapf(err, "failed to download chart %q with version %q", cfg.Chart, cv.Version)
 	}
 	lname, err := filepath.Abs(filename)
 	if err != nil {

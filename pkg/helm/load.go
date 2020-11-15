@@ -19,17 +19,26 @@ import (
 	"k8s.io/helm/pkg/resolver"
 )
 
-// load chart from local or remote location
-func loadChart(ctx context.Context, cfg *ChartConfig, settings *cli.EnvSettings, getters getter.Providers) (*chart.Chart, error) {
+// loadChart loads chart from local or remote location
+func (h *Helm) loadChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, error) {
+	_, err := os.Stat(absPath(cfg.Chart, cfg.BaseDir))
+	fileExists := err == nil
 	if cfg.Repository == "" {
-		return buildAndLoadLocalChart(ctx, cfg, settings, getters)
+		if fileExists {
+			return h.buildAndLoadLocalChart(ctx, cfg)
+		} else if l := strings.Split(cfg.Chart, "/"); len(l) == 2 && l[0] != "" {
+			cfg.Repository = "@" + l[0]
+			cfg.Chart = l[1]
+		} else {
+			return nil, errors.New("no repository specified and local file not found")
+		}
 	}
-	return loadRemoteChart(ctx, cfg, settings, getters)
+	return h.loadRemoteChart(ctx, cfg)
 }
 
-func loadRemoteChart(ctx context.Context, cfg *ChartConfig, settings *cli.EnvSettings, getters getter.Providers) (*chart.Chart, error) {
+func (h *Helm) loadRemoteChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, error) {
 	repoURLs := map[string]struct{}{cfg.Repository: {}}
-	repos, err := reposForURLs(repoURLs, cfg.AllowUnknownRepositories, settings, getters)
+	repos, err := reposForURLs(repoURLs, h.acceptAnyRepository, &h.settings, h.getters)
 	if err != nil {
 		return nil, err
 	}
@@ -43,17 +52,14 @@ func loadRemoteChart(ctx context.Context, cfg *ChartConfig, settings *cli.EnvSet
 			return nil, err
 		}
 	}
-	chartPath, err := locateChart(&cfg.LoaderConfig, repos, settings, getters)
+	chartPath, err := locateChart(&cfg.LoaderConfig, repos, &h.settings, h.getters)
 	if err != nil {
 		return nil, err
 	}
 	return chartutil.Load(chartPath)
 }
 
-func buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig, settings *cli.EnvSettings, getters getter.Providers) (*chart.Chart, error) {
-	if cfg.Chart != "." && !(strings.HasPrefix(cfg.Chart, "./") || cfg.Chart != ".." && strings.HasPrefix(cfg.Chart, "../")) {
-		return nil, errors.Errorf("chart name must start with ./ if no repository specified but %q provided", cfg.Chart)
-	}
+func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, error) {
 	chartPath := absPath(cfg.Chart, cfg.BaseDir)
 	chartRequested, err := chartutil.Load(chartPath)
 	if err != nil {
@@ -68,7 +74,7 @@ func buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig, settings *cli
 	}
 
 	// Create (temporary) repository configuration that includes all dependencies
-	repos, err := reposForDependencies(dependencies, cfg.AllowUnknownRepositories, settings, getters)
+	repos, err := reposForDependencies(dependencies, h.acceptAnyRepository, &h.settings, h.getters)
 	if err != nil {
 		return nil, errors.Wrap(err, "init temp repositories.yaml")
 	}
@@ -85,7 +91,7 @@ func buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig, settings *cli
 	}
 
 	// Build local charts recursively
-	needsReload, err := buildLocalCharts(localCharts, &cfg.LoaderConfig, repos, getters, settings)
+	needsReload, err := buildLocalCharts(localCharts, &cfg.LoaderConfig, repos, &h.settings, h.getters)
 	if err != nil {
 		return nil, errors.Wrap(err, "build/fetch dependencies")
 	}
@@ -100,9 +106,12 @@ func buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig, settings *cli
 }
 
 func isVersionRange(version string) (bool, error) {
+	if version == "" {
+		return true, nil
+	}
 	c, err := semver.NewConstraint(version)
 	if err != nil {
-		return true, err
+		return true, errors.Wrap(err, "chart version")
 	}
 	v, err := semver.NewVersion(version)
 	if err != nil {
@@ -175,7 +184,7 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *ChartConf
 	return needsRepoIndexUpdate, nil
 }
 
-func buildLocalCharts(localCharts []localChart, cfg *LoaderConfig, repos repositoryConfig, getters getter.Providers, settings *cli.EnvSettings) (needsReload bool, err error) {
+func buildLocalCharts(localCharts []localChart, cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (needsReload bool, err error) {
 	for _, ch := range localCharts {
 		if ch.Requirements == nil {
 			continue
@@ -193,7 +202,7 @@ func buildLocalCharts(localCharts []localChart, cfg *LoaderConfig, repos reposit
 					return false, errors.Errorf("chart %s requirements.lock is out of sync with requirements.yaml", meta.Name)
 				}
 			}
-			if err = buildChartDependencies(ch.Chart, ch.Path, cfg, repos, getters, settings); err != nil {
+			if err = buildChartDependencies(ch.Chart, ch.Path, cfg, repos, settings, getters); err != nil {
 				return false, errors.Wrapf(err, "build chart %s", name)
 			}
 		}
@@ -206,7 +215,7 @@ func dependencyFilePath(chartPath string, d *chartutil.Dependency) string {
 	return filepath.Join(chartPath, "charts", name)
 }
 
-func buildChartDependencies(chartRequested *chart.Chart, chartPath string, cfg *LoaderConfig, repos repositoryConfig, getters getter.Providers, settings *cli.EnvSettings) error {
+func buildChartDependencies(chartRequested *chart.Chart, chartPath string, cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) error {
 	man := &downloader.Manager{
 		Out:        log.Writer(),
 		ChartPath:  chartPath,

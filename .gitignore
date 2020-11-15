@@ -3,7 +3,7 @@ helmr
 coverage.out
 .build-cache
 example/**/charts
-example/**/.cache
+example/**/tmpcharts
 example/*/requirements.lock
 !example/cert-manager/requirements.lock
 !example/invalid-requirements-lock/requirements.lock

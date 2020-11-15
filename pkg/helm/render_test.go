@@ -143,7 +143,8 @@ func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
 	repoURL := "https://charts.rook.io/stable"
-	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, true, &settings, getter.All(settings))
+	allow := true
+	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &allow, &settings, getter.All(settings))
 	require.NoError(t, err, "use repo")
 	entry, err := repos.Get(repoURL)
 	require.NoError(t, err, "repos.EntryByURL()")
@@ -166,7 +167,8 @@ func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
 	repoURL := "https://kubernetes-charts.storage.googleapis.com"
-	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, true, &settings, getter.All(settings))
+	allow := true
+	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &allow, &settings, getter.All(settings))
 	require.NoError(t, err, "use repo")
 	entry, err := repos.Get(repoURL)
 	require.NoError(t, err, "repos.Get()")
@@ -195,7 +197,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	// Create input chart config and fake private chart server
 	var cfg ChartConfig
 	cfg.Chart = "private-chart"
-	cfg.ReleaseName = "myrelease"
+	cfg.Name = "myrelease"
 	cfg.Version = fmt.Sprintf("0.0.%d", time.Now().Unix())
 	cfg.BaseDir = rootDir
 	repoEntry := &repo.Entry{
@@ -234,7 +236,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			cfg.Repository = c.repo
-			err = render(t, &cfg, &bytes.Buffer{})
+			err = render(t, cfg, false, &bytes.Buffer{})
 			require.NoError(t, err, "render chart with repository credentials")
 		})
 	}
@@ -301,13 +303,16 @@ func renderFile(t *testing.T, file string, allowUnknownRepos bool, rootDir strin
 	cfg, err := ReadGeneratorConfig(f)
 	require.NoError(t, err, "ReadGeneratorConfig(%s)", file)
 	cfg.BaseDir = filepath.Dir(file)
-	cfg.AllowUnknownRepositories = allowUnknownRepos
-	return render(t, &cfg.ChartConfig, writer)
+	return render(t, cfg.ChartConfig, allowUnknownRepos, writer)
 }
 
-func render(t *testing.T, cfg *ChartConfig, writer io.Writer) error {
+func render(t *testing.T, req ChartConfig, acceptAnyRepo bool, writer io.Writer) error {
 	log.SetFlags(0)
-	resources, err := Render(context.Background(), cfg)
+	cfg := NewConfig()
+	cfg.AcceptAnyRepository = &acceptAnyRepo
+	h, err := NewHelm(cfg)
+	require.NoError(t, err)
+	resources, err := h.Render(context.Background(), req)
 	if err != nil {
 		return err
 	}
