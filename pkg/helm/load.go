@@ -21,6 +21,9 @@ import (
 
 // loadChart loads chart from local or remote location
 func (h *Helm) loadChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, error) {
+	if cfg.Chart == "" {
+		return nil, errors.New("no chart specified")
+	}
 	_, err := os.Stat(absPath(cfg.Chart, cfg.BaseDir))
 	fileExists := err == nil
 	if cfg.Repository == "" {

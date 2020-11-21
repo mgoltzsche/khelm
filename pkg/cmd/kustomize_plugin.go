@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/mgoltzsche/helmr/pkg/helm"
-	"github.com/mgoltzsche/helmr/pkg/output"
+	"github.com/mgoltzsche/helmr/pkg/internal/output"
 )
 
 func runAsKustomizePlugin(cfg helm.Config, generatorYAML string, writer io.Writer) error {

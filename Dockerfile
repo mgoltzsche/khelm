@@ -9,5 +9,7 @@ COPY pkg /go/src/github.com/mgoltzsche/helmr/pkg
 RUN go build -o helmr -ldflags '-s -w -extldflags "-static"' . && mv helmr /usr/local/bin/
 
 FROM alpine:3.12
+RUN mkdir /helm && chown root:nobody /helm && chmod 775 /helm
+ENV HELM_HOME=/helm
 COPY --from=build /usr/local/bin/helmr /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/helmr"]

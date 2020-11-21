@@ -33,7 +33,9 @@ type Output interface {
 
 // ResourcePath derives the output path (using / as separator) from a given resource
 func ResourcePath(meta yaml.ResourceMeta, basePath string) string {
-	return path.Join(basePath, fmt.Sprintf("%s_%s.yaml", strings.ToLower(meta.Kind), meta.Name))
+	name := fmt.Sprintf("%s_%s", strings.ToLower(meta.Kind), meta.Name)
+	name = strings.TrimRight(name, "_")
+	return path.Join(basePath, fmt.Sprintf("%s.yaml", name))
 }
 
 // New creates a new output from the given options

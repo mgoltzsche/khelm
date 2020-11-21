@@ -44,7 +44,7 @@ func Execute(writer io.Writer) error {
 
 	// Add kpt function command
 	errBuf := bytes.Buffer{}
-	cmd := kptFnCommand(helmCfg)
+	cmd := kptFnCommand(&helmCfg)
 	cmd.SetOut(writer)
 	cmd.SetErr(&errBuf)
 	cmd.PersistentFlags().BoolVar(&debug, "debug", debug, fmt.Sprintf("enable debug log (%s)", envDebug))
@@ -56,6 +56,7 @@ func Execute(writer io.Writer) error {
 	cmd.AddCommand(templateCmd)
 
 	// Run command
+	helmCfg.Debug = true
 	if err := cmd.Execute(); err != nil {
 		logStackTrace(err, helmCfg.Debug)
 		msg := strings.TrimSpace(errBuf.String())

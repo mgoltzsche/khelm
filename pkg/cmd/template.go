@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/mgoltzsche/helmr/pkg/helm"
-	"github.com/mgoltzsche/helmr/pkg/output"
+	"github.com/mgoltzsche/helmr/pkg/internal/output"
 	"github.com/spf13/cobra"
 	"k8s.io/helm/pkg/strvals"
 )

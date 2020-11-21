@@ -40,8 +40,7 @@ type K8sMetadata struct {
 type ChartConfig struct {
 	LoaderConfig   `yaml:",inline"`
 	RendererConfig `yaml:",inline"`
-	//AcceptAnyRepository *bool  `yaml:"-"`
-	BaseDir string `yaml:"-"`
+	BaseDir        string `yaml:"-"`
 }
 
 // NewChartConfig creates a new empty chart config with default values

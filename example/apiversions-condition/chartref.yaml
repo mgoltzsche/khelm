@@ -3,7 +3,7 @@ kind: ChartRenderer
 metadata:
   name: apiversions-condition
   namespace: apiversions-condition-env
-#repository: file:///go/src/github.com/mgoltzsche/helm-kustomize-plugin/example/apiversion-condition
 chart: ./chart
 apiVersions:
 - myfancyapi/v1
+kubeVersion: 1.17

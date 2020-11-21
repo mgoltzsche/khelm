@@ -8,6 +8,6 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: myconfigb
+  name: {{ .Release.Name }}-myconfigb
 data:
   key: b

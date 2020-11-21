@@ -42,7 +42,13 @@ func NewHelm(cfg Config) (*Helm, error) {
 			Debug: cfg.Debug,
 		}}
 	h.getters = getter.All(h.settings)
-	return h, initializeHelmHome(h.settings.Home)
+
+	err := initializeHelmHome(h.settings.Home)
+	if err != nil {
+		return nil, errors.Wrap(err, "initialize helm home")
+	}
+
+	return h, nil
 }
 
 // initializeHelmHome initialize the helm home directory.
@@ -62,6 +68,8 @@ func initializeHelmHome(home helmpath.Home) (err error) {
 			return errors.WithStack(err)
 		}
 	}
+
+	// TODO: create temporary helm directory if repositories.yaml does not exist (for idempotent repository policy behaviour)
 
 	// Create repo file
 	if _, err = os.Stat(home.RepositoryFile()); err != nil && os.IsNotExist(err) {

@@ -67,10 +67,8 @@ func (t *manifestTransformer) applyNamespace(o *yaml.RNode, clusterScopedResourc
 	if err != nil {
 		return nil
 	}
-	namespaced, knownType := openapi.IsNamespaceScoped(meta.TypeMeta)
-	if !knownType {
-		namespaced = true
-	}
+	namespaced, knownKind := openapi.IsNamespaceScoped(meta.TypeMeta)
+	namespaced = namespaced || !knownKind
 	if namespaced {
 		if t.Namespace != "" {
 			err = o.PipeE(yaml.LookupCreate(
