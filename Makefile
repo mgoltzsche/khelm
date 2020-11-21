@@ -41,8 +41,7 @@ coverage: test
 	go tool cover -html=coverage.out -o coverage.html
 
 e2e-test: image
-	# TODO: make sure repositories.yaml is not created when it doesn't exist
-	#./e2e/image-test.sh
+	./e2e/image-test.sh
 	./e2e/kpt-test.sh
 
 clean:

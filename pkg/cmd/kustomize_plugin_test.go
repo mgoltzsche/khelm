@@ -16,10 +16,12 @@ func TestKustomizePlugin(t *testing.T) {
 	file := filepath.Join("..", "..", "example", "exclude", "chartref.yaml")
 	kustomizeGenCfg, err := ioutil.ReadFile(file)
 	require.NoError(t, err)
-	os.Setenv("KUSTOMIZE_PLUGIN_CONFIG_STRING", string(kustomizeGenCfg))
-	os.Setenv("HELMR_ALLOW_UNKNOWN_REPOSITORIES", "true")
+	os.Setenv(envKustomizePluginConfig, string(kustomizeGenCfg))
+	os.Setenv(envAcceptAnyRepo, "true")
 	os.Setenv(envDebug, "true")
-	defer os.Unsetenv("KUSTOMIZE_PLUGIN_CONFIG_STRING")
+	defer os.Unsetenv(envKustomizePluginConfig)
+	defer os.Unsetenv(envAcceptAnyRepo)
+	defer os.Unsetenv(envDebug)
 	out := runKustomizePlugin(t, filepath.Dir(file))
 	validateYAML(t, out, 1)
 	require.Contains(t, string(out), "\n  key: b\n", "output: %s", string(out))
@@ -28,22 +30,28 @@ func TestKustomizePlugin(t *testing.T) {
 func runKustomizePlugin(t *testing.T, wd string, args ...string) (out []byte) {
 	wdOrig, err := os.Getwd()
 	require.NoError(t, err)
-	os.Setenv("KUSTOMIZE_PLUGIN_CONFIG_ROOT", wdOrig)
+	os.Setenv(envKustomizePluginConfigRoot, wdOrig)
+	defer os.Unsetenv(envKustomizePluginConfigRoot)
 	err = os.Chdir(wd)
 	require.NoError(t, err)
 	defer os.Chdir(wdOrig)
 	os.Args = append([]string{"testee"}, args...)
 	var buf bytes.Buffer
-	err = Execute(&buf)
+	err = Execute(nil, &buf)
 	require.NoError(t, err)
 	return buf.Bytes()
 }
 
-func validateYAML(t *testing.T, y []byte, objAmount int) {
+func validateYAML(t *testing.T, y []byte, objAmount int) (first map[string]interface{}) {
 	dec := yaml.NewDecoder(bytes.NewReader(y))
 	i := -1
 	var err error
-	for ; err == nil; err = dec.Decode(map[string]interface{}{}) {
+	for err == nil {
+		o := map[string]interface{}{}
+		err = dec.Decode(o)
+		if first == nil {
+			first = o
+		}
 		i++
 	}
 	if err == io.EOF {

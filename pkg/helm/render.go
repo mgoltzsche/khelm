@@ -39,7 +39,7 @@ func (h *Helm) Render(ctx context.Context, req ChartConfig) (r []*yaml.RNode, er
 
 	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
 
-	return renderChart(chartRequested, &req, h.getters)
+	return renderChart(chartRequested, &req, h.Getters)
 }
 
 // renderChart renders a manifest from the given chart and values

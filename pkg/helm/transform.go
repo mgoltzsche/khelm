@@ -57,7 +57,7 @@ func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.R
 	}
 	if len(clusterScopedResources) > 0 {
 		return nil, errors.Errorf("manifests should only include namespace-scoped resources "+
-			"but the following cluster-scoped resources have been found:\n  %s\nexclude cluster-scoped resources or enable their usage", strings.Join(clusterScopedResources, "\n  "))
+			"but the following cluster-scoped resources have been found:\n  %s\nPlease exclude cluster-scoped resources or enable their usage", strings.Join(clusterScopedResources, "\n  "))
 	}
 	return
 }

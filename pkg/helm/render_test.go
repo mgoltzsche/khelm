@@ -312,9 +312,7 @@ func render(t *testing.T, req ChartConfig, acceptAnyRepo bool, writer io.Writer)
 	log.SetFlags(0)
 	cfg := NewConfig()
 	cfg.AcceptAnyRepository = &acceptAnyRepo
-	h, err := NewHelm(cfg)
-	require.NoError(t, err)
-	resources, err := h.Render(context.Background(), req)
+	resources, err := NewHelm(cfg).Render(context.Background(), req)
 	if err != nil {
 		return err
 	}

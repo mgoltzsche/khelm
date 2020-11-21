@@ -41,11 +41,19 @@ func (h *Helm) loadChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, e
 
 func (h *Helm) loadRemoteChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, error) {
 	repoURLs := map[string]struct{}{cfg.Repository: {}}
-	repos, err := reposForURLs(repoURLs, h.acceptAnyRepository, &h.settings, h.getters)
+	repos, err := reposForURLs(repoURLs, h.acceptAnyRepository, &h.Settings, h.Getters)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: remove this in helm 3
+	repos, err = repos.Apply()
 	if err != nil {
 		return nil, err
 	}
 	defer repos.Close()
+	settings := h.Settings
+	settings.Home = repos.HelmHome()
+
 	isRange, err := isVersionRange(cfg.Version)
 	if err != nil {
 		return nil, err
@@ -55,7 +63,7 @@ func (h *Helm) loadRemoteChart(ctx context.Context, cfg *ChartConfig) (*chart.Ch
 			return nil, err
 		}
 	}
-	chartPath, err := locateChart(&cfg.LoaderConfig, repos, &h.settings, h.getters)
+	chartPath, err := locateChart(&cfg.LoaderConfig, repos, &settings, h.Getters)
 	if err != nil {
 		return nil, err
 	}
@@ -77,11 +85,17 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig) (*c
 	}
 
 	// Create (temporary) repository configuration that includes all dependencies
-	repos, err := reposForDependencies(dependencies, h.acceptAnyRepository, &h.settings, h.getters)
+	repos, err := reposForDependencies(dependencies, h.acceptAnyRepository, &h.Settings, h.Getters)
 	if err != nil {
 		return nil, errors.Wrap(err, "init temp repositories.yaml")
 	}
+	repos, err = repos.Apply()
+	if err != nil {
+		return nil, err
+	}
 	defer repos.Close()
+	settings := h.Settings
+	settings.Home = repos.HelmHome()
 
 	// Download/update repo indices
 	if needsRepoIndexUpdate {
@@ -94,7 +108,7 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig) (*c
 	}
 
 	// Build local charts recursively
-	needsReload, err := buildLocalCharts(localCharts, &cfg.LoaderConfig, repos, &h.settings, h.getters)
+	needsReload, err := buildLocalCharts(localCharts, &cfg.LoaderConfig, repos, &settings, h.Getters)
 	if err != nil {
 		return nil, errors.Wrap(err, "build/fetch dependencies")
 	}

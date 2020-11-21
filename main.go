@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	if err := cmd.Execute(os.Stdout); err != nil {
+	if err := cmd.Execute(os.Stdin, os.Stdout); err != nil {
 		log.Fatalf("helmr: %s", err)
 	}
 }

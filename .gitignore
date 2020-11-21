@@ -7,4 +7,4 @@ example/**/tmpcharts
 example/*/requirements.lock
 !example/cert-manager/requirements.lock
 !example/invalid-requirements-lock/requirements.lock
-example/*/output
+example/*/output-*

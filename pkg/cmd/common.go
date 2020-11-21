@@ -23,11 +23,7 @@ func marshal(resources []*yaml.RNode, writer io.Writer) error {
 }
 
 func render(cfg helm.Config, req helm.ChartConfig) ([]*yaml.RNode, error) {
-	h, err := helm.NewHelm(cfg)
-	if err != nil {
-		return nil, err
-	}
-
+	h := helm.NewHelm(cfg)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)

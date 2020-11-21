@@ -25,6 +25,7 @@ func kptFnCommand(cfg *helm.Config) *cobra.Command {
 	fnCfg := kptFnConfigMap{Data: kptFnConfig{&req, "", false, cfg.Debug}}
 	resourceList := &framework.ResourceList{FunctionConfig: &fnCfg}
 	cmd := framework.Command(resourceList, func() (err error) {
+		cfg.Debug = cfg.Debug || fnCfg.Data.Debug
 		rendered, err := render(*cfg, req)
 		if err != nil {
 			return err
@@ -32,7 +33,7 @@ func kptFnCommand(cfg *helm.Config) *cobra.Command {
 
 		outputPath := fnCfg.Data.OutputPath
 		if outputPath == "" {
-			outputPath = "output"
+			outputPath = "chart-output"
 		}
 
 		if fnCfg.Data.OutputKustomization {
@@ -82,7 +83,7 @@ type kptFnConfig struct {
 	*helm.ChartConfig   `yaml:",inline"`
 	OutputPath          string `yaml:"outputPath,omitempty"`
 	OutputKustomization bool   `yaml:"outputKustomization,omitempty"`
-	Debug               bool   `yaml:"debug"`
+	Debug               bool   `yaml:"debug,omitempty"`
 }
 
 func filterByOutputPath(resources []*yaml.RNode, outputBasePath string) []*yaml.RNode {

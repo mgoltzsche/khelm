@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/helm/pkg/repo"
 )
 
 func TestTemplateCommand(t *testing.T) {
@@ -20,7 +22,8 @@ func TestTemplateCommand(t *testing.T) {
 		{
 			"chart path only",
 			[]string{filepath.Join(exampleDir, "no-namespace")},
-			2, "myconfigb"},
+			2, "myconfigb",
+		},
 		{
 			"latest cluster scoped remote chart",
 			[]string{"cert-manager", "--repo=https://charts.jetstack.io",
@@ -35,10 +38,9 @@ func TestTemplateCommand(t *testing.T) {
 			34, "chart: cainjector-v0.9.1",
 		},
 		{
-			"apiversions",
-			[]string{filepath.Join(exampleDir, "apiversions-condition", "chart"),
-				"--api-versions=myfancyapi/v1", "--api-versions=someapi/v1alpha1"},
-			1, "fancycr",
+			"release name",
+			[]string{filepath.Join(exampleDir, "no-namespace"), "--name=myrelease"},
+			2, "myrelease-myconfigb",
 		},
 		{
 			"values",
@@ -46,19 +48,69 @@ func TestTemplateCommand(t *testing.T) {
 				"--values=" + filepath.Join(exampleDir, "values-inheritance", "values.yaml")},
 			1, "overwritten by file",
 		},
+		{
+			"set",
+			[]string{filepath.Join(exampleDir, "values-inheritance", "chart"),
+				"--set=example.other1=a,example.overrideValue=explicitly,example.other2=b", "--set=example.other1=x"},
+			1, "explicitly",
+		},
+		{
+			"apiversions",
+			[]string{filepath.Join(exampleDir, "apiversions-condition", "chart"),
+				"--api-versions=myfancyapi/v1", "--api-versions=someapi/v1alpha1"},
+			1, "fancycr",
+		},
+		{
+			"kubeversion",
+			[]string{filepath.Join(exampleDir, "apiversions-condition", "chart"),
+				"--api-versions=myfancyapi/v1", "--kube-version=1.17"},
+			1, "k8sVersion: v1.17.0",
+		},
+		{
+			"namespace",
+			[]string{filepath.Join(exampleDir, "no-namespace"), "--namespace=mynamespace"},
+			2, "namespace: mynamespace",
+		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			out := runTemplateCmd(t, c.args)
-			validateYAML(t, out, c.mustContainObj)
-			require.Contains(t, string(out), c.mustContain, "output of %+v", c.args)
+			var out bytes.Buffer
+			os.Args = append([]string{"testee", "template"}, c.args...)
+			err := Execute(nil, &out)
+			require.NoError(t, err)
+			validateYAML(t, out.Bytes(), c.mustContainObj)
+			require.Contains(t, out.String(), c.mustContain, "output of %+v", c.args)
 		})
 	}
 }
 
-func runTemplateCmd(t *testing.T, args []string) []byte {
-	os.Args = append([]string{"testee", "template"}, args...)
-	var buf bytes.Buffer
-	err := Execute(&buf)
+func TestTemplateCommandError(t *testing.T) {
+	dir, err := ioutil.TempDir("", "helmr-fn-test-")
 	require.NoError(t, err)
-	return buf.Bytes()
+	repoDir := filepath.Join(dir, "repository")
+	defer os.RemoveAll(dir)
+	os.Setenv("HELM_HOME", dir)
+	defer os.Unsetenv("HELM_HOME")
+	err = os.Mkdir(repoDir, 0755)
+	require.NoError(t, err)
+	err = repo.NewRepoFile().WriteFile(filepath.Join(repoDir, "repositories.yaml"), 0644)
+	require.NoError(t, err)
+	for _, c := range []struct {
+		name string
+		args []string
+	}{
+		{
+			"reject unknown repo",
+			[]string{"cert-manager", "--repo=https://charts.jetstack.io", "--accept-cluster-scoped"},
+		},
+		{
+			"reject cluster scoped resources",
+			[]string{"cert-manager", "--repo=https://charts.jetstack.io", "--accept-any-repo"},
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			os.Args = append([]string{"testee", "template"}, c.args...)
+			err := Execute(nil, &bytes.Buffer{})
+			require.Error(t, err)
+		})
+	}
 }

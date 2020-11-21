@@ -12,7 +12,7 @@ func logStackTrace(err error, debug bool) {
 	if err != nil && debug {
 		if e := traceableRootCause(err); e != nil {
 			if s := fmt.Sprintf("%+v", e); s != err.Error() {
-				log.Println("  ", strings.ReplaceAll(s, "\n", "\n  "))
+				log.Println("DEBUG:", strings.ReplaceAll(s, "\n", "\n  "))
 			}
 		}
 	}

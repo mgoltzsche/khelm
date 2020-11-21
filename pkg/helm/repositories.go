@@ -43,15 +43,16 @@ func IsUnknownRepository(err error) bool {
 }
 
 type repositoryConfig interface {
-	io.Closer
+	Close() error
 	HelmHome() helmpath.Home
 	ResolveChartVersion(name, version, repo string) (*repo.ChartVersion, error)
 	Get(repo string) (*repo.Entry, error)
 	UpdateIndex() error
 	DownloadIndexFilesIfNotExist() error
+	Apply() (repositoryConfig, error)
 }
 
-func reposForURLs(repoURLs map[string]struct{}, allowUnknownRepos *bool, settings *cli.EnvSettings, getters getter.Providers) (*repositories, error) {
+func reposForURLs(repoURLs map[string]struct{}, allowUnknownRepos *bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
 	repos, err := newRepositories(settings, getters)
 	if err != nil {
 		return nil, err
@@ -69,15 +70,10 @@ func reposForDependencies(deps []*chartutil.Dependency, allowUnknownRepos *bool,
 	for _, d := range deps {
 		repoURLs[d.Repository] = struct{}{}
 	}
-	r, err := reposForURLs(repoURLs, allowUnknownRepos, settings, getters)
+	repos, err := reposForURLs(repoURLs, allowUnknownRepos, settings, getters)
 	if err != nil {
 		return nil, err
 	}
-	repos, err := r.Apply()
-	if err != nil {
-		return nil, err
-	}
-	settings.Home = repos.HelmHome()
 	return repos, nil
 }
 
@@ -91,21 +87,49 @@ type repositories struct {
 	indexFiles   map[string]*repo.IndexFile
 }
 
-func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (*repositories, error) {
+func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (r *repositories, err error) {
+	r = &repositories{
+		dir:        settings.Home,
+		repoURLMap: map[string]*repo.Entry{},
+		getters:    getters,
+		cacheDir:   settings.Home.Cache(),
+		indexFiles: map[string]*repo.IndexFile{},
+	}
 	repoFile := settings.Home.RepositoryFile()
-	repoURLMap := map[string]*repo.Entry{}
-	repos, err := repo.LoadRepositoriesFile(repoFile)
+	r.repos, err = repo.LoadRepositoriesFile(repoFile)
 	if err != nil {
 		if _, e := os.Stat(repoFile); e != nil && !os.IsNotExist(e) {
 			return nil, errors.Wrapf(err, "load %s", repoFile)
 		}
 	} else {
-		for _, r := range repos.Repositories {
-			repoURLMap[r.URL] = r
+		for _, e := range r.repos.Repositories {
+			r.repoURLMap[e.URL] = e
 		}
 	}
-	cacheDir := settings.Home.Cache()
-	return &repositories{settings.Home, repos, repoURLMap, getters, cacheDir, false, map[string]*repo.IndexFile{}}, nil
+	if err = initializeHelmHome(settings.Home); err != nil {
+		return nil, errors.Wrap(err, "initialize helm home")
+	}
+	return r, nil
+}
+
+// initializeHelmHome initialize the helm home directory without repositories.yaml.
+// Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/installer/init.go
+func initializeHelmHome(home helmpath.Home) (err error) {
+	// Create directories
+	for _, dir := range []string{
+		home.String(),
+		home.Repository(),
+		home.Cache(),
+		home.LocalRepository(),
+		home.Plugins(),
+		home.Starters(),
+		home.Archive(),
+	} {
+		if err = os.MkdirAll(dir, 0755); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	return nil
 }
 
 func (f *repositories) repoIndex(entry *repo.Entry) (*repo.IndexFile, error) {
@@ -242,7 +266,11 @@ func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, all
 		} else if strings.HasPrefix(u, "alias:") || strings.HasPrefix(u, "@") {
 			return errors.Errorf("repository %q not found in repositories.yaml", u)
 		} else if allowUnknownRepos != nil && !*allowUnknownRepos || allowUnknownRepos == nil && f.repos != nil {
-			return &unknownRepoError{errors.Errorf("repository %q not found in repositories.yaml and usage of unknown repositories is disabled", u)}
+			err := errors.Errorf("repository %q not found in repositories.yaml and usage of unknown repositories is disabled", u)
+			if f.repos == nil || len(f.repos.Repositories) == 0 {
+				err = errors.Errorf("request repository %q: repositories.yaml does not exist or is empty and usage of unknown repositories is disabled", u)
+			}
+			return &unknownRepoError{err}
 		}
 		repoURLMap[u] = repo
 	}
