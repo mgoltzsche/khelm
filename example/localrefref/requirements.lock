@@ -1,0 +1,6 @@
+dependencies:
+- name: efk
+  repository: file://../localref/elk
+  version: 0.1.1
+digest: sha256:f06e62aec695f2a9de31886157b374aacdaa14a1d18a36d5c375887540b252ed
+generated: "2020-11-07T19:45:44.068286138Z"
