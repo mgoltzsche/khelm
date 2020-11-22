@@ -8,4 +8,3 @@ chart: jenkins
 version: 0.32.4
 valueFiles:
   - ../../example/jenkins/values.yaml
-clusterScoped: true

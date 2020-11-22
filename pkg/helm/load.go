@@ -41,7 +41,7 @@ func (h *Helm) loadChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, e
 
 func (h *Helm) loadRemoteChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, error) {
 	repoURLs := map[string]struct{}{cfg.Repository: {}}
-	repos, err := reposForURLs(repoURLs, h.acceptAnyRepository, &h.Settings, h.Getters)
+	repos, err := reposForURLs(repoURLs, h.TrustAnyRepository, &h.Settings, h.Getters)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig) (*c
 	}
 
 	// Create (temporary) repository configuration that includes all dependencies
-	repos, err := reposForDependencies(dependencies, h.acceptAnyRepository, &h.Settings, h.Getters)
+	repos, err := reposForDependencies(dependencies, h.TrustAnyRepository, &h.Settings, h.Getters)
 	if err != nil {
 		return nil, errors.Wrap(err, "init temp repositories.yaml")
 	}

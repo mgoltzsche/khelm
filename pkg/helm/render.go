@@ -21,7 +21,10 @@ import (
 var whitespaceRegex = regexp.MustCompile(`^\s*$`)
 
 // Render manifest from helm chart configuration (shorthand)
-func (h *Helm) Render(ctx context.Context, req ChartConfig) (r []*yaml.RNode, err error) {
+func (h *Helm) Render(ctx context.Context, req *ChartConfig) (r []*yaml.RNode, err error) {
+	if errs := req.Validate(); len(errs) > 0 {
+		return nil, errors.Errorf("invalid chart renderer config:\n * %s", strings.Join(errs, "\n * "))
+	}
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -32,14 +35,14 @@ func (h *Helm) Render(ctx context.Context, req ChartConfig) (r []*yaml.RNode, er
 		req.BaseDir = filepath.Join(wd, req.BaseDir)
 	}
 
-	chartRequested, err := h.loadChart(ctx, &req)
+	chartRequested, err := h.loadChart(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
 	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
 
-	return renderChart(chartRequested, &req, h.Getters)
+	return renderChart(chartRequested, req, h.Getters)
 }
 
 // renderChart renders a manifest from the given chart and values
@@ -75,10 +78,10 @@ func renderChart(chrt *chart.Chart, c *ChartConfig, getters getter.Providers) (r
 	}
 
 	transformer := manifestTransformer{
-		Namespace:          namespace,
-		Excludes:           Matchers(c.Exclude),
-		AllowClusterScoped: c.ClusterScoped,
-		OutputPath:         "output",
+		Namespace:      namespace,
+		Excludes:       Matchers(c.Exclude),
+		NamespacedOnly: c.NamespacedOnly,
+		OutputPath:     "output",
 	}
 
 	r = make([]*yaml.RNode, 0, len(listManifests))

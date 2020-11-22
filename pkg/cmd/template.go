@@ -10,10 +10,11 @@ import (
 	"k8s.io/helm/pkg/strvals"
 )
 
-func templateCommand(cfg helm.Config, writer io.Writer) *cobra.Command {
+func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 	req := helm.NewChartConfig()
+	req.Name = "release-name"
 	outOpts := output.Options{Writer: writer}
-	acceptAnyRepo := false
+	trustAnyRepo := false
 	cmd := &cobra.Command{
 		Use: "template",
 		Args: func(cmd *cobra.Command, args []string) error {
@@ -27,15 +28,15 @@ func templateCommand(cfg helm.Config, writer io.Writer) *cobra.Command {
 		Short:      "Renders a chart",
 		Example:    usageExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Flags().Changed(flagAcceptAnyRepo) {
-				cfg.AcceptAnyRepository = &acceptAnyRepo
+			if cmd.Flags().Changed(flagTrustAnyRepo) {
+				h.TrustAnyRepository = &trustAnyRepo
 			}
 			out, err := output.New(outOpts)
 			if err != nil {
 				return err
 			}
 			req.Chart = args[0]
-			resources, err := render(cfg, req)
+			resources, err := render(h, req)
 			if err != nil {
 				return err
 			}
@@ -51,9 +52,9 @@ func templateCommand(cfg helm.Config, writer io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&req.Repository, "repo", "", "Chart repository url where to locate the requested chart")
 	f.StringVar(&req.Version, "version", "", "Specify the exact chart version to use. If this is not specified, the latest version is used")
-	f.BoolVar(&acceptAnyRepo, flagAcceptAnyRepo, acceptAnyRepo,
-		fmt.Sprintf("Allow to use repositories that are not registered within repositories.yaml (default is true when repositories.yaml does not exist; %s)", envAcceptAnyRepo))
-	f.BoolVar(&req.ClusterScoped, "accept-cluster-scoped", false, "Allow cluster-scoped resources within chart output")
+	f.BoolVar(&trustAnyRepo, flagTrustAnyRepo, trustAnyRepo,
+		fmt.Sprintf("Allow to use repositories that are not registered within repositories.yaml (default is true when repositories.yaml does not exist; %s)", envTrustAnyRepo))
+	f.BoolVar(&req.NamespacedOnly, "namespaced-only", false, "Fail on known cluster-scoped resources and those of unknown kinds")
 	f.BoolVar(&req.Verify, "verify", false, "Verify the package before using it")
 	f.StringVar(&req.Keyring, "keyring", req.Keyring, "Keyring used to verify the chart")
 	f.StringVar(&req.Name, "name", req.Name, "Release name")

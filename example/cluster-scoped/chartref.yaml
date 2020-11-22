@@ -4,4 +4,3 @@ metadata:
   name: mychart
   namespace: myns
 chart: .
-clusterScoped: true

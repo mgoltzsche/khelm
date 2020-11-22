@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"os"
 	"strconv"
 	"strings"
 
@@ -20,13 +19,13 @@ const (
 	annotationPath               = apiVersionConfigKubernetesIO + "/path"
 )
 
-func kptFnCommand(cfg *helm.Config) *cobra.Command {
+func kptFnCommand(h *helm.Helm) *cobra.Command {
 	req := helm.NewChartConfig()
-	fnCfg := kptFnConfigMap{Data: kptFnConfig{&req, "", false, cfg.Debug}}
+	fnCfg := kptFnConfigMap{Data: kptFnConfig{ChartConfig: req}}
 	resourceList := &framework.ResourceList{FunctionConfig: &fnCfg}
 	cmd := framework.Command(resourceList, func() (err error) {
-		cfg.Debug = cfg.Debug || fnCfg.Data.Debug
-		rendered, err := render(*cfg, req)
+		h.Settings.Debug = h.Settings.Debug || fnCfg.Data.Debug
+		rendered, err := render(h, req)
 		if err != nil {
 			return err
 		}
@@ -50,14 +49,6 @@ func kptFnCommand(cfg *helm.Config) *cobra.Command {
 
 		return nil
 	})
-	cmd.Example = usageExample
-	cmd.Use = os.Args[0]
-	cmd.Short = "helmr chart renderer"
-	cmd.Long = `helmr is a helm chart templating CLI, kustomize plugin and kpt function.
-
-In opposite to the original helm CLI helmr supports:
-* usage of any repositories without registering them in repositories.yaml
-* building local charts recursively when templating`
 	return &cmd
 }
 

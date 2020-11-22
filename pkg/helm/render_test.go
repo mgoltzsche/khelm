@@ -94,7 +94,7 @@ func TestRenderInvalidRequirementsLockError(t *testing.T) {
 }
 
 func TestRenderUnexpectedClusterScopedResourcesError(t *testing.T) {
-	file := filepath.Join(rootDir, "example/cluster-scoped-invalid/chartref.yaml")
+	file := filepath.Join(rootDir, "example/cluster-scoped-forbidden/chartref.yaml")
 	err := renderFile(t, file, true, rootDir, &bytes.Buffer{})
 	require.Error(t, err, "render %s", file)
 }
@@ -145,8 +145,8 @@ func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
 	repoURL := "https://charts.rook.io/stable"
-	allow := true
-	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &allow, &settings, getter.All(settings))
+	trust := true
+	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &trust, &settings, getter.All(settings))
 	require.NoError(t, err, "use repo")
 	entry, err := repos.Get(repoURL)
 	require.NoError(t, err, "repos.EntryByURL()")
@@ -169,8 +169,8 @@ func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
 	repoURL := "https://kubernetes-charts.storage.googleapis.com"
-	allow := true
-	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &allow, &settings, getter.All(settings))
+	trust := true
+	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &trust, &settings, getter.All(settings))
 	require.NoError(t, err, "use repo")
 	entry, err := repos.Get(repoURL)
 	require.NoError(t, err, "repos.Get()")
@@ -298,21 +298,21 @@ func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, re
 	writer.WriteHeader(404)
 }
 
-func renderFile(t *testing.T, file string, allowUnknownRepos bool, rootDir string, writer io.Writer) error {
+func renderFile(t *testing.T, file string, trustAnyRepo bool, rootDir string, writer io.Writer) error {
 	f, err := os.Open(file)
 	require.NoError(t, err)
 	defer f.Close()
 	cfg, err := ReadGeneratorConfig(f)
 	require.NoError(t, err, "ReadGeneratorConfig(%s)", file)
 	cfg.BaseDir = filepath.Dir(file)
-	return render(t, cfg.ChartConfig, allowUnknownRepos, writer)
+	return render(t, cfg.ChartConfig, trustAnyRepo, writer)
 }
 
-func render(t *testing.T, req ChartConfig, acceptAnyRepo bool, writer io.Writer) error {
+func render(t *testing.T, req ChartConfig, trustAnyRepo bool, writer io.Writer) error {
 	log.SetFlags(0)
-	cfg := NewConfig()
-	cfg.AcceptAnyRepository = &acceptAnyRepo
-	resources, err := NewHelm(cfg).Render(context.Background(), req)
+	h := NewHelm()
+	h.TrustAnyRepository = &trustAnyRepo
+	resources, err := h.Render(context.Background(), &req)
 	if err != nil {
 		return err
 	}

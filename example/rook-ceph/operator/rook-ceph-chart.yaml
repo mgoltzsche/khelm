@@ -8,4 +8,3 @@ chart: rook-ceph
 version: 0.9.x
 valueFiles:
   - values.yaml
-clusterScoped: true

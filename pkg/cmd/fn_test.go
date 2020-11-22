@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -20,6 +21,20 @@ func TestKptFnCommand(t *testing.T) {
 	defer os.Unsetenv("HELM_HOME")
 	exampleDir := filepath.Join("..", "..", "example")
 
+	inputAnnotations := map[string]interface{}{}
+	inputItems := []map[string]interface{}{
+		{
+			// should be preserved
+			"somekey": "somevalue",
+		},
+		{
+			// should be filtered
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"metadata":   map[string]interface{}{"annotations": inputAnnotations},
+		},
+	}
+
 	for _, c := range []struct {
 		name           string
 		input          kptFnConfig
@@ -29,7 +44,9 @@ func TestKptFnCommand(t *testing.T) {
 		{
 			"chart path only",
 			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{Chart: filepath.Join(exampleDir, "no-namespace")},
+				LoaderConfig: helm.LoaderConfig{
+					Chart: filepath.Join(exampleDir, "no-namespace"),
+				},
 			}},
 			2, "myconfiga",
 		},
@@ -39,9 +56,6 @@ func TestKptFnCommand(t *testing.T) {
 				LoaderConfig: helm.LoaderConfig{
 					Repository: "https://charts.jetstack.io",
 					Chart:      "cert-manager",
-				},
-				RendererConfig: helm.RendererConfig{
-					ClusterScoped: true,
 				},
 			}},
 			-1, "acme.cert-manager.io",
@@ -53,9 +67,6 @@ func TestKptFnCommand(t *testing.T) {
 					Repository: "https://charts.jetstack.io",
 					Chart:      "cert-manager",
 					Version:    "0.9.x",
-				},
-				RendererConfig: helm.RendererConfig{
-					ClusterScoped: true,
 				},
 			}},
 			34, "chart: cainjector-v0.9.1",
@@ -132,7 +143,7 @@ func TestKptFnCommand(t *testing.T) {
 			2, "namespace: mynamespace",
 		},
 		{
-			"exlude",
+			"exclude",
 			kptFnConfig{ChartConfig: &helm.ChartConfig{
 				LoaderConfig: helm.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "no-namespace"),
@@ -147,23 +158,65 @@ func TestKptFnCommand(t *testing.T) {
 					},
 				},
 			}},
-			2, "myconfiga",
+			1, "myconfigb",
 		},
-		// test output methods
+		{
+			"output path",
+			kptFnConfig{
+				ChartConfig: &helm.ChartConfig{
+					LoaderConfig: helm.LoaderConfig{
+						Chart: filepath.Join(exampleDir, "no-namespace"),
+					},
+				},
+				OutputPath: "my/output/path",
+			},
+			2, "  config.kubernetes.io/path: my/output/path/configmap_release-name-myconfigb.yaml\n",
+		},
+		{
+			"output kustomization",
+			kptFnConfig{
+				ChartConfig: &helm.ChartConfig{
+					LoaderConfig: helm.LoaderConfig{
+						Chart: filepath.Join(exampleDir, "no-namespace"),
+					},
+				},
+				OutputPath:          "my/output/path",
+				OutputKustomization: true,
+			},
+			3, "resources:\n  - configmap_myconfiga.yaml\n  - configmap_release-name-myconfigb.yaml\n",
+		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			if c.input.Name == "" {
+				c.input.Name = "release-name"
+			}
+			outPath := c.input.OutputPath
+			if outPath == "" {
+				outPath = "chart-output"
+			}
+			inputAnnotations[annotationPath] = path.Join(outPath, "previously-generated.yaml")
 			b, err := yaml.Marshal(map[string]interface{}{
 				"apiVersion":     "config.kubernetes.io/v1alpha1",
 				"kind":           "ResourceList",
-				"items":          []string{},
+				"items":          inputItems,
 				"functionConfig": map[string]interface{}{"data": c.input},
 			})
 			require.NoError(t, err)
 			var out bytes.Buffer
-			os.Args = []string{"testee"}
+			os.Args = []string{"helmrfn"}
 			err = Execute(bytes.NewReader(b), &out)
 			require.NoError(t, err)
-			validateYAML(t, out.Bytes(), 1)
+			result := validateYAML(t, out.Bytes(), 1)
+			items, _ := result["items"].([]interface{})
+			if c.mustContainObj >= 0 {
+				require.Equal(t, c.mustContainObj, len(items)-1, "amount of resources within output")
+			}
+			out.Reset()
+			enc := yaml.NewEncoder(&out)
+			for _, item := range items {
+				err = enc.Encode(item)
+				require.NoError(t, err)
+			}
 			require.Contains(t, out.String(), c.mustContain, "output of %#v", c.input)
 		})
 	}

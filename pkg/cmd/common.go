@@ -22,8 +22,7 @@ func marshal(resources []*yaml.RNode, writer io.Writer) error {
 	return enc.Close()
 }
 
-func render(cfg helm.Config, req helm.ChartConfig) ([]*yaml.RNode, error) {
-	h := helm.NewHelm(cfg)
+func render(h *helm.Helm, req *helm.ChartConfig) ([]*yaml.RNode, error) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
@@ -35,7 +34,7 @@ func render(cfg helm.Config, req helm.ChartConfig) ([]*yaml.RNode, error) {
 
 	rendered, err := h.Render(ctx, req)
 	if helm.IsUnknownRepository(err) {
-		log.Printf("HINT: access to unknown repositories can be enabled using env var %s=true or option --%s", envAcceptAnyRepo, flagAcceptAnyRepo)
+		log.Printf("HINT: access to unknown repositories can be enabled using env var %s=true or option --%s", envTrustAnyRepo, flagTrustAnyRepo)
 	}
 	return rendered, err
 }

@@ -11,5 +11,5 @@ RUN go build -o helmr -ldflags '-s -w -extldflags "-static"' . && mv helmr /usr/
 FROM alpine:3.12
 RUN mkdir /helm && chown root:nobody /helm && chmod 775 /helm
 ENV HELM_HOME=/helm
-COPY --from=build /usr/local/bin/helmr /usr/local/bin/
-ENTRYPOINT ["/usr/local/bin/helmr"]
+COPY --from=build /usr/local/bin/helmr /usr/local/bin/helmrfn
+ENTRYPOINT ["/usr/local/bin/helmrfn"]

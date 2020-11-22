@@ -52,12 +52,12 @@ type repositoryConfig interface {
 	Apply() (repositoryConfig, error)
 }
 
-func reposForURLs(repoURLs map[string]struct{}, allowUnknownRepos *bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
+func reposForURLs(repoURLs map[string]struct{}, trustAnyRepo *bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
 	repos, err := newRepositories(settings, getters)
 	if err != nil {
 		return nil, err
 	}
-	err = repos.setRepositoriesFromURLs(repoURLs, allowUnknownRepos)
+	err = repos.setRepositoriesFromURLs(repoURLs, trustAnyRepo)
 	if err != nil {
 		return nil, err
 	}
@@ -65,12 +65,12 @@ func reposForURLs(repoURLs map[string]struct{}, allowUnknownRepos *bool, setting
 }
 
 // reposForDependencies create temporary repositories.yaml and configure settings with it.
-func reposForDependencies(deps []*chartutil.Dependency, allowUnknownRepos *bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
+func reposForDependencies(deps []*chartutil.Dependency, trustAnyRepo *bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
 	repoURLs := map[string]struct{}{}
 	for _, d := range deps {
 		repoURLs[d.Repository] = struct{}{}
 	}
-	repos, err := reposForURLs(repoURLs, allowUnknownRepos, settings, getters)
+	repos, err := reposForURLs(repoURLs, trustAnyRepo, settings, getters)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +94,9 @@ func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (r *re
 		getters:    getters,
 		cacheDir:   settings.Home.Cache(),
 		indexFiles: map[string]*repo.IndexFile{},
+	}
+	if !filepath.IsAbs(string(settings.Home)) {
+		return nil, errors.Errorf("helm home must specify absolute file path but was %q", settings.Home)
 	}
 	repoFile := settings.Home.RepositoryFile()
 	r.repos, err = repo.LoadRepositoriesFile(repoFile)
@@ -256,7 +259,7 @@ func (f *repositories) UpdateIndex() error {
 	return nil
 }
 
-func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, allowUnknownRepos *bool) error {
+func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, trustAnyRepo *bool) error {
 	requiredRepos := make([]*repo.Entry, 0, len(repoURLs))
 	repoURLMap := map[string]*repo.Entry{}
 	for u := range repoURLs {
@@ -265,7 +268,7 @@ func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, all
 			u = repo.URL
 		} else if strings.HasPrefix(u, "alias:") || strings.HasPrefix(u, "@") {
 			return errors.Errorf("repository %q not found in repositories.yaml", u)
-		} else if allowUnknownRepos != nil && !*allowUnknownRepos || allowUnknownRepos == nil && f.repos != nil {
+		} else if trustAnyRepo != nil && !*trustAnyRepo || trustAnyRepo == nil && f.repos != nil {
 			err := errors.Errorf("repository %q not found in repositories.yaml and usage of unknown repositories is disabled", u)
 			if f.repos == nil || len(f.repos.Repositories) == 0 {
 				err = errors.Errorf("request repository %q: repositories.yaml does not exist or is empty and usage of unknown repositories is disabled", u)

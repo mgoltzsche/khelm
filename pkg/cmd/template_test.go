@@ -27,14 +27,14 @@ func TestTemplateCommand(t *testing.T) {
 		{
 			"latest cluster scoped remote chart",
 			[]string{"cert-manager", "--repo=https://charts.jetstack.io",
-				"--accept-any-repo", "--accept-cluster-scoped"},
+				"--trust-any-repo"},
 			-1, "acme.cert-manager.io",
 		},
 		{
 			"remote chart with version",
 			[]string{"cert-manager", "--version=0.9.x",
 				"--repo=https://charts.jetstack.io",
-				"--accept-any-repo", "--accept-cluster-scoped"},
+				"--trust-any-repo"},
 			34, "chart: cainjector-v0.9.1",
 		},
 		{
@@ -100,11 +100,11 @@ func TestTemplateCommandError(t *testing.T) {
 	}{
 		{
 			"reject unknown repo",
-			[]string{"cert-manager", "--repo=https://charts.jetstack.io", "--accept-cluster-scoped"},
+			[]string{"cert-manager", "--repo=https://charts.jetstack.io"},
 		},
 		{
 			"reject cluster scoped resources",
-			[]string{"cert-manager", "--repo=https://charts.jetstack.io", "--accept-any-repo"},
+			[]string{"cert-manager", "--repo=https://charts.jetstack.io", "--namespaced-only"},
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {

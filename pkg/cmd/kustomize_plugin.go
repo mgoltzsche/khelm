@@ -8,12 +8,12 @@ import (
 	"github.com/mgoltzsche/helmr/pkg/internal/output"
 )
 
-func runAsKustomizePlugin(cfg helm.Config, generatorYAML string, writer io.Writer) error {
+func runAsKustomizePlugin(h *helm.Helm, generatorYAML string, writer io.Writer) error {
 	req, err := helm.ReadGeneratorConfig(strings.NewReader(generatorYAML))
 	if err != nil {
 		return err
 	}
-	resources, err := render(cfg, req.ChartConfig)
+	resources, err := render(h, &req.ChartConfig)
 	if err != nil {
 		return err
 	}

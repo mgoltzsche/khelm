@@ -11,10 +11,10 @@ import (
 )
 
 type manifestTransformer struct {
-	Namespace          string
-	Excludes           ResourceMatchers
-	AllowClusterScoped bool
-	OutputPath         string
+	Namespace      string
+	Excludes       ResourceMatchers
+	NamespacedOnly bool
+	OutputPath     string
 }
 
 func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.RNode, err error) {
@@ -57,7 +57,7 @@ func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.R
 	}
 	if len(clusterScopedResources) > 0 {
 		return nil, errors.Errorf("manifests should only include namespace-scoped resources "+
-			"but the following cluster-scoped resources have been found:\n  %s\nPlease exclude cluster-scoped resources or enable their usage", strings.Join(clusterScopedResources, "\n  "))
+			"but the following cluster-scoped (or unknown) resources have been found:\n * %s\nPlease exclude cluster-scoped resources or enable their usage", strings.Join(clusterScopedResources, "\n * "))
 	}
 	return
 }
@@ -68,21 +68,16 @@ func (t *manifestTransformer) applyNamespace(o *yaml.RNode, clusterScopedResourc
 		return nil
 	}
 	namespaced, knownKind := openapi.IsNamespaceScoped(meta.TypeMeta)
-	namespaced = namespaced || !knownKind
-	if namespaced {
-		if t.Namespace != "" {
-			err = o.PipeE(yaml.LookupCreate(
-				yaml.ScalarNode, "metadata", "namespace"),
-				yaml.FieldSetter{StringValue: t.Namespace})
-			if err != nil {
-				return err
-			}
+	if t.Namespace != "" && (namespaced || !knownKind) {
+		err = o.PipeE(yaml.LookupCreate(
+			yaml.ScalarNode, "metadata", "namespace"),
+			yaml.FieldSetter{StringValue: t.Namespace})
+		if err != nil {
+			return err
 		}
-	} else {
-		if !t.AllowClusterScoped {
-			resID := fmt.Sprintf("apiVersion: %s, kind: %s, name: %s", meta.APIVersion, meta.Kind, meta.Name)
-			*clusterScopedResources = append(*clusterScopedResources, resID)
-		}
+	} else if t.NamespacedOnly && (!namespaced || !knownKind) && meta.Namespace == "" {
+		resID := fmt.Sprintf("apiVersion: %s, kind: %s, name: %s", meta.APIVersion, meta.Kind, meta.Name)
+		*clusterScopedResources = append(*clusterScopedResources, resID)
 	}
 	return nil
 }

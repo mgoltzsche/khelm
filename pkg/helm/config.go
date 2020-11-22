@@ -44,15 +44,13 @@ type ChartConfig struct {
 }
 
 // NewChartConfig creates a new empty chart config with default values
-func NewChartConfig() (cfg ChartConfig) {
+func NewChartConfig() (cfg *ChartConfig) {
+	cfg = &ChartConfig{}
 	cfg.applyDefaults()
 	return
 }
 
 func (cfg *ChartConfig) applyDefaults() {
-	if cfg.Name == "" {
-		cfg.Name = "release-name"
-	}
 	if cfg.KubeVersion == "" {
 		cfg.KubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
 	}
@@ -75,14 +73,14 @@ type LoaderConfig struct {
 
 // RendererConfig defines the configuration to render a chart
 type RendererConfig struct {
-	Name          string                 `yaml:"name,omitempty"`
-	Namespace     string                 `yaml:"namespace,omitempty"`
-	ValueFiles    []string               `yaml:"valueFiles,omitempty"`
-	Values        map[string]interface{} `yaml:"values,omitempty"`
-	KubeVersion   string                 `yaml:"kubeVersion,omitempty"`
-	APIVersions   []string               `yaml:"apiVersions,omitempty"`
-	Exclude       []ResourceSelector     `yaml:"exclude,omitempty"`
-	ClusterScoped bool                   `yaml:"clusterScoped,omitempty"`
+	Name           string                 `yaml:"name,omitempty"`
+	Namespace      string                 `yaml:"namespace,omitempty"`
+	ValueFiles     []string               `yaml:"valueFiles,omitempty"`
+	Values         map[string]interface{} `yaml:"values,omitempty"`
+	KubeVersion    string                 `yaml:"kubeVersion,omitempty"`
+	APIVersions    []string               `yaml:"apiVersions,omitempty"`
+	Exclude        []ResourceSelector     `yaml:"exclude,omitempty"`
+	NamespacedOnly bool                   `yaml:"namespacedOnly,omitempty"`
 }
 
 // Validate validates the chart renderer config
@@ -90,11 +88,8 @@ func (cfg *ChartConfig) Validate() (errs []string) {
 	if cfg.Chart == "" {
 		errs = append(errs, "chart not specified")
 	}
-	if cfg.Version == "" && cfg.Repository != "" {
-		errs = append(errs, "no chart version but repository specified")
-	}
 	if cfg.Name == "" {
-		errs = append(errs, "releaseName not specified")
+		errs = append(errs, "release name not specified")
 	}
 	return
 }
@@ -146,7 +141,7 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		}
 		errs = append(errs, cfg.Validate()...)
 		if len(errs) > 0 {
-			return nil, errors.Errorf("invalid chart renderer config:\n\t* %s", strings.Join(errs, "\n\t* "))
+			return nil, errors.Errorf("invalid chart renderer config:\n * %s", strings.Join(errs, "\n * "))
 		}
 	}
 	return cfg, errors.Wrap(err, "read chart renderer config")
