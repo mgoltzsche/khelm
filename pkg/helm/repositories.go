@@ -270,8 +270,8 @@ func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, tru
 			return errors.Errorf("repository %q not found in repositories.yaml", u)
 		} else if trustAnyRepo != nil && !*trustAnyRepo || trustAnyRepo == nil && f.repos != nil {
 			err := errors.Errorf("repository %q not found in repositories.yaml and usage of unknown repositories is disabled", u)
-			if f.repos == nil || len(f.repos.Repositories) == 0 {
-				err = errors.Errorf("request repository %q: repositories.yaml does not exist or is empty and usage of unknown repositories is disabled", u)
+			if f.repos == nil {
+				err = errors.Errorf("request repository %q: %s does not exist and usage of unknown repositories is disabled", u, f.dir.RepositoryFile())
 			}
 			return &unknownRepoError{err}
 		}
@@ -299,6 +299,25 @@ func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, tru
 			return err
 		}
 	}
+
+	// Log repository usage
+	repoUsage := make([]string, len(f.repos.Repositories))
+	for i, entry := range f.repos.Repositories {
+		if repo := repoURLMap[entry.URL]; repo != nil || trustAnyRepo != nil {
+			authInfo := "unauthenticated"
+			if entry.Username != "" && entry.Password != "" {
+				authInfo = fmt.Sprintf("as user %q", entry.Username)
+			}
+			repoUsage[i] = fmt.Sprintf("Using repository %q (%s)", entry.URL, authInfo)
+		} else {
+			repoUsage[i] = fmt.Sprintf("WARNING: using untrusted repository %q", entry.URL)
+		}
+	}
+	sort.Strings(repoUsage)
+	for _, msg := range repoUsage {
+		log.Println(msg)
+	}
+
 	return nil
 }
 
@@ -373,11 +392,11 @@ func (f *tempRepositories) Close() error {
 }
 
 func downloadIndexFile(entry *repo.Entry, cacheDir string, getters getter.Providers) error {
+	log.Printf("Downloading repository index of %s", entry.URL)
 	r, err := repo.NewChartRepository(entry, getters)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	log.Printf("Downloading repo index of %s", entry.URL)
 	idxFile := entry.Cache
 	if idxFile == "" {
 		idxFile = indexFile(entry, cacheDir)
