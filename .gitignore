@@ -1,7 +1,9 @@
-helm-kustomize-plugin
-helmr
-coverage.out
-example/**/charts
-example/**/tmpcharts
-example/kpt/output-*
+/build
+
+/cmd/*/*
+!/cmd/*/*.go
+
+/example/**/charts
+/example/**/tmpcharts
+/example/kpt/output-*
 

@@ -1,11 +1,11 @@
-module github.com/mgoltzsche/helmr
+module github.com/mgoltzsche/khelm
 
 go 1.14
 
 require (
 	github.com/Masterminds/goutils v1.1.0 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/Masterminds/semver/v3 v3.1.0
+	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/cyphar/filepath-securejoin v0.2.2 // indirect
 	github.com/ghodss/yaml v1.0.0
@@ -20,5 +20,5 @@ require (
 	k8s.io/apimachinery v0.19.4 // indirect
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/helm v2.17.0+incompatible
-	sigs.k8s.io/kustomize/kyaml v0.10.0
+	sigs.k8s.io/kustomize/kyaml v0.10.1
 )

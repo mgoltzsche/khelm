@@ -17,9 +17,10 @@ import (
 
 const (
 	// GeneratorAPIVersion specifies the apiVersion field value supported by the generator
-	GeneratorAPIVersion = "helm.kustomize.mgoltzsche.github.com/v1"
+	GeneratorAPIVersion = "khelm.mgoltzsche.github.com/v1"
 	// GeneratorKind specifies the API kind field value supported by the generator
-	GeneratorKind = "ChartRenderer"
+	GeneratorKind          = "ChartRenderer"
+	oldGeneratorAPIVersion = "helm.kustomize.mgoltzsche.github.com/v1"
 )
 
 // GeneratorConfig define the kustomize plugin's input file content
@@ -130,7 +131,7 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		}
 		cfg.applyDefaults()
 		errs := []string{}
-		if cfg.APIVersion != GeneratorAPIVersion {
+		if cfg.APIVersion != GeneratorAPIVersion && cfg.APIVersion != oldGeneratorAPIVersion {
 			errs = append(errs, fmt.Sprintf("expected apiVersion %s but was %s", GeneratorAPIVersion, cfg.APIVersion))
 		}
 		if cfg.Kind != GeneratorKind {

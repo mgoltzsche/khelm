@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"bytes"
@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mgoltzsche/helmr/pkg/helm"
+	"github.com/mgoltzsche/khelm/pkg/helm"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
 func TestKptFnCommand(t *testing.T) {
-	dir, err := ioutil.TempDir("", "helmr-fn-test-")
+	dir, err := ioutil.TempDir("", "khelm-fn-test-")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 	os.Setenv("HELM_HOME", dir)
@@ -203,7 +203,7 @@ func TestKptFnCommand(t *testing.T) {
 			})
 			require.NoError(t, err)
 			var out bytes.Buffer
-			os.Args = []string{"helmrfn"}
+			os.Args = []string{"khelmfn"}
 			err = Execute(bytes.NewReader(b), &out)
 			require.NoError(t, err)
 			result := validateYAML(t, out.Bytes(), 1)

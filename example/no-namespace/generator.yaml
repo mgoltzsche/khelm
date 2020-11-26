@@ -1,4 +1,4 @@
-apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+apiVersion: khelm.mgoltzsche.github.com/v1
 kind: ChartRenderer
 metadata:
   name: no-namespace

@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"bytes"
@@ -10,22 +10,22 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mgoltzsche/helmr/pkg/helm"
+	"github.com/mgoltzsche/khelm/pkg/helm"
 	"github.com/spf13/cobra"
 )
 
 const (
 	envKustomizePluginConfig     = "KUSTOMIZE_PLUGIN_CONFIG_STRING"
 	envKustomizePluginConfigRoot = "KUSTOMIZE_PLUGIN_CONFIG_ROOT"
-	envTrustAnyRepo              = "HELMR_TRUST_ANY_REPO"
-	envDebug                     = "HELMR_DEBUG"
+	envTrustAnyRepo              = "KHELM_TRUST_ANY_REPO"
+	envDebug                     = "KHELM_DEBUG"
 	envHelmDebug                 = "HELM_DEBUG"
 	flagTrustAnyRepo             = "trust-any-repo"
 )
 
 var usageExample = fmt.Sprintf("  %s template ./chart\n  %s template stable/jenkins\n  %s template jenkins --version=2.5.3 --repo=https://kubernetes-charts.storage.googleapis.com", os.Args[0], os.Args[0], os.Args[0])
 
-// Execute runs the helmr CLI
+// Execute runs the khelm CLI
 func Execute(reader io.Reader, writer io.Writer) error {
 	log.SetFlags(0)
 	debug, _ := strconv.ParseBool(os.Getenv(envDebug))
@@ -48,7 +48,7 @@ func Execute(reader io.Reader, writer io.Writer) error {
 	rootCmd := &cobra.Command{}
 	errBuf := bytes.Buffer{}
 
-	if filepath.Base(os.Args[0]) == "helmrfn" {
+	if filepath.Base(os.Args[0]) == "khelmfn" {
 		// Add kpt function command
 		rootCmd = kptFnCommand(h)
 		rootCmd.SetIn(reader)
@@ -62,10 +62,10 @@ func Execute(reader io.Reader, writer io.Writer) error {
 
 	rootCmd.Example = usageExample
 	rootCmd.Use = os.Args[0]
-	rootCmd.Short = "helmr chart renderer"
-	rootCmd.Long = `helmr is a helm chart templating CLI, kpt function and kustomize plugin.
+	rootCmd.Short = "khelm chart renderer"
+	rootCmd.Long = `khelm is a helm chart templating CLI, kpt function and kustomize plugin.
 
-In opposite to the original helm CLI helmr allows to
+In opposite to the helm CLI khelm allows to
  * build local charts automatically when templating
  * use any repository without registering it in repositories.yaml
  * enforce namespace-scoped resources within the template output

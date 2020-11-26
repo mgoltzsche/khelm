@@ -1,6 +1,6 @@
 #!/bin/sh
 
-IMAGE=mgoltzsche/helmr
+IMAGE=mgoltzsche/khelm
 
 echo
 echo "  TEST $0: Run CLI without repositories.yaml"

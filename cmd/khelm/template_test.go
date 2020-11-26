@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"bytes"
@@ -84,7 +84,7 @@ func TestTemplateCommand(t *testing.T) {
 }
 
 func TestTemplateCommandError(t *testing.T) {
-	dir, err := ioutil.TempDir("", "helmr-fn-test-")
+	dir, err := ioutil.TempDir("", "khelm-tpl-test-")
 	require.NoError(t, err)
 	repoDir := filepath.Join(dir, "repository")
 	defer os.RemoveAll(dir)

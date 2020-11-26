@@ -1,12 +1,12 @@
-package cmd
+package main
 
 import (
 	"encoding/json"
 	"strconv"
 	"strings"
 
-	"github.com/mgoltzsche/helmr/pkg/helm"
-	"github.com/mgoltzsche/helmr/pkg/internal/output"
+	"github.com/mgoltzsche/khelm/pkg/helm"
+	"github.com/mgoltzsche/khelm/pkg/output"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/kustomize/kyaml/fn/framework"
@@ -49,7 +49,7 @@ func kptFnCommand(h *helm.Helm) *cobra.Command {
 
 		return nil
 	})
-	return &cmd
+	return cmd
 }
 
 func generateKustomization(resources []*yaml.RNode) (*yaml.RNode, error) {

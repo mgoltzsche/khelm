@@ -1,14 +1,13 @@
-IMAGE?=mgoltzsche/helmr
+IMAGE?=mgoltzsche/khelm
 
 LDFLAGS?=''
 USER=$(shell id -u)
-PKG=github.com/mgoltzsche/helmr
+PKG=github.com/mgoltzsche/khelm
 
 BUILDTAGS?=
 
-GOIMAGE=helm-kustomize-plugin-go
-LITEIDEIMAGE=mgoltzsche/liteide:x36
-DOCKERRUN=docker run --name helm-kustomize-plugin-build --rm \
+GOIMAGE=khelm-go
+DOCKERRUN=docker run --rm \
 		-v "$(shell pwd):/go/src/$(PKG)" \
 		-w "/go/src/$(PKG)" \
 		-u $(USER):$(USER) \
@@ -21,31 +20,31 @@ RUN go get golang.org/x/lint/golint
 endef
 export GODOCKERFILE
 
-all: clean build
+all: clean khelm-docker
 
-build: golang-image
+khelm-docker: golang-image
 	$(DOCKERRUN) $(GOIMAGE) \
-		make helm-kustomize-plugin BUILDTAGS=$(BUILDTAGS)
+		make khelm BUILDTAGS=$(BUILDTAGS)
 
-helm-kustomize-plugin:
-	CGO_ENABLED=0 go build -a -ldflags '-s -w -extldflags "-static" $(LDFLAGS)' -tags '$(BUILDTAGS)' .
+khelm: builddir
+	CGO_ENABLED=0 go build -o build/bin/khelm -a -ldflags '-s -w -extldflags "-static" $(LDFLAGS)' -tags '$(BUILDTAGS)' ./cmd/khelm
 
-install:
-	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer
-	cp helmr $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
+install-kustomize-plugin:
+	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
+	cp build/bin/khelm $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
 
-test:
-	go test -coverprofile coverage.out -cover ./...
+test: builddir
+	go test -coverprofile build/coverage.out -cover ./...
 
 coverage: test
-	go tool cover -html=coverage.out -o coverage.html
+	go tool cover -html=build/coverage.out -o build/coverage.html
 
 e2e-test: image
 	./e2e/image-test.sh
 	./e2e/kpt-test.sh
 
 clean:
-	rm -f helm-kustomize-plugin coverage.out coverage.html
+	rm -rf build
 
 check-fmt-docker: golang-image
 	$(DOCKERRUN) $(GOIMAGE) make check-fmt
@@ -59,7 +58,7 @@ lint:
 
 check: golang-image
 	$(DOCKERRUN) $(GOIMAGE) \
-		make clean helm-kustomize-plugin test lint check-fmt BUILDTAGS=$(BUILDTAGS)
+		make clean khelm test lint check-fmt BUILDTAGS=$(BUILDTAGS)
 
 coverage-report: golang-image
 	$(DOCKERRUN) $(GOIMAGE) make coverage
@@ -76,3 +75,6 @@ golang-image:
 
 image:
 	docker build --force-rm -t $(IMAGE) .
+
+builddir:
+	mkdir -p build/bin

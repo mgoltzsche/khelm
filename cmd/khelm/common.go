@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/mgoltzsche/helmr/pkg/helm"
+	"github.com/mgoltzsche/khelm/pkg/helm"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
