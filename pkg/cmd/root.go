@@ -6,10 +6,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
-
-	"path/filepath"
 
 	"github.com/mgoltzsche/helmr/pkg/helm"
 	"github.com/spf13/cobra"

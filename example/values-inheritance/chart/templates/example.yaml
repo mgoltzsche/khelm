@@ -3,4 +3,6 @@ kind: ConfigMap
 metadata:
   name: myconfig
 data:
-  generated: "<inherited:{{ .Values.example.inherited }}> <fileoverwrite:{{ .Values.example.overrideFile }}> <valueoverwrite:{{ .Values.example.overrideValue }}>"
+  inherited: {{ .Values.example.inherited }}
+  fileoverwrite: {{ .Values.example.overrideFile }}
+  valueoverwrite: {{ .Values.example.overrideValue }}

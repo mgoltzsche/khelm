@@ -21,11 +21,11 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-type unknownRepoError struct {
+type untrustedRepoError struct {
 	error
 }
 
-func (e *unknownRepoError) Format(s fmt.State, verb rune) {
+func (e *untrustedRepoError) Format(s fmt.State, verb rune) {
 	f, isFormatter := e.error.(interface {
 		Format(s fmt.State, verb rune)
 	})
@@ -36,9 +36,9 @@ func (e *unknownRepoError) Format(s fmt.State, verb rune) {
 	fmt.Fprintf(s, "%s", e.error)
 }
 
-// IsUnknownRepository return true if the provided error is an unknown repository error
-func IsUnknownRepository(err error) bool {
-	_, ok := errors.Cause(err).(*unknownRepoError)
+// IsUntrustedRepository return true if the provided error is an untrusted repository error
+func IsUntrustedRepository(err error) bool {
+	_, ok := errors.Cause(err).(*untrustedRepoError)
 	return ok
 }
 
@@ -269,11 +269,11 @@ func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, tru
 		} else if strings.HasPrefix(u, "alias:") || strings.HasPrefix(u, "@") {
 			return errors.Errorf("repository %q not found in repositories.yaml", u)
 		} else if trustAnyRepo != nil && !*trustAnyRepo || trustAnyRepo == nil && f.repos != nil {
-			err := errors.Errorf("repository %q not found in repositories.yaml and usage of unknown repositories is disabled", u)
+			err := errors.Errorf("repository %q not found in %s and usage of untrusted repositories is disabled", u, f.dir.RepositoryFile())
 			if f.repos == nil {
-				err = errors.Errorf("request repository %q: %s does not exist and usage of unknown repositories is disabled", u, f.dir.RepositoryFile())
+				err = errors.Errorf("request repository %q: %s does not exist and usage of untrusted repositories is disabled", u, f.dir.RepositoryFile())
 			}
-			return &unknownRepoError{err}
+			return &untrustedRepoError{err}
 		}
 		repoURLMap[u] = repo
 	}

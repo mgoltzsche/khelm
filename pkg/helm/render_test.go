@@ -51,7 +51,7 @@ func TestRender(t *testing.T) {
 		{"exclude", "example/exclude/generator.yaml", "myns", "  key: b"},
 		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", "myotherns", "http://efk-elasticsearch-client:9200"},
 		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", "myns", "http://efk-elasticsearch-client:9200"},
-		{"values-inheritance", "example/values-inheritance/generator.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
+		{"values-inheritance", "example/values-inheritance/generator.yaml", "values-inheritance-env", " inherited: inherited value\n  fileoverwrite: overwritten by file\n  valueoverwrite: overwritten by generator config"},
 		{"unsupported-field", "example/unsupported-field/generator.yaml", "myns", "key: a\n"},
 		{"cluster-scoped", "example/cluster-scoped/generator.yaml", "", "myrolebinding"},
 	} {
@@ -81,9 +81,15 @@ func TestRender(t *testing.T) {
 	}
 }
 
-func TestRenderUnknownRepositoryError(t *testing.T) {
+func TestRenderUntrustedRepositoryError(t *testing.T) {
+	dir, err := ioutil.TempDir("", "khelm-test-untrusted-repo-")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+	os.Setenv("HELM_HOME", dir)
+	defer os.Unsetenv("HELM_HOME")
+
 	file := filepath.Join(rootDir, "example/rook-ceph/operator/generator.yaml")
-	err := renderFile(t, file, false, rootDir, &bytes.Buffer{})
+	err = renderFile(t, file, false, rootDir, &bytes.Buffer{})
 	require.Error(t, err, file)
 }
 
@@ -317,6 +323,7 @@ func render(t *testing.T, req ChartConfig, trustAnyRepo bool, writer io.Writer) 
 		return err
 	}
 	enc := yaml.NewEncoder(writer)
+	enc.SetIndent(2)
 	for _, r := range resources {
 		enc.Encode(r.Document())
 	}
@@ -326,14 +333,19 @@ func render(t *testing.T, req ChartConfig, trustAnyRepo bool, writer io.Writer) 
 func readYaml(y []byte) (l []map[string]interface{}, err error) {
 	dec := yaml.NewDecoder(bytes.NewReader(y))
 	o := map[string]interface{}{}
+	i := 0
 	for ; err == nil; err = dec.Decode(o) {
 		if len(o) > 0 {
 			l = append(l, o)
 			o = map[string]interface{}{}
 		}
+		i++
 	}
 	if err == io.EOF {
 		err = nil
+	}
+	if err != nil {
+		err = fmt.Errorf("invalid yaml output at resource %d: %w", i, err)
 	}
 	return
 }

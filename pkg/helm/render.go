@@ -71,9 +71,9 @@ func renderChart(chrt *chart.Chart, c *ChartConfig, getters getter.Providers) (r
 		return nil, errors.Wrap(err, "render chart")
 	}
 
-	listManifests := manifest.SplitManifests(renderedTemplates)
+	manifests := manifest.SplitManifests(renderedTemplates)
 
-	if len(listManifests) == 0 {
+	if len(manifests) == 0 {
 		return nil, errors.Errorf("chart %s does not contain any manifests", chrt.Metadata.Name)
 	}
 
@@ -84,8 +84,8 @@ func renderChart(chrt *chart.Chart, c *ChartConfig, getters getter.Providers) (r
 		OutputPath:     "output",
 	}
 
-	r = make([]*yaml.RNode, 0, len(listManifests))
-	for _, m := range sortByKind(listManifests) {
+	r = make([]*yaml.RNode, 0, len(manifests))
+	for _, m := range sortByKind(manifests) {
 		b := filepath.Base(m.Name)
 		if b == "NOTES.txt" || strings.HasPrefix(b, "_") || whitespaceRegex.MatchString(m.Content) {
 			continue
