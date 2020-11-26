@@ -13,7 +13,7 @@ import (
 )
 
 func TestKustomizePlugin(t *testing.T) {
-	file := filepath.Join("..", "..", "example", "exclude", "chartref.yaml")
+	file := filepath.Join("..", "..", "example", "exclude", "generator.yaml")
 	kustomizeGenCfg, err := ioutil.ReadFile(file)
 	require.NoError(t, err)
 	os.Setenv(envKustomizePluginConfig, string(kustomizeGenCfg))

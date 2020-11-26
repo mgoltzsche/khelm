@@ -40,20 +40,20 @@ func TestRender(t *testing.T) {
 		expectedNamespace string
 		expectedContained string
 	}{
-		{"jenkins", "example/jenkins/jenkins-chart.yaml", "jenkins", expectedJenkinsContained},
-		{"values-external", "pkg/helm/chartwithextvalues.yaml", "jenkins", expectedJenkinsContained},
-		{"rook-ceph-version-range", "example/rook-ceph/operator/rook-ceph-chart.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
-		{"cert-manager", "example/cert-manager/cert-manager-chart.yaml", "cert-manager", "chart: cainjector-v0.9.1"},
-		{"apiversions-condition", "example/apiversions-condition/chartref.yaml", "apiversions-condition-env", "  config: fancy-config"},
-		{"kubeVersion", "example/apiversions-condition/chartref.yaml", "apiversions-condition-env", "  k8sVersion: v1.17.0"},
-		{"no-namespace", "example/no-namespace/chartref.yaml", "", "  key: a"},
-		{"release-name", "example/no-namespace/chartref.yaml", "", "  name: no-namespace-myconfigb"},
-		{"exclude", "example/exclude/chartref.yaml", "myns", "  key: b"},
-		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/chartref.yaml", "myotherns", "http://efk-elasticsearch-client:9200"},
-		{"local-chart-with-remote-dependency", "example/localref/chartref.yaml", "myns", "http://efk-elasticsearch-client:9200"},
-		{"values-inheritance", "example/values-inheritance/chartref.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
-		{"unsupported-field", "example/unsupported-field/chartref.yaml", "myns", "key: a\n"},
-		{"cluster-scoped", "example/cluster-scoped/chartref.yaml", "", "myrolebinding"},
+		{"jenkins", "example/jenkins/generator.yaml", "jenkins", expectedJenkinsContained},
+		{"values-external", "pkg/helm/generatorwithextvalues.yaml", "jenkins", expectedJenkinsContained},
+		{"rook-ceph-version-range", "example/rook-ceph/operator/generator.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
+		{"cert-manager", "example/cert-manager/generator.yaml", "cert-manager", "chart: cainjector-v0.9.1"},
+		{"apiversions-condition", "example/apiversions-condition/generator.yaml", "apiversions-condition-env", "  config: fancy-config"},
+		{"kubeVersion", "example/apiversions-condition/generator.yaml", "apiversions-condition-env", "  k8sVersion: v1.17.0"},
+		{"no-namespace", "example/no-namespace/generator.yaml", "", "  key: a"},
+		{"release-name", "example/no-namespace/generator.yaml", "", "  name: no-namespace-myconfigb"},
+		{"exclude", "example/exclude/generator.yaml", "myns", "  key: b"},
+		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", "myotherns", "http://efk-elasticsearch-client:9200"},
+		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", "myns", "http://efk-elasticsearch-client:9200"},
+		{"values-inheritance", "example/values-inheritance/generator.yaml", "values-inheritance-env", "<inherited:inherited value> <fileoverwrite:overwritten by file> <valueoverwrite:overwritten by generator config>"},
+		{"unsupported-field", "example/unsupported-field/generator.yaml", "myns", "key: a\n"},
+		{"cluster-scoped", "example/cluster-scoped/generator.yaml", "", "myrolebinding"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			for _, cached := range []string{"", "cached "} {
@@ -82,25 +82,25 @@ func TestRender(t *testing.T) {
 }
 
 func TestRenderUnknownRepositoryError(t *testing.T) {
-	file := filepath.Join(rootDir, "example/rook-ceph/operator/rook-ceph-chart.yaml")
+	file := filepath.Join(rootDir, "example/rook-ceph/operator/generator.yaml")
 	err := renderFile(t, file, false, rootDir, &bytes.Buffer{})
 	require.Error(t, err, file)
 }
 
 func TestRenderInvalidRequirementsLockError(t *testing.T) {
-	file := filepath.Join(rootDir, "example/invalid-requirements-lock/chartref.yaml")
+	file := filepath.Join(rootDir, "example/invalid-requirements-lock/generator.yaml")
 	err := renderFile(t, file, true, rootDir, &bytes.Buffer{})
 	require.Error(t, err, "render %s", file)
 }
 
 func TestRenderUnexpectedClusterScopedResourcesError(t *testing.T) {
-	file := filepath.Join(rootDir, "example/cluster-scoped-forbidden/chartref.yaml")
+	file := filepath.Join(rootDir, "example/cluster-scoped-forbidden/generator.yaml")
 	err := renderFile(t, file, true, rootDir, &bytes.Buffer{})
 	require.Error(t, err, "render %s", file)
 }
 
 func TestRenderExclude(t *testing.T) {
-	file := filepath.Join(rootDir, "example/exclude/chartref.yaml")
+	file := filepath.Join(rootDir, "example/exclude/generator.yaml")
 	buf := bytes.Buffer{}
 	err := renderFile(t, file, true, rootDir, &buf)
 	require.NoError(t, err, "render %s", file)
@@ -109,7 +109,7 @@ func TestRenderExclude(t *testing.T) {
 }
 
 func TestRenderExclusionNoMatchError(t *testing.T) {
-	file := filepath.Join(rootDir, "example/exclude-nomatch/chartref.yaml")
+	file := filepath.Join(rootDir, "example/exclude-nomatch/generator.yaml")
 	buf := bytes.Buffer{}
 	err := renderFile(t, file, true, rootDir, &buf)
 	require.Error(t, err, "render %s", file)
@@ -118,7 +118,7 @@ func TestRenderExclusionNoMatchError(t *testing.T) {
 func TestRenderRebuildsLocalDependencies(t *testing.T) {
 	tplDir := filepath.Join(rootDir, "example/localref/elk/templates")
 	tplFile := filepath.Join(tplDir, "changed.yaml")
-	configFile := filepath.Join(rootDir, "example/localrefref/chartref.yaml")
+	configFile := filepath.Join(rootDir, "example/localrefref/generator.yaml")
 	os.RemoveAll(tplDir)
 
 	// Render once to ensure the dependency has been built already
@@ -159,7 +159,7 @@ func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
 	err = idx.WriteFile(idxFile, 0644)
 	require.NoError(t, err, "write empty index file")
 
-	file := filepath.Join(rootDir, "example/rook-ceph/operator/rook-ceph-chart.yaml")
+	file := filepath.Join(rootDir, "example/rook-ceph/operator/generator.yaml")
 	err = renderFile(t, file, true, rootDir, &bytes.Buffer{})
 	require.NoError(t, err, "render %s with outdated index", file)
 }
@@ -185,14 +185,14 @@ func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
 	err = os.RemoveAll(filepath.Join(rootDir, "example/localref/elk/charts"))
 	require.NoError(t, err, "remove charts")
 
-	file := filepath.Join(rootDir, "example/localref/chartref.yaml")
+	file := filepath.Join(rootDir, "example/localref/generator.yaml")
 	err = renderFile(t, file, true, rootDir, &bytes.Buffer{})
 	require.NoError(t, err, "render %s with outdated index", file)
 }
 
 func TestRenderRepositoryCredentials(t *testing.T) {
 	// Make sure a fake chart exists that the fake server can serve
-	err := renderFile(t, filepath.Join(rootDir, "example/localrefref/chartref.yaml"), true, rootDir, &bytes.Buffer{})
+	err := renderFile(t, filepath.Join(rootDir, "example/localrefref/generator.yaml"), true, rootDir, &bytes.Buffer{})
 	require.NoError(t, err)
 	fakeChartTgz := filepath.Join(rootDir, "example/localrefref/charts/efk-0.1.1.tgz")
 

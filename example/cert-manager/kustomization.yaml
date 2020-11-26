@@ -1,5 +1,5 @@
 generators:
-- cert-manager-chart.yaml
+- generator.yaml
 
 resources:
 - crds.yaml

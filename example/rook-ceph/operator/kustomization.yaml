@@ -1,5 +1,5 @@
 generators:
-  - rook-ceph-chart.yaml
+  - generator.yaml
 
 resources:
   - namespace.yaml
