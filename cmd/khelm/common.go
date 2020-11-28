@@ -34,7 +34,7 @@ func render(h *helm.Helm, req *helm.ChartConfig) ([]*yaml.RNode, error) {
 
 	rendered, err := h.Render(ctx, req)
 	if helm.IsUntrustedRepository(err) {
-		log.Printf("HINT: access to unknown repositories can be enabled using env var %s=true or option --%s", envTrustAnyRepo, flagTrustAnyRepo)
+		log.Printf("HINT: access to untrusted repositories can be enabled using env var %s=true or option --%s", envTrustAnyRepo, flagTrustAnyRepo)
 	}
 	return rendered, err
 }

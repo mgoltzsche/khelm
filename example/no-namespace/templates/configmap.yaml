@@ -11,3 +11,4 @@ metadata:
   name: {{ .Release.Name }}-myconfigb
 data:
   key: b
+  k8sVersion: {{ .Capabilities.KubeVersion }}

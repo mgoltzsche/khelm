@@ -20,15 +20,19 @@ const (
 
 // Options specifies the output options
 type Options struct {
-	File          string
-	Kustomization string
-	Replace       bool
-	Writer        io.Writer
+	FileOrDir string
+	Replace   bool
+	Writer    io.Writer
 }
 
 // Output specifies a kubernetes resource sink
 type Output interface {
 	Write([]*yaml.RNode) error
+}
+
+// IsDirectory returns true if the output ends with /
+func IsDirectory(output string) bool {
+	return strings.HasSuffix(filepath.ToSlash(output), "/")
 }
 
 // ResourcePath derives the output path (using / as separator) from a given resource
@@ -40,19 +44,17 @@ func ResourcePath(meta yaml.ResourceMeta, basePath string) string {
 
 // New creates a new output from the given options
 func New(o Options) (Output, error) {
-	if o.Kustomization != "" && o.File != "" {
-		return nil, errors.New("setting both kustomization output dir and output file is not allowed")
+	if o.FileOrDir == "" && o.Writer == nil {
+		return nil, errors.New("neither output file nor writer specified")
+	} else if o.FileOrDir == "" || o.FileOrDir == "-" {
+		if o.Replace {
+			return nil, errors.New("output replacement cannot be enabled when writing to writer")
+		}
+		return &writerOutput{o.Writer}, nil
+	} else if IsDirectory(o.FileOrDir) {
+		return &kustomizationOutput{dirOutput{o.FileOrDir, o.Replace}}, nil
 	}
-	if o.Kustomization != "" {
-		return &kustomizationOutput{dirOutput{o.Kustomization, o.Replace}}, nil
-	}
-	if o.File != "" {
-		return &fileOutput{o.File, o.Replace}, nil
-	}
-	if o.Replace {
-		return nil, errors.New("output replacement cannot be enabled when writing to stdout")
-	}
-	return &writerOutput{o.Writer}, nil
+	return &fileOutput{o.FileOrDir, o.Replace}, nil
 }
 
 type fileOutput struct {

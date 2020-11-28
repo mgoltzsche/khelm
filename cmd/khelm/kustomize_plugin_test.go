@@ -44,15 +44,17 @@ func runKustomizePlugin(t *testing.T, wd string, args ...string) (out []byte) {
 
 func validateYAML(t *testing.T, y []byte, objAmount int) (first map[string]interface{}) {
 	dec := yaml.NewDecoder(bytes.NewReader(y))
-	i := -1
+	i := 0
 	var err error
 	for err == nil {
 		o := map[string]interface{}{}
 		err = dec.Decode(o)
-		if first == nil {
-			first = o
+		if len(o) > 0 {
+			if first == nil {
+				first = o
+			}
+			i++
 		}
-		i++
 	}
 	if err == io.EOF {
 		err = nil

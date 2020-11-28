@@ -5,5 +5,4 @@ metadata:
   name: fancycr
 spec:
   config: fancy-config
-  k8sVersion: {{ .Capabilities.KubeVersion }}
 {{ end }}

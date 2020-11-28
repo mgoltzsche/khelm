@@ -62,9 +62,9 @@ func TestTemplateCommand(t *testing.T) {
 		},
 		{
 			"kubeversion",
-			[]string{filepath.Join(exampleDir, "apiversions-condition", "chart"),
-				"--api-versions=myfancyapi/v1", "--kube-version=1.17"},
-			1, "k8sVersion: v1.17.0",
+			[]string{filepath.Join(exampleDir, "no-namespace"),
+				"--kube-version=1.17"},
+			2, "k8sVersion: v1.17.0",
 		},
 		{
 			"namespace",
@@ -99,7 +99,7 @@ func TestTemplateCommandError(t *testing.T) {
 		args []string
 	}{
 		{
-			"reject unknown repo",
+			"reject untrusted repo",
 			[]string{"cert-manager", "--repo=https://charts.jetstack.io"},
 		},
 		{

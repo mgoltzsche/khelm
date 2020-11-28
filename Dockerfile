@@ -5,6 +5,7 @@ COPY go.mod go.sum /go/src/github.com/mgoltzsche/khelm/
 WORKDIR /go/src/github.com/mgoltzsche/khelm
 RUN go mod download
 COPY cmd/khelm /go/src/github.com/mgoltzsche/khelm/cmd/khelm
+COPY internal /go/src/github.com/mgoltzsche/khelm/internal
 COPY pkg /go/src/github.com/mgoltzsche/khelm/pkg
 RUN go build -o build/bin/khelm -ldflags '-s -w -extldflags "-static"' ./cmd/khelm && mv build/bin/khelm /usr/local/bin/
 
