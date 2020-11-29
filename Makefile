@@ -1,7 +1,4 @@
 IMAGE ?= mgoltzsche/khelm
-
-LDFLAGS ?= ''
-USER := $(shell id -u)
 PKG := github.com/mgoltzsche/khelm
 
 BUILD_DIR = $(CURDIR)/build
@@ -14,25 +11,7 @@ VERSION ?= $(shell echo "$$(git for-each-ref refs/tags/ --count=1 --sort=-versio
 GO_LDFLAGS := -X $(PKG)/internal/version.Version=$(VERSION) -s -w -extldflags '-static'
 BUILDTAGS ?= 
 
-GOIMAGE=khelm-go
-DOCKERRUN=docker run --rm \
-		-v "$(shell pwd):/go/src/$(PKG)" \
-		-w "/go/src/$(PKG)" \
-		-u $(USER):$(USER) \
-		-e HOME=/go \
-		-e CGO_ENABLED=0
-define GODOCKERFILE
-FROM golang:1.14-alpine3.12
-RUN apk add --update --no-cache make git
-RUN go get golang.org/x/lint/golint
-endef
-export GODOCKERFILE
-
-all: clean khelm-docker
-
-khelm-docker: golang-image
-	$(DOCKERRUN) $(GOIMAGE) \
-		make khelm BUILDTAGS=$(BUILDTAGS)
+all: khelm test check
 
 khelm: $(BUILD_DIR)
 	CGO_ENABLED=0 go build -o $(BUILD_DIR)/bin/khelm -a -ldflags "$(GO_LDFLAGS)" -tags "$(BUILDTAGS)" ./cmd/khelm
