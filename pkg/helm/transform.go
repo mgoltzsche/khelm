@@ -10,6 +10,10 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
+const (
+	annotationManagedBy = "app.kubernetes.io/managed-by"
+)
+
 type manifestTransformer struct {
 	Namespace      string
 	Excludes       ResourceMatchers
@@ -48,6 +52,12 @@ func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.R
 			break
 		}
 
+		// Remove managed-by label
+		err = t.removeManagedByLabel(o)
+		if err != nil {
+			break
+		}
+
 		r = append(r, o)
 	}
 	if err == io.EOF {
@@ -80,4 +90,13 @@ func (t *manifestTransformer) applyNamespace(o *yaml.RNode, clusterScopedResourc
 		*clusterScopedResources = append(*clusterScopedResources, resID)
 	}
 	return nil
+}
+
+func (t *manifestTransformer) removeManagedByLabel(o *yaml.RNode) error {
+	clearManagedBy := yaml.FieldClearer{Name: annotationManagedBy}
+	err := o.PipeE(yaml.LookupCreate(yaml.MappingNode, "metadata", "labels"), clearManagedBy)
+	if err != nil {
+		return err
+	}
+	return o.PipeE(yaml.LookupCreate(yaml.MappingNode, "spec", "template", "metadata", "labels"), clearManagedBy)
 }
