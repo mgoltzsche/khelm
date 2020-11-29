@@ -102,7 +102,7 @@ func addKptAnnotations(resources []*yaml.RNode, outputPath string) []string {
 		}
 
 		// Set kpt order and path annotations
-		if output.IsDirectory(outPath) {
+		if output.IsDirectory(outputPath) {
 			outPath = output.ResourcePath(meta, outputPath)
 		}
 		lookupAnnotations := yaml.LookupCreate(yaml.MappingNode, yaml.MetadataField, yaml.AnnotationsField)

@@ -46,13 +46,20 @@ func TestTemplateCommand(t *testing.T) {
 			"values",
 			[]string{filepath.Join(exampleDir, "values-inheritance", "chart"),
 				"--values=" + filepath.Join(exampleDir, "values-inheritance", "values.yaml")},
-			1, "overwritten by file",
+			1, " valueoverwrite: overwritten by file",
 		},
 		{
 			"set",
 			[]string{filepath.Join(exampleDir, "values-inheritance", "chart"),
 				"--set=example.other1=a,example.overrideValue=explicitly,example.other2=b", "--set=example.other1=x"},
-			1, "explicitly",
+			1, " valueoverwrite: explicitly",
+		},
+		{
+			"set override",
+			[]string{filepath.Join(exampleDir, "values-inheritance", "chart"),
+				"--values=" + filepath.Join(exampleDir, "values-inheritance", "values.yaml"),
+				"--set=example.other1=a,example.overrideValue=explicitly,example.other2=b", "--set=example.other1=x"},
+			1, " valueoverwrite: explicitly",
 		},
 		{
 			"apiversions",

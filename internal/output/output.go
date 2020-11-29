@@ -77,7 +77,7 @@ func (w *dirOutput) Write(resources []*yaml.RNode) error {
 			return errors.New(err.Error())
 		}
 	}
-	if err := os.MkdirAll(w.dir, 0755); err != nil {
+	if err := os.MkdirAll(w.dir, 0750); err != nil {
 		return errors.New(err.Error())
 	}
 	if !w.replace {
@@ -127,7 +127,7 @@ func (w kustomizationOutput) Write(resources []*yaml.RNode) (err error) {
 	kustomization["kind"] = kustomizeKind
 	kustomization["resources"] = paths
 	kustomizationFile := filepath.Join(w.dir, "kustomization.yaml")
-	f, err := os.OpenFile(kustomizationFile, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0644)
+	f, err := os.OpenFile(kustomizationFile, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0640)
 	defer func() {
 		if e := f.Close(); e != nil && err == nil {
 			err = errors.Errorf("close file writer: %s", e)
@@ -157,10 +157,16 @@ func writeToFile(resources []*yaml.RNode, outFile string, replace bool) error {
 	if replace {
 		flags = os.O_CREATE | os.O_WRONLY | os.O_TRUNC
 	}
-	f, err := os.OpenFile(outFile, flags, 0644)
+	f, err := os.OpenFile(outFile, flags, 0640)
+	if err != nil {
+		if _, e := os.Stat(outFile); e == nil && !replace {
+			return errors.Errorf("output file %s already exists (use --output-replace to replace it)", outFile)
+		}
+		return errors.Wrap(err, "create output file")
+	}
 	defer func() {
 		if e := f.Close(); e != nil && err == nil {
-			err = errors.Errorf("close file writer: %s", e)
+			err = errors.Errorf("close file writer for %s: %s", outFile, e)
 		}
 	}()
 
@@ -170,9 +176,9 @@ func writeToFile(resources []*yaml.RNode, outFile string, replace bool) error {
 // Marshal writes the given list of resources as YAML into the given writer
 func Marshal(resources []*yaml.RNode, writer io.Writer) error {
 	enc := yaml.NewEncoder(writer)
-	for _, r := range resources {
+	for i, r := range resources {
 		if err := enc.Encode(r.Document()); err != nil {
-			return errors.Errorf("marshal: %s", err)
+			return errors.Errorf("marshal resource %d: %s", i, err)
 		}
 	}
 	err := enc.Close()

@@ -28,7 +28,8 @@ func render(h *helm.Helm, req *helm.ChartConfig) ([]*yaml.RNode, error) {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		<-sigs
+		s := <-sigs
+		log.Printf("Received %s signal", s)
 		cancel()
 	}()
 

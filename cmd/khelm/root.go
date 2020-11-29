@@ -48,9 +48,8 @@ func Execute(reader io.Reader, writer io.Writer) error {
 
 	rootCmd := &cobra.Command{
 		Version: version.Version,
-		PreRunE: func(_ *cobra.Command, _ []string) error {
+		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			logVersion()
-			return nil
 		},
 	}
 	errBuf := bytes.Buffer{}

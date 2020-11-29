@@ -53,10 +53,7 @@ func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.R
 		}
 
 		// Remove managed-by label
-		err = t.removeManagedByLabel(o)
-		if err != nil {
-			break
-		}
+		t.removeManagedByLabel(o)
 
 		r = append(r, o)
 	}
@@ -92,11 +89,8 @@ func (t *manifestTransformer) applyNamespace(o *yaml.RNode, clusterScopedResourc
 	return nil
 }
 
-func (t *manifestTransformer) removeManagedByLabel(o *yaml.RNode) error {
+func (t *manifestTransformer) removeManagedByLabel(o *yaml.RNode) {
 	clearManagedBy := yaml.FieldClearer{Name: annotationManagedBy}
-	err := o.PipeE(yaml.LookupCreate(yaml.MappingNode, "metadata", "labels"), clearManagedBy)
-	if err != nil {
-		return err
-	}
-	return o.PipeE(yaml.LookupCreate(yaml.MappingNode, "spec", "template", "metadata", "labels"), clearManagedBy)
+	_ = o.PipeE(yaml.Lookup("metadata", "labels"), clearManagedBy)
+	_ = o.PipeE(yaml.Lookup("spec", "template", "metadata", "labels"), clearManagedBy)
 }

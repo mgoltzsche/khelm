@@ -94,7 +94,7 @@ func TestKptFnCommand(t *testing.T) {
 				RendererConfig: helm.RendererConfig{
 					ValueFiles: []string{filepath.Join(exampleDir, "values-inheritance", "values.yaml")},
 				}}},
-			1, "overwritten by file",
+			1, " valueoverwrite: overwritten by file",
 		},
 		{
 			"values",
@@ -107,7 +107,21 @@ func TestKptFnCommand(t *testing.T) {
 						"example": map[string]string{"overrideValue": "explicitly"},
 					},
 				}}},
-			1, "explicitly",
+			1, " valueoverwrite: explicitly",
+		},
+		{
+			"values override",
+			kptFnConfig{ChartConfig: &helm.ChartConfig{
+				LoaderConfig: helm.LoaderConfig{
+					Chart: filepath.Join(exampleDir, "values-inheritance", "chart"),
+				},
+				RendererConfig: helm.RendererConfig{
+					ValueFiles: []string{filepath.Join(exampleDir, "values-inheritance", "values.yaml")},
+					Values: map[string]interface{}{
+						"example": map[string]string{"overrideValue": "explicitly"},
+					},
+				}}},
+			1, " valueoverwrite: explicitly",
 		},
 		{
 			"apiversions",

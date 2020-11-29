@@ -19,7 +19,7 @@ func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 		Use: "template",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {
-				cmd.Help()
+				_ = cmd.Help()
 				return fmt.Errorf("accepts single CHART argument but received %d arguments", len(args))
 			}
 			return nil
@@ -46,7 +46,7 @@ func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 		SilenceUsage:  true,
 	}
 	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
-		cmd.Help()
+		_ = cmd.Help()
 		return err
 	})
 	f := cmd.Flags()

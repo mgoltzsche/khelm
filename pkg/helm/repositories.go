@@ -129,7 +129,7 @@ func initializeHelmHome(home helmpath.Home) (err error) {
 		home.Starters(),
 		home.Archive(),
 	} {
-		if err = os.MkdirAll(dir, 0755); err != nil {
+		if err = os.MkdirAll(dir, 0750); err != nil {
 			return errors.WithStack(err)
 		}
 	}
@@ -356,17 +356,17 @@ func newTempRepositories(r *repositories) (tmp *tempRepositories, err error) {
 	}
 	defer func() {
 		if err != nil {
-			os.RemoveAll(tmpDir)
+			_ = os.RemoveAll(tmpDir)
 		}
 	}()
 	for _, dir := range []string{filepath.Join("repository", "cache"), filepath.Join("cache", "archive")} {
 		cacheDir := filepath.Join(string(r.dir), dir)
-		err = os.MkdirAll(filepath.Dir(cacheDir), 0755)
+		err = os.MkdirAll(filepath.Dir(cacheDir), 0750)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		tmpCacheLink := filepath.Join(tmpDir, dir)
-		err = os.MkdirAll(filepath.Dir(tmpCacheLink), 0755)
+		err = os.MkdirAll(filepath.Dir(tmpCacheLink), 0750)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -396,7 +396,7 @@ func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, 
 	log.Printf("Downloading repository index of %s", entry.URL)
 
 	idxFile := indexFile(entry, cacheDir)
-	err := os.MkdirAll(filepath.Dir(idxFile), 0755)
+	err := os.MkdirAll(filepath.Dir(idxFile), 0750)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -436,7 +436,6 @@ func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, 
 		_ = os.Remove(tmpIdxFileName)
 		return ctx.Err()
 	}
-	return nil
 }
 
 func indexFile(entry *repo.Entry, cacheDir string) string {

@@ -48,6 +48,10 @@ func locateChart(ctx context.Context, cfg *LoaderConfig, repos repositoryConfig,
 		return "", errors.Wrap(err, "derive chart cache file")
 	}
 
+	if err = ctx.Err(); err != nil {
+		return "", err
+	}
+
 	if _, err = os.Stat(cacheFile); err == nil {
 		if cfg.Verify {
 			if _, err := downloader.VerifyChart(cacheFile, cfg.Keyring); err != nil {
@@ -74,7 +78,7 @@ func locateChart(ctx context.Context, cfg *LoaderConfig, repos repositoryConfig,
 
 	destDir := filepath.Dir(cacheFile)
 	destParentDir := filepath.Dir(destDir)
-	if err = os.MkdirAll(destParentDir, 0755); err != nil {
+	if err = os.MkdirAll(destParentDir, 0750); err != nil {
 		return "", errors.WithStack(err)
 	}
 	tmpDestDir, err := ioutil.TempDir(destParentDir, fmt.Sprintf(".tmp-%s-", filepath.Base(destDir)))
@@ -86,7 +90,6 @@ func locateChart(ctx context.Context, cfg *LoaderConfig, repos repositoryConfig,
 	done := make(chan error, 1)
 	go func() (err error) {
 		defer func() {
-			log.Println("chart download err:", err)
 			done <- err
 			close(done)
 			if err != nil {
@@ -102,7 +105,6 @@ func locateChart(ctx context.Context, cfg *LoaderConfig, repos repositoryConfig,
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		log.Printf("Rename tmp chart dir from %s to %s", tmpDestDir, destDir)
 		return os.Rename(tmpDestDir, destDir)
 	}()
 	select {
@@ -112,7 +114,6 @@ func locateChart(ctx context.Context, cfg *LoaderConfig, repos repositoryConfig,
 		_ = os.RemoveAll(tmpDestDir)
 		return "", ctx.Err()
 	}
-	return cacheFile, nil
 }
 
 func cacheFilePath(chartURL string, cv *repo.ChartVersion, cacheDir string) (string, error) {

@@ -36,8 +36,8 @@ func readValuesFile(chrt *chart.Chart, filePath, baseDir string, getters getter.
 	u, err := url.Parse(filePath)
 	if u.Scheme == "" || strings.ToLower(u.Scheme) == "file" {
 		// Load from local file, fallback to chart file
-		kustomizeFilePath := absPath(filePath, baseDir)
-		if b, err = ioutil.ReadFile(kustomizeFilePath); os.IsNotExist(err) {
+		localFile := absPath(filePath, baseDir)
+		if b, err = ioutil.ReadFile(localFile); os.IsNotExist(err) {
 			// Fallback to chart file
 			filePath = filepath.Clean(filePath)
 			for _, f := range chrt.Files {
