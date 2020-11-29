@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mgoltzsche/khelm/internal/version"
 	"github.com/mgoltzsche/khelm/pkg/helm"
 	"github.com/spf13/cobra"
 )
@@ -45,7 +46,13 @@ func Execute(reader io.Reader, writer io.Writer) error {
 		return err
 	}
 
-	rootCmd := &cobra.Command{}
+	rootCmd := &cobra.Command{
+		Version: version.Version,
+		PreRunE: func(_ *cobra.Command, _ []string) error {
+			logVersion()
+			return nil
+		},
+	}
 	errBuf := bytes.Buffer{}
 
 	if filepath.Base(os.Args[0]) == "khelmfn" {
@@ -62,7 +69,7 @@ func Execute(reader io.Reader, writer io.Writer) error {
 
 	rootCmd.Example = usageExample
 	rootCmd.Use = os.Args[0]
-	rootCmd.Short = "khelm chart renderer"
+	rootCmd.Short = fmt.Sprintf("khelm %s chart renderer", version.Version)
 	rootCmd.Long = `khelm is a helm chart templating CLI, kpt function and kustomize plugin.
 
 In opposite to the helm CLI khelm allows to
@@ -88,4 +95,8 @@ In opposite to the helm CLI khelm allows to
 		return err
 	}
 	return nil
+}
+
+func logVersion() {
+	log.Println("Running khelm", version.Version)
 }

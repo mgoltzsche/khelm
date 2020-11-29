@@ -59,11 +59,11 @@ func (h *Helm) loadRemoteChart(ctx context.Context, cfg *ChartConfig) (*chart.Ch
 		return nil, err
 	}
 	if isRange {
-		if err = repos.UpdateIndex(); err != nil {
+		if err = repos.UpdateIndex(ctx); err != nil {
 			return nil, err
 		}
 	}
-	chartPath, err := locateChart(&cfg.LoaderConfig, repos, &settings, h.Getters)
+	chartPath, err := locateChart(ctx, &cfg.LoaderConfig, repos, &settings, h.Getters)
 	if err != nil {
 		return nil, err
 	}
@@ -99,16 +99,16 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig) (*c
 
 	// Download/update repo indices
 	if needsRepoIndexUpdate {
-		err = repos.UpdateIndex()
+		err = repos.UpdateIndex(ctx)
 	} else {
-		err = repos.DownloadIndexFilesIfNotExist()
+		err = repos.DownloadIndexFilesIfNotExist(ctx)
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	// Build local charts recursively
-	needsReload, err := buildLocalCharts(localCharts, &cfg.LoaderConfig, repos, &settings, h.Getters)
+	needsReload, err := buildLocalCharts(ctx, localCharts, &cfg.LoaderConfig, repos, &settings, h.Getters)
 	if err != nil {
 		return nil, errors.Wrap(err, "build/fetch dependencies")
 	}
@@ -201,7 +201,7 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *ChartConf
 	return needsRepoIndexUpdate, nil
 }
 
-func buildLocalCharts(localCharts []localChart, cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (needsReload bool, err error) {
+func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (needsReload bool, err error) {
 	for _, ch := range localCharts {
 		if ch.Requirements == nil {
 			continue
@@ -219,7 +219,7 @@ func buildLocalCharts(localCharts []localChart, cfg *LoaderConfig, repos reposit
 					return false, errors.Errorf("chart %s requirements.lock is out of sync with requirements.yaml", meta.Name)
 				}
 			}
-			if err = buildChartDependencies(ch.Chart, ch.Path, cfg, repos, settings, getters); err != nil {
+			if err = buildChartDependencies(ctx, ch.Chart, ch.Path, cfg, repos, settings, getters); err != nil {
 				return false, errors.Wrapf(err, "build chart %s", name)
 			}
 		}
@@ -232,7 +232,7 @@ func dependencyFilePath(chartPath string, d *chartutil.Dependency) string {
 	return filepath.Join(chartPath, "charts", name)
 }
 
-func buildChartDependencies(chartRequested *chart.Chart, chartPath string, cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) error {
+func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, chartPath string, cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) error {
 	man := &downloader.Manager{
 		Out:        log.Writer(),
 		ChartPath:  chartPath,
@@ -254,7 +254,7 @@ func buildChartDependencies(chartRequested *chart.Chart, chartPath string, cfg *
 	// Downloads dependencies - respecting requirements.lock if present
 	err = man.Build()
 	if err != nil && errors.Cause(err).Error() == "entry not found" {
-		if err = repos.UpdateIndex(); err == nil {
+		if err = repos.UpdateIndex(ctx); err == nil {
 			err = man.Build()
 		}
 	}

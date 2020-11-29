@@ -1,10 +1,17 @@
-IMAGE?=mgoltzsche/khelm
+IMAGE ?= mgoltzsche/khelm
 
-LDFLAGS?=''
-USER=$(shell id -u)
-PKG=github.com/mgoltzsche/khelm
+LDFLAGS ?= ''
+USER := $(shell id -u)
+PKG := github.com/mgoltzsche/khelm
 
-BUILDTAGS?=
+GOSEC := build/bin/go-sec
+GOMMIT := build/bin/gommit
+GOLINT := build/bin/golint
+
+REV := $(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
+VERSION ?= $(shell echo "$$(git for-each-ref refs/tags/ --count=1 --sort=-version:refname --format='%(refname:short)' 2>/dev/null)-dev-$(REV)" | sed 's/^v//')
+GO_LDFLAGS := -X $(PKG)/internal/version.Version='$(VERSION)' -s -w -extldflags '-static'
+BUILDTAGS ?= 
 
 GOIMAGE=khelm-go
 DOCKERRUN=docker run --rm \
@@ -27,7 +34,7 @@ khelm-docker: golang-image
 		make khelm BUILDTAGS=$(BUILDTAGS)
 
 khelm: builddir
-	CGO_ENABLED=0 go build -o build/bin/khelm -a -ldflags '-s -w -extldflags "-static" $(LDFLAGS)' -tags '$(BUILDTAGS)' ./cmd/khelm
+	CGO_ENABLED=0 go build -o build/bin/khelm -a -ldflags "$(GO_LDFLAGS)" -tags "$(BUILDTAGS)" ./cmd/khelm
 
 install-kustomize-plugin:
 	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
@@ -46,13 +53,9 @@ e2e-test: image
 clean:
 	rm -rf build
 
-check-fmt-docker: golang-image
-	$(DOCKERRUN) $(GOIMAGE) make check-fmt
 check-fmt:
 	cd "$$GOPATH/src" && MSGS="$$(gofmt -s -d $(shell go list ./pkg/...))" && [ ! "$$MSGS" ] || (echo "$$MSGS"; false)
 
-lint-docker: golang-image
-	$(DOCKERRUN) $(GOIMAGE) make lint
 lint:
 	golint -set_exit_status $(shell go list ./...)
 
@@ -60,21 +63,8 @@ check: golang-image
 	$(DOCKERRUN) $(GOIMAGE) \
 		make clean khelm test lint check-fmt BUILDTAGS=$(BUILDTAGS)
 
-coverage-report: golang-image
-	$(DOCKERRUN) $(GOIMAGE) make coverage
-	firefox coverage.html
-
-vendor-update: golang-image
-	mkdir -p .build-cache
-	$(DOCKERRUN) -e GO111MODULE=on \
-		--mount "type=bind,src=$(shell pwd)/.build-cache,dst=/go" \
-		$(GOIMAGE) go mod vendor
-
-golang-image:
-	echo "$$GODOCKERFILE" | docker build --force-rm -t $(GOIMAGE) -
-
 image:
 	docker build --force-rm -t $(IMAGE) .
 
 builddir:
-	mkdir -p build/bin
+	@mkdir -p build/bin

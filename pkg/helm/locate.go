@@ -1,7 +1,9 @@
 package helm
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -18,7 +20,7 @@ import (
 // locateChart fetches the chart if not present in cache and returns its path.
 // (derived from https://github.com/helm/helm/blob/fc9b46067f8f24a90b52eba31e09b31e69011e93/pkg/action/install.go#L621 -
 // with efficient caching)
-func locateChart(cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (string, error) {
+func locateChart(ctx context.Context, cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (string, error) {
 	name := cfg.Chart
 
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
@@ -30,7 +32,7 @@ func locateChart(cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSet
 		return "", err
 	}
 
-	cv, err := repos.ResolveChartVersion(name, cfg.Version, repoEntry.URL)
+	cv, err := repos.ResolveChartVersion(ctx, name, cfg.Version, repoEntry.URL)
 	if err != nil {
 		return "", err
 	}
@@ -59,7 +61,7 @@ func locateChart(cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSet
 	log.Printf("Downloading chart %s %s from repo %s", cfg.Chart, cv.Version, repoEntry.URL)
 
 	dl := downloader.ChartDownloader{
-		Out:      os.Stdout,
+		Out:      log.Writer(),
 		Keyring:  cfg.Keyring,
 		Getters:  getters,
 		Username: repoEntry.Username,
@@ -71,18 +73,46 @@ func locateChart(cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSet
 	}
 
 	destDir := filepath.Dir(cacheFile)
-	if err = os.MkdirAll(destDir, 0755); err != nil {
-		return "", err
+	destParentDir := filepath.Dir(destDir)
+	if err = os.MkdirAll(destParentDir, 0755); err != nil {
+		return "", errors.WithStack(err)
 	}
-	filename, _, err := dl.DownloadTo(chartURL, cv.Version, destDir)
+	tmpDestDir, err := ioutil.TempDir(destParentDir, fmt.Sprintf(".tmp-%s-", filepath.Base(destDir)))
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to download chart %q with version %q", cfg.Chart, cv.Version)
+		return "", errors.WithStack(err)
 	}
-	lname, err := filepath.Abs(filename)
-	if err != nil {
-		return filename, errors.WithStack(err)
+
+	interrupt := ctx.Done()
+	done := make(chan error, 1)
+	go func() (err error) {
+		defer func() {
+			log.Println("chart download err:", err)
+			done <- err
+			close(done)
+			if err != nil {
+				_ = os.RemoveAll(tmpDestDir)
+			}
+		}()
+		var chartFile string
+		chartFile, _, err = dl.DownloadTo(chartURL, cv.Version, tmpDestDir)
+		if err != nil {
+			return errors.Wrapf(err, "failed to download chart %q with version %q", cfg.Chart, cv.Version)
+		}
+		chartFile, err = filepath.Abs(chartFile)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		log.Printf("Rename tmp chart dir from %s to %s", tmpDestDir, destDir)
+		return os.Rename(tmpDestDir, destDir)
+	}()
+	select {
+	case err = <-done:
+		return cacheFile, err
+	case <-interrupt:
+		_ = os.RemoveAll(tmpDestDir)
+		return "", ctx.Err()
 	}
-	return lname, nil
+	return cacheFile, nil
 }
 
 func cacheFilePath(chartURL string, cv *repo.ChartVersion, cacheDir string) (string, error) {
@@ -102,6 +132,7 @@ func cacheFilePath(chartURL string, cv *repo.ChartVersion, cacheDir string) (str
 	if len(cv.Digest) < 16 {
 		return "", errors.Errorf("repo index entry for chart %q does not specify a digest", cv.Name)
 	}
+	hostSegment := strings.ReplaceAll(u.Host, ":", "_")
 	digestSegment := fmt.Sprintf("%s-%s-%s", cv.Name, cv.Version, cv.Digest[:16])
-	return filepath.Join(cacheDir, u.Host, filepath.Dir(path), digestSegment, filepath.Base(path)), nil
+	return filepath.Join(cacheDir, hostSegment, filepath.Dir(path), digestSegment, filepath.Base(path)), nil
 }

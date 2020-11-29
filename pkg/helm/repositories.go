@@ -2,6 +2,7 @@ package helm
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"encoding/hex"
 	"fmt"
@@ -45,10 +46,10 @@ func IsUntrustedRepository(err error) bool {
 type repositoryConfig interface {
 	Close() error
 	HelmHome() helmpath.Home
-	ResolveChartVersion(name, version, repo string) (*repo.ChartVersion, error)
+	ResolveChartVersion(ctx context.Context, name, version, repo string) (*repo.ChartVersion, error)
 	Get(repo string) (*repo.Entry, error)
-	UpdateIndex() error
-	DownloadIndexFilesIfNotExist() error
+	UpdateIndex(context.Context) error
+	DownloadIndexFilesIfNotExist(context.Context) error
 	Apply() (repositoryConfig, error)
 }
 
@@ -135,7 +136,7 @@ func initializeHelmHome(home helmpath.Home) (err error) {
 	return nil
 }
 
-func (f *repositories) repoIndex(entry *repo.Entry) (*repo.IndexFile, error) {
+func (f *repositories) repoIndex(ctx context.Context, entry *repo.Entry) (*repo.IndexFile, error) {
 	idx := f.indexFiles[entry.Name]
 	if idx != nil {
 		return idx, nil
@@ -144,7 +145,7 @@ func (f *repositories) repoIndex(entry *repo.Entry) (*repo.IndexFile, error) {
 	idx, err := repo.LoadIndexFile(idxFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = downloadIndexFile(entry, f.cacheDir, f.getters)
+			err = downloadIndexFile(ctx, entry, f.cacheDir, f.getters)
 			if err != nil {
 				return nil, err
 			}
@@ -153,7 +154,7 @@ func (f *repositories) repoIndex(entry *repo.Entry) (*repo.IndexFile, error) {
 				return nil, errors.WithStack(err)
 			}
 		} else {
-			return nil, errors.WithStack(err)
+			return nil, errors.Wrapf(err, "load repo index file %s", idxFile)
 		}
 	}
 	f.indexFiles[entry.Name] = idx
@@ -164,12 +165,12 @@ func (f *repositories) clearRepoIndex(entry *repo.Entry) {
 	f.indexFiles[entry.Name] = nil
 }
 
-func (f *repositories) ResolveChartVersion(name, version, repoURL string) (*repo.ChartVersion, error) {
+func (f *repositories) ResolveChartVersion(ctx context.Context, name, version, repoURL string) (*repo.ChartVersion, error) {
 	entry, err := f.Get(repoURL)
 	if err != nil {
 		return nil, err
 	}
-	idx, err := f.repoIndex(entry)
+	idx, err := f.repoIndex(ctx, entry)
 	if err != nil {
 		return nil, err
 	}
@@ -180,12 +181,12 @@ func (f *repositories) ResolveChartVersion(name, version, repoURL string) (*repo
 	cv, err := idx.Get(name, version)
 	if err != nil {
 		// Download latest index file and retry lookup if not found
-		err = downloadIndexFile(entry, f.cacheDir, f.getters)
+		err = downloadIndexFile(ctx, entry, f.cacheDir, f.getters)
 		if err != nil {
 			return nil, errors.Wrapf(err, "repo index download after %s not found", errMsg)
 		}
 		f.clearRepoIndex(entry)
-		idx, err := f.repoIndex(entry)
+		idx, err := f.repoIndex(ctx, entry)
 		if err != nil {
 			return nil, err
 		}
@@ -238,21 +239,21 @@ func (f *repositories) Get(repo string) (*repo.Entry, error) {
 	return nil, errors.Errorf("repo URL %q is not registered in repositories.yaml", repo)
 }
 
-func (f *repositories) DownloadIndexFilesIfNotExist() error {
+func (f *repositories) DownloadIndexFilesIfNotExist(ctx context.Context) error {
 	for _, r := range f.repos.Repositories {
 		if _, err := os.Stat(indexFile(r, f.cacheDir)); err == nil {
 			continue // do not update existing repo index
 		}
-		if err := downloadIndexFile(r, f.cacheDir, f.getters); err != nil {
+		if err := downloadIndexFile(ctx, r, f.cacheDir, f.getters); err != nil {
 			return errors.Wrap(err, "download repo index")
 		}
 	}
 	return nil
 }
 
-func (f *repositories) UpdateIndex() error {
+func (f *repositories) UpdateIndex(ctx context.Context) error {
 	for _, r := range f.repos.Repositories {
-		if err := downloadIndexFile(r, f.cacheDir, f.getters); err != nil {
+		if err := downloadIndexFile(ctx, r, f.cacheDir, f.getters); err != nil {
 			return errors.Wrap(err, "download repo index")
 		}
 	}
@@ -391,28 +392,60 @@ func (f *tempRepositories) Close() error {
 	return os.Remove(string(f.tmpDir))
 }
 
-func downloadIndexFile(entry *repo.Entry, cacheDir string, getters getter.Providers) error {
+func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, getters getter.Providers) error {
 	log.Printf("Downloading repository index of %s", entry.URL)
-	r, err := repo.NewChartRepository(entry, getters)
+
+	idxFile := indexFile(entry, cacheDir)
+	err := os.MkdirAll(filepath.Dir(idxFile), 0755)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	idxFile := entry.Cache
-	if idxFile == "" {
-		idxFile = indexFile(entry, cacheDir)
-	}
-	err = os.MkdirAll(filepath.Dir(idxFile), 0755)
+	tmpIdxFile, err := ioutil.TempFile(filepath.Dir(idxFile), fmt.Sprintf(".tmp-%s-index", entry.Name))
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = r.DownloadIndexFile(idxFile)
-	if err != nil {
-		return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", entry.URL)
+	tmpIdxFileName := tmpIdxFile.Name()
+	_ = tmpIdxFile.Close()
+
+	interrupt := ctx.Done()
+	done := make(chan error, 1)
+	go func() (err error) {
+		defer func() {
+			done <- err
+			close(done)
+			if err != nil {
+				_ = os.Remove(tmpIdxFileName)
+			}
+		}()
+		tmpEntry := *entry
+		tmpEntry.Cache = tmpIdxFileName
+		r, err := repo.NewChartRepository(&tmpEntry, getters)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		err = r.DownloadIndexFile(cacheDir)
+		if err != nil {
+			return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", entry.URL)
+		}
+		return os.Rename(tmpIdxFileName, idxFile)
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-interrupt:
+		_ = os.Remove(tmpIdxFileName)
+		return ctx.Err()
 	}
 	return nil
 }
 
 func indexFile(entry *repo.Entry, cacheDir string) string {
+	if entry.Cache != "" {
+		if !filepath.IsAbs(entry.Cache) {
+			return filepath.Join(cacheDir, entry.Cache)
+		}
+		return entry.Cache
+	}
 	return filepath.Join(cacheDir, fmt.Sprintf("%s-index.yaml", entry.Name))
 }
 

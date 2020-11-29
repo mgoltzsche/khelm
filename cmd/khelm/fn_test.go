@@ -187,6 +187,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			c.input.Debug = true
 			if c.input.Name == "" {
 				c.input.Name = "release-name"
 			}
