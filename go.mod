@@ -1,4 +1,4 @@
-module github.com/mgoltzsche/khelm
+module github.com/mgoltzsche/khelm/v1
 
 go 1.14
 

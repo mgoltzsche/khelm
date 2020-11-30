@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mgoltzsche/khelm/internal/version"
-	"github.com/mgoltzsche/khelm/pkg/helm"
+	"github.com/mgoltzsche/khelm/v1/internal/version"
+	"github.com/mgoltzsche/khelm/v1/pkg/helm"
 	"github.com/spf13/cobra"
 )
 
