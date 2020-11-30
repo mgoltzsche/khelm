@@ -2,9 +2,6 @@ name: Go & Image
 
 on:
   # Trigger the workflow on push or pull request on master branch
-  push:
-    branches:
-    - master
   pull_request:
     branches:
     - master
@@ -25,3 +22,4 @@ jobs:
       run: make khelm test check
     - name: Build the Docker image
       run: docker build . -f Dockerfile -t khelm:$(date +%s)
+    # TODO: run e2e tests
