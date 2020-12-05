@@ -29,5 +29,8 @@ jobs:
     - name: Lint
       run: make check
 
+    - name: Container image
+      run: make image
+
     - name: e2e test
       run: make e2e-test

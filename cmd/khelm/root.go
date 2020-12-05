@@ -24,7 +24,10 @@ const (
 	usageExample                 = "  khelm template ./chart\n  khelm template stable/jenkins\n  khelm template jenkins --version=2.5.3 --repo=https://kubernetes-charts.storage.googleapis.com"
 )
 
-var khelmVersion = "dev-build"
+var (
+	khelmVersion = "dev-build"
+	helmVersion  = "unknown-version"
+)
 
 // Execute runs the khelm CLI
 func Execute(reader io.Reader, writer io.Writer) error {
@@ -48,7 +51,7 @@ func Execute(reader io.Reader, writer io.Writer) error {
 	}
 
 	rootCmd := &cobra.Command{
-		Version: khelmVersion,
+		Version: versionInfo(),
 		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			logVersion()
 		},
@@ -99,5 +102,9 @@ In addition to helm's templating capabilities khelm allows to:
 }
 
 func logVersion() {
-	log.Println("Running khelm", khelmVersion)
+	log.Println("Running khelm", versionInfo())
+}
+
+func versionInfo() string {
+	return fmt.Sprintf("%s (helm %s)", khelmVersion, helmVersion)
 }

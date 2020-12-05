@@ -2,6 +2,7 @@ IMAGE ?= docker.pkg.github.com/mgoltzsche/khelm/khelm:latest
 
 BUILD_DIR := $(CURDIR)/build
 KHELM := $(BUILD_DIR)/bin/khelm
+KHELM_STATIC := $(BUILD_DIR)/bin/khelm-static
 GOSEC := $(BUILD_DIR)/bin/go-sec
 GOLINT := $(BUILD_DIR)/bin/golint
 KPT := $(BUILD_DIR)/bin/kpt
@@ -12,15 +13,28 @@ KUSTOMIZE_VERSION ?= 3.8.7
 
 REV := $(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
 VERSION ?= $(shell echo "$$(git for-each-ref refs/tags/ --count=1 --sort=-version:refname --format='%(refname:short)' 2>/dev/null)-dev-$(REV)" | sed 's/^v//')
-GO_LDFLAGS := -X main.khelmVersion=$(VERSION) -s -w -extldflags '-static'
+HELM_VERSION := $(shell grep k8s\.io/helm go.mod | sed -E -e 's/k8s\.io\/helm|\s+|\+.*//g' -e 's/^v//')
+GO_LDFLAGS := -X main.khelmVersion=$(VERSION) -X main.helmVersion=$(HELM_VERSION)
 BUILDTAGS ?= 
 
 all: clean khelm test check
 
 khelm: $(KHELM)
 
+khelm-static: $(KHELM_STATIC)
+
 $(KHELM): $(BUILD_DIR)
-	CGO_ENABLED=0 go build -o $(BUILD_DIR)/bin/khelm -a -ldflags "$(GO_LDFLAGS)" -tags "$(BUILDTAGS)" ./cmd/khelm
+	go build -o $(BUILD_DIR)/bin/khelm -a -ldflags "$(GO_LDFLAGS)" -tags "$(BUILDTAGS)" ./cmd/khelm
+
+$(KHELM_STATIC): image $(BUILD_DIR)
+	@echo Copying khelm binary from container
+	@{ \
+	set -e; \
+	CONTAINER=`docker create $(IMAGE)`; \
+	docker cp $$CONTAINER:/usr/local/bin/khelmfn $(KHELM_STATIC); \
+	[ -f $(KHELM) ] || cp $(KHELM_STATIC) $(KHELM); \
+	docker rm -f $$CONTAINER >/dev/null; \
+	}
 
 install: khelm
 	cp $(BUILD_DIR)/bin/khelm /usr/local/bin/khelm
@@ -31,7 +45,7 @@ install-kustomize-plugin:
 	cp $(BUILD_DIR)/bin/khelm $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
 
 image:
-	docker build --force-rm -t $(IMAGE) --build-arg KHELM_VERSION=$(VERSION) .
+	docker build --force-rm -t $(IMAGE) --build-arg KHELM_VERSION=$(VERSION) --build-arg HELM_VERSION=$(HELM_VERSION) .
 
 test: $(BUILD_DIR)
 	go test -coverprofile $(BUILD_DIR)/coverage.out -cover ./...
@@ -39,7 +53,7 @@ test: $(BUILD_DIR)
 coverage: test
 	go tool cover -html=$(BUILD_DIR)/coverage.out -o $(BUILD_DIR)/coverage.html
 
-e2e-test: image khelm kpt kustomize
+e2e-test: image khelm-static kpt kustomize
 	@echo
 	@echo 'RUNNING E2E TESTS (PATH=$(BUILD_DIR)/bin)...'
 	@{ \
@@ -78,7 +92,7 @@ kpt: $(KPT)
 kustomize: $(KUSTOMIZE)
 
 $(GOSEC): $(BUILD_DIR)
-	@echo Build gosec
+	@echo Building gosec
 	@{ \
 	set -e; \
 	TMP_DIR=$$(mktemp -d); \
@@ -90,7 +104,7 @@ $(GOSEC): $(BUILD_DIR)
 	}
 
 $(GOLINT): $(BUILD_DIR)
-	@echo Build golint
+	@echo Building golint
 	@{ \
 	set -e; \
 	TMP_DIR=$$(mktemp -d); \
@@ -102,7 +116,7 @@ $(GOLINT): $(BUILD_DIR)
 	}
 
 $(KPT): $(BUILD_DIR)
-	@echo Download kpt
+	@echo Downloading kpt
 	@{ \
 	set -e; \
 	TMP_DIR=$$(mktemp -d); \
@@ -113,7 +127,7 @@ $(KPT): $(BUILD_DIR)
 	}
 
 $(KUSTOMIZE): $(BUILD_DIR)
-	@echo Download kustomize
+	@echo Downloading kustomize
 	@{ \
 	set -e; \
 	TMP_DIR=$$(mktemp -d); \
