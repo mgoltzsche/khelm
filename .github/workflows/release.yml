@@ -57,7 +57,7 @@ jobs:
         # Use Docker `latest` tag convention and also publish latest tag with every other tag
         [ "$TAGS" == "master" ] && TAGS=latest || TAGS="latest $TAGS"
 
-        for TAG in VERSION; do
+        for TAG in $TAGS; do
           echo Push $IMAGE_ID:$TAG
           docker tag $IMAGE_NAME $IMAGE_ID:$TAG
           docker push $IMAGE_ID:$TAG
