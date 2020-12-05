@@ -10,16 +10,24 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+
     steps:
-    - name: Set up Go 1.13
+    - name: Set up Go 1.14
       uses: actions/setup-go@v1
       with:
-        go-version: 1.13
-      id: go
+        go-version: 1.14
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-    - name: Build, Test, Lint
-      run: make khelm test check
-    - name: Build the Docker image
-      run: docker build . -f Dockerfile -t khelm:$(date +%s)
-    # TODO: run e2e tests
+
+    - name: Build
+      run: make khelm
+
+    - name: Test
+      run: make test
+
+    - name: Lint
+      run: make lint
+
+    - name: e2e test
+      run: make e2e-test

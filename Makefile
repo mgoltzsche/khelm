@@ -1,27 +1,37 @@
-IMAGE ?= mgoltzsche/khelm
-PKG := github.com/mgoltzsche/khelm
+IMAGE ?= docker.pkg.github.com/mgoltzsche/khelm/khelm:latest
 
-BUILD_DIR = $(CURDIR)/build
+BUILD_DIR := $(CURDIR)/build
+KHELM := $(BUILD_DIR)/bin/khelm
 GOSEC := $(BUILD_DIR)/bin/go-sec
-GOMMIT := $(BUILD_DIR)/bin/gommit
 GOLINT := $(BUILD_DIR)/bin/golint
+KPT := $(BUILD_DIR)/bin/kpt
+KUSTOMIZE := $(BUILD_DIR)/bin/kustomize
+
+KPT_VERSION ?= 0.37.0
+KUSTOMIZE_VERSION ?= 3.8.7
 
 REV := $(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
 VERSION ?= $(shell echo "$$(git for-each-ref refs/tags/ --count=1 --sort=-version:refname --format='%(refname:short)' 2>/dev/null)-dev-$(REV)" | sed 's/^v//')
-GO_LDFLAGS := -X $(PKG)/internal/version.Version=$(VERSION) -s -w -extldflags '-static'
+GO_LDFLAGS := -X main.khelmVersion=$(VERSION) -s -w -extldflags '-static'
 BUILDTAGS ?= 
 
-all: khelm test check
+all: clean khelm test check
 
-khelm: $(BUILD_DIR)
+khelm: $(KHELM)
+
+$(KHELM): $(BUILD_DIR)
 	CGO_ENABLED=0 go build -o $(BUILD_DIR)/bin/khelm -a -ldflags "$(GO_LDFLAGS)" -tags "$(BUILDTAGS)" ./cmd/khelm
+
+install: khelm
+	cp $(BUILD_DIR)/bin/khelm /usr/local/bin/khelm
+	chmod +x /usr/local/bin/khelm
 
 install-kustomize-plugin:
 	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
 	cp $(BUILD_DIR)/bin/khelm $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
 
 image:
-	docker build --force-rm -t $(IMAGE) .
+	docker build --force-rm -t $(IMAGE) --build-arg KHELM_VERSION=$(VERSION) .
 
 test: $(BUILD_DIR)
 	go test -coverprofile $(BUILD_DIR)/coverage.out -cover ./...
@@ -29,50 +39,88 @@ test: $(BUILD_DIR)
 coverage: test
 	go tool cover -html=$(BUILD_DIR)/coverage.out -o $(BUILD_DIR)/coverage.html
 
-e2e-test: image
-	./e2e/image-test.sh
-	./e2e/kpt-test.sh
+e2e-test: image khelm kpt kustomize
+	@echo
+	@echo 'RUNNING E2E TESTS (PATH=$(BUILD_DIR)/bin)...'
+	@{ \
+	set -e ; \
+	export PATH="$(BUILD_DIR)/bin:$$PATH"; \
+	./e2e/kustomize-plugin-test.sh; \
+	IMAGE=$(IMAGE) ./e2e/image-cli-test.sh; \
+	./e2e/kpt-function-test.sh; \
+	}
 
 fmt:
 	go fmt ./...
 
 clean:
+	rm -f $(BUILD_DIR)/bin/khelm
+
+clean-all:
 	rm -rf $(BUILD_DIR)
 
 check: gofmt vet golint gosec ## Runs all linters
 
 gofmt:
-	MSGS="$$(gofmt -s -d .)" && [ ! "$$MSGS" ] || (echo "$$MSGS"; false)
+	MSGS="$$(gofmt -s -d .)" && [ ! "$$MSGS" ] || (echo "$$MSGS" >&2; echo 'Please run `make fmt` to fix it' >&2; false)
 
-vet: ## Runs go vet
+vet:
 	go vet ./...
 
-gosec: $(GOSEC) ## Runs gosec linter
+gosec: $(GOSEC)
 	$(GOSEC) --quiet -exclude=G302,G304,G306 ./...
 
-golint: $(GOLINT) ## Runs golint linter
+golint: $(GOLINT)
 	$(GOLINT) -set_exit_status ./...
 
-$(GOSEC): $(BUILD_DIR) ## Installs gosec
+kpt: $(KPT)
+
+kustomize: $(KUSTOMIZE)
+
+$(GOSEC): $(BUILD_DIR)
+	@echo Build gosec
 	@{ \
-	set -e ;\
-	TMP_DIR=$$(mktemp -d) ;\
-	cd $$TMP_DIR ;\
-	GOPATH=$$TMP_DIR GO111MODULE=on go get github.com/securego/gosec/v2/cmd/gosec@v2.4.0 ;\
-	cp $$TMP_DIR/bin/gosec $(GOSEC) ;\
-	chmod -R u+w $$TMP_DIR ;\
-	rm -rf $$TMP_DIR ;\
+	set -e; \
+	TMP_DIR=$$(mktemp -d); \
+	(cd $$TMP_DIR && \
+	GOPATH=$$TMP_DIR GO111MODULE=on go get github.com/securego/gosec/v2/cmd/gosec@v2.4.0); \
+	cp $$TMP_DIR/bin/gosec $(GOSEC); \
+	chmod -R u+w $$TMP_DIR; \
+	rm -rf $$TMP_DIR; \
 	}
 
-$(GOLINT): $(BUILD_DIR) ## Installs golint
+$(GOLINT): $(BUILD_DIR)
+	@echo Build golint
 	@{ \
-	set -e ;\
-	TMP_DIR=$$(mktemp -d) ;\
-	cd $$TMP_DIR ;\
-	GOPATH=$$TMP_DIR GO111MODULE=on go get golang.org/x/lint/golint;\
-	cp $$TMP_DIR/bin/golint $(GOLINT) ;\
-	chmod -R u+w $$TMP_DIR ;\
-	rm -rf $$TMP_DIR ;\
+	set -e; \
+	TMP_DIR=$$(mktemp -d); \
+	(cd $$TMP_DIR && \
+	GOPATH=$$TMP_DIR GO111MODULE=on go get golang.org/x/lint/golint); \
+	cp $$TMP_DIR/bin/golint $(GOLINT); \
+	chmod -R u+w $$TMP_DIR; \
+	rm -rf $$TMP_DIR; \
+	}
+
+$(KPT): $(BUILD_DIR)
+	@echo Download kpt
+	@{ \
+	set -e; \
+	TMP_DIR=$$(mktemp -d); \
+	curl -fsSL https://github.com/GoogleContainerTools/kpt/releases/download/v$(KPT_VERSION)/kpt_linux_amd64-$(KPT_VERSION).tar.gz | tar -xzf - -C $$TMP_DIR; \
+	cp -f $$TMP_DIR/kpt $(KPT); \
+	chmod -R +x $(KPT); \
+	rm -rf $$TMP_DIR; \
+	}
+
+$(KUSTOMIZE): $(BUILD_DIR)
+	@echo Download kustomize
+	@{ \
+	set -e; \
+	TMP_DIR=$$(mktemp -d); \
+	curl -fsSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_linux_amd64.tar.gz | tar -xzf - -C $$TMP_DIR; \
+	cp -f $$TMP_DIR/kustomize $(KUSTOMIZE); \
+	chmod -R +x $(KUSTOMIZE); \
+	rm -rf $$TMP_DIR; \
 	}
 
 $(BUILD_DIR):

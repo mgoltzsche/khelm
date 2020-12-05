@@ -142,23 +142,37 @@ func (f *repositories) repoIndex(ctx context.Context, entry *repo.Entry) (*repo.
 		return idx, nil
 	}
 	idxFile := indexFile(entry, f.cacheDir)
-	idx, err := repo.LoadIndexFile(idxFile)
+	idx, err := loadIndexFile(ctx, idxFile)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if os.IsNotExist(errors.Cause(err)) {
 			err = downloadIndexFile(ctx, entry, f.cacheDir, f.getters)
 			if err != nil {
 				return nil, err
 			}
-			idx, err = repo.LoadIndexFile(idxFile)
+			idx, err = loadIndexFile(ctx, idxFile)
 			if err != nil {
-				return nil, errors.WithStack(err)
+				return nil, err
 			}
 		} else {
-			return nil, errors.Wrapf(err, "load repo index file %s", idxFile)
+			return nil, err
 		}
 	}
 	f.indexFiles[entry.Name] = idx
 	return idx, nil
+}
+
+func loadIndexFile(ctx context.Context, idxFile string) (idx *repo.IndexFile, err error) {
+	done := make(chan struct{}, 1)
+	go func() {
+		idx, err = repo.LoadIndexFile(idxFile)
+		close(done)
+	}()
+	select {
+	case <-done:
+		return idx, errors.Wrapf(err, "load repo index file %s", idxFile)
+	case <-ctx.Done():
+		return nil, errors.Wrapf(ctx.Err(), "load repo index file %s", idxFile)
+	}
 }
 
 func (f *repositories) clearRepoIndex(entry *repo.Entry) {
@@ -227,7 +241,7 @@ func (f *repositories) Get(repo string) (*repo.Entry, error) {
 		repo = repo[1:]
 		isName = true
 	}
-	if isName {
+	if isName && f.repos != nil {
 		if entry, _ := f.repos.Get(repo); entry != nil {
 			return entry, nil
 		}

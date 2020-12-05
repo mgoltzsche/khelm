@@ -7,7 +7,8 @@ RUN go mod download
 COPY cmd/khelm /go/src/github.com/mgoltzsche/khelm/cmd/khelm
 COPY internal /go/src/github.com/mgoltzsche/khelm/internal
 COPY pkg /go/src/github.com/mgoltzsche/khelm/pkg
-RUN go build -o build/bin/khelm -ldflags '-s -w -extldflags "-static"' ./cmd/khelm && mv build/bin/khelm /usr/local/bin/
+ARG KHELM_VERSION=dev-build
+RUN go build -o khelm -ldflags "-X main.khelmVersion=$KHELM_VERSION -s -w -extldflags '-static'" ./cmd/khelm && mv khelm /usr/local/bin/
 
 FROM alpine:3.12
 RUN mkdir /helm && chown root:nobody /helm && chmod 775 /helm

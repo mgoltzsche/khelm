@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mgoltzsche/khelm/v1/internal/version"
 	"github.com/mgoltzsche/khelm/v1/pkg/helm"
 	"github.com/spf13/cobra"
 )
@@ -22,9 +21,10 @@ const (
 	envDebug                     = "KHELM_DEBUG"
 	envHelmDebug                 = "HELM_DEBUG"
 	flagTrustAnyRepo             = "trust-any-repo"
+	usageExample                 = "  khelm template ./chart\n  khelm template stable/jenkins\n  khelm template jenkins --version=2.5.3 --repo=https://kubernetes-charts.storage.googleapis.com"
 )
 
-var usageExample = fmt.Sprintf("  %s template ./chart\n  %s template stable/jenkins\n  %s template jenkins --version=2.5.3 --repo=https://kubernetes-charts.storage.googleapis.com", os.Args[0], os.Args[0], os.Args[0])
+var khelmVersion = "dev-build"
 
 // Execute runs the khelm CLI
 func Execute(reader io.Reader, writer io.Writer) error {
@@ -41,13 +41,14 @@ func Execute(reader io.Reader, writer io.Writer) error {
 
 	// Run as kustomize plugin (if kustomize-specific env var provided)
 	if kustomizeGenCfgYAML, isKustomizePlugin := os.LookupEnv(envKustomizePluginConfig); isKustomizePlugin {
+		logVersion()
 		err := runAsKustomizePlugin(h, kustomizeGenCfgYAML, writer)
 		logStackTrace(err, debug)
 		return err
 	}
 
 	rootCmd := &cobra.Command{
-		Version: version.Version,
+		Version: khelmVersion,
 		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			logVersion()
 		},
@@ -62,16 +63,17 @@ func Execute(reader io.Reader, writer io.Writer) error {
 		rootCmd.SetErr(&errBuf)
 		rootCmd.PersistentFlags().BoolVar(&debug, "debug", debug, fmt.Sprintf("enable debug log (%s)", envDebug))
 		rootCmd.PreRun = func(_ *cobra.Command, _ []string) {
+			logVersion()
 			fmt.Printf("# Reading kpt function input from stdin (use `%s template` to run without kpt)\n", os.Args[0])
 		}
 	}
 
 	rootCmd.Example = usageExample
-	rootCmd.Use = os.Args[0]
-	rootCmd.Short = fmt.Sprintf("khelm %s chart renderer", version.Version)
+	rootCmd.Use = "khelm"
+	rootCmd.Short = fmt.Sprintf("khelm %s chart renderer", khelmVersion)
 	rootCmd.Long = `khelm is a helm chart templating CLI, kpt function and kustomize plugin.
 
-In opposite to the helm CLI khelm allows to
+In addition to helm's templating capabilities khelm allows to:
  * build local charts automatically when templating
  * use any repository without registering it in repositories.yaml
  * enforce namespace-scoped resources within the template output
@@ -97,5 +99,5 @@ In opposite to the helm CLI khelm allows to
 }
 
 func logVersion() {
-	log.Println("Running khelm", version.Version)
+	log.Println("Running khelm", khelmVersion)
 }
