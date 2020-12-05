@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 	"strings"
 
@@ -106,13 +105,7 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 	dec.KnownFields(true)
 	err = dec.Decode(cfg)
 	if err != nil {
-		// Accept unknown fields but warn about them
-		dec = yaml.NewDecoder(bytes.NewReader(data))
-		e := dec.Decode(cfg)
-		if e == nil {
-			log.Printf("WARNING: chart renderer config %q contains unsupported fields: %s", cfg.Metadata.Name, err)
-			err = nil
-		}
+		return nil, errors.Wrap(err, "read chart renderer config")
 	}
 	if err == nil {
 		e := dec.Decode(cfg)

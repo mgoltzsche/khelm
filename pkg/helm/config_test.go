@@ -18,11 +18,11 @@ func TestReadGeneratorConfig(t *testing.T) {
 	require.NotNil(t, cfg, "result")
 }
 
-func TestReadGeneratorConfigUnsupportedField(t *testing.T) {
+func TestReadGeneratorConfigUnsupportedFieldError(t *testing.T) {
 	log.SetFlags(0)
-	f, err := os.Open(filepath.Join(rootDir, "example/unsupported-field/generator.yaml"))
+	f, err := os.Open(filepath.Join(rootDir, "example/unsupported-field-fail/generator.yaml"))
 	require.NoError(t, err)
 	defer f.Close()
 	_, err = ReadGeneratorConfig(f)
-	require.NoError(t, err)
+	require.Error(t, err)
 }

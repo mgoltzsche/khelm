@@ -52,7 +52,6 @@ func TestRender(t *testing.T) {
 		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", "myotherns", "http://efk-elasticsearch-client:9200"},
 		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", "myns", "http://efk-elasticsearch-client:9200"},
 		{"values-inheritance", "example/values-inheritance/generator.yaml", "values-inheritance-env", " inherited: inherited value\n  fileoverwrite: overwritten by file\n  valueoverwrite: overwritten by generator config"},
-		{"unsupported-field", "example/unsupported-field/generator.yaml", "myns", "key: a\n"},
 		{"cluster-scoped", "example/cluster-scoped/generator.yaml", "", "myrolebinding"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
