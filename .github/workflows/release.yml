@@ -31,7 +31,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Test
-      run: make khelm test lint e2e-test
+      run: make khelm test check e2e-test
 
     - name: Build image
       run: make image IMAGE=$IMAGE_NAME

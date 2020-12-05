@@ -27,7 +27,7 @@ jobs:
       run: make test
 
     - name: Lint
-      run: make lint
+      run: make check
 
     - name: e2e test
       run: make e2e-test
