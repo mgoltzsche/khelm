@@ -50,11 +50,12 @@ func Execute(reader io.Reader, writer io.Writer) error {
 		return err
 	}
 
+	logVersionPreRun := func(_ *cobra.Command, _ []string) {
+		logVersion()
+	}
 	rootCmd := &cobra.Command{
 		Version: versionInfo(),
-		PersistentPreRun: func(_ *cobra.Command, _ []string) {
-			logVersion()
-		},
+		PreRun:  logVersionPreRun,
 	}
 	errBuf := bytes.Buffer{}
 
@@ -87,6 +88,7 @@ In addition to helm's templating capabilities khelm allows to:
 	templateCmd := templateCommand(h, writer)
 	templateCmd.SetOut(writer)
 	templateCmd.SetErr(&errBuf)
+	templateCmd.PreRun = logVersionPreRun
 	rootCmd.AddCommand(templateCmd)
 
 	// Run command

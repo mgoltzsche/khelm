@@ -1,93 +1,211 @@
-helm-kustomize-plugin
-[![Build Status](https://travis-ci.org/mgoltzsche/helm-kustomize-plugin.svg?branch=master)](https://travis-ci.org/mgoltzsche/helm-kustomize-plugin)
-[![Go Report Card](https://goreportcard.com/badge/github.com/mgoltzsche/helm-kustomize-plugin)](https://goreportcard.com/report/github.com/mgoltzsche/helm-kustomize-plugin)
-=
+# khelm [![Go Report Card](https://goreportcard.com/badge/github.com/mgoltzsche/helm-kustomize-plugin)](https://goreportcard.com/report/github.com/mgoltzsche/helm-kustomize-plugin)
 
-An experimental [kustomize](https://github.com/kubernetes-sigs/kustomize/) plugin that allows to render [helm](https://github.com/helm/helm) charts into a kustomization.  
+A [Helm](https://github.com/helm/helm) chart templating CLI, helm to kustomize converter, [kpt](https://github.com/GoogleContainerTools/kpt) function and [kustomize](https://github.com/kubernetes-sigs/kustomize/) plugin.  
 
-This plugin is an improved, golang-based version of the [example chartinflator plugin](https://github.com/kubernetes-sigs/kustomize/tree/v3.1.0/plugin/someteam.example.com/v1/chartinflator) with helm built-in.
 
 ## Motivation / History
 
-[Helm](https://github.com/helm/helm) packages ("charts") provide a great way to share and reuse kubernetes applications and there is a lot of them.
-However writing helm templates is cumbersome and you cannot reuse a chart properly if it does not (yet) support a particular parameter/value.
+[Helm](https://github.com/helm/helm) _charts_ provide a great way to share and reuse [Kubernetes](https://github.com/kubernetes/kubernetes) applications and there is a lot of them.
+However writing helm templates is cumbersome and you cannot reuse a chart properly if it does not yet support a particular parameter/value.
 
-[Kustomize](https://github.com/kubernetes-sigs/kustomize/) solves these issues declaratively by merging [Kubernetes](https://github.com/kubernetes/kubernetes) API objects which grants users of a _kustomization_ the freedom to change anything.
+[Kustomize](https://github.com/kubernetes-sigs/kustomize/) solves these issues declaratively by merging Kubernetes API objects which grants users of a _kustomization_ the freedom to change anything.
 However kustomize neither supports lifecycle management nor templating with externally passed in values (which is sometimes still required).  
 
-To overcome the gap between helm and kustomize initially this repository provided a kustomize plugin and [k8spkg](https://github.com/mgoltzsche/k8spkg) was used for lifecycle management.
-Since [kpt](https://github.com/GoogleContainerTools/kpt) is [published](https://opensource.googleblog.com/2020/03/kpt-packaging-up-your-kubernetes.html) both technologies can be used as (chained) kpt functions. kpt also supports simple templating of static (rendered) manifests using [setters](https://googlecontainertools.github.io/kpt/guides/consumer/set/), dependency and [lifecycle management](https://googlecontainertools.github.io/kpt/reference/live/).
+To overcome the gap between helm and kustomize initially this repository provided a kustomize plugin and [k8spkg](https://github.com/mgoltzsche/k8spkg) was used for lifecycle management.  
+Since [kpt](https://github.com/GoogleContainerTools/kpt) is [published](https://opensource.googleblog.com/2020/03/kpt-packaging-up-your-kubernetes.html) helm and kustomize can be run as (chained) kpt functions supporting declarative, GitOps-based workflows. kpt also supports dynamic modification of static (rendered) manifests with externally passed in values using [setters](https://googlecontainertools.github.io/kpt/guides/consumer/set/) as well as [dependency](https://googlecontainertools.github.io/kpt/reference/pkg/) and [lifecycle management](https://googlecontainertools.github.io/kpt/reference/live/).
 
 
-## Requirements
+## Features
 
-* [kustomize](https://github.com/kubernetes-sigs/kustomize) 3.0.0
+* Template/render a Helm chart
+* Convert a chart's output into a kustomization
+* Build local charts automatically when templating
+* Use any repository without registering it in repositories.yaml
+* Automatically fetch and updated required repository index files
+* Set a namespace on all resources
+* Enforce namespace-scoped resources within the template output
+* Integrate with kustomize
+* Integrate with kpt
+
+## Supported interfaces
+
+khelm can be used as:
+* [kpt function](#kpt-function) (recommended)
+* [kustomize exec plugin](#kustomize-exec-plugin)
+* [CLI](#cli)
+* [Go API](#go-api)
+
+Usage examples can be found in the [example](example) and [e2e](e2e) directories.
+
+### kpt function
+
+The khelm kpt function templates a chart and returns the output as single manifest file or kustomization directory (when `outputPath` ends with `/`). The kustomization output can be used to apply further transformations by running a kustomize function afterwards.  
+
+Also, in opposite to the kustomize plugin approach, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to various rendering technologies since they just apply static mainfests (after changing values using `kpt cfg set`) to a cluster using `kpt live apply`.
+
+#### kpt function usage example
+
+A kpt function can be declared as annotated _ConfigMap_ within a kpt project.
+A kpt project can be initialized and used with such a function as follows:
+```sh
+mkdir example-project && cd example-project
+kpt pkg init . # Creates the Kptfile
+cat - > khelm-function.yaml <<-EOF
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: cert-manager-manifest-generator
+    annotations:
+      config.kubernetes.io/function: |
+        container:
+          image: docker.pkg.github.com/mgoltzsche/khelm/khelm:latest
+          network: true
+      config.kubernetes.io/local-config: "true"
+  data:
+    repository: https://charts.jetstack.io
+    chart: cert-manager
+    version: 0.9.x
+    name: my-cert-manager-release
+    values:
+      webhook:
+        enabled: false
+    outputPath: output-manifest.yaml
+EOF
+kpt fn run --network . # Renders the chart into output-manifest.yaml
+```
+_For all available fields see the [table](#configuration-options) below._  
+
+Please note that, in case you need to refer to a local chart directory or values file, the source must be mounted to the function using `kpt fn run --mount=<SRC_MOUNT> .`.  
+The [example kpt project](example/kpt) and the corresponding [e2e test](e2e/kpt-function-test.sh) show how to do that.  
+
+Kpt can also be leveraged to pull charts from other git repositories into your own repository using the `kpt pkg sync .` [command](https://googlecontainertools.github.io/kpt/reference/pkg/) (with a corresponding dependency set up) before running the khelm function (for this reason the go-getter support has been removed from this project).  
+
+If necessary the chart output can be transformed using kustomize.
+This can be done by declaring the khelm and a kustomize function orderly within a file and specifying the chart output kustomization as input for the kustomize function as shown in [this example](example/kpt/helm-kustomize-pipeline.yaml).
 
 
-## Install
+### kustomize exec plugin
+
+khelm can be used as [kustomize](https://github.com/kubernetes-sigs/kustomize) 3 exec plugin.
+Though plugin support in kustomize is still an alpha feature and may be removed in a future version.
+
+#### Plugin installation
 
 Install using curl (linux amd64):
-```
-mkdir -p $HOME/.config/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer
-curl -L https://github.com/mgoltzsche/helm-kustomize-plugin/releases/latest/download/helm-kustomize-plugin > $HOME/.config/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
-chmod u+x $HOME/.config/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
+```sh
+mkdir -p $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
+curl -fsSL https://github.com/mgoltzsche/khelm/releases/latest/download/khelm-linux-amd64 > $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
+chmod u+x $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
 ```
 or using `go`:
+```sh
+go get github.com/mgoltzsche/khelm/cmd/khelm
+mkdir -p $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
+mv $GOPATH/bin/khelm $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
 ```
-go get github.com/mgoltzsche/helm-kustomize-plugin
-mkdir -p $HOME/.config/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer
-mv $GOPATH/bin/helm-kustomize-plugin $HOME/.config/kustomize/plugin/helm.kustomize.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
-```
 
-The [kustomize plugin documentation](https://github.com/kubernetes-sigs/kustomize/tree/master/docs/plugins)
-provides more information.
+The general [kustomize plugin guide](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/execpluginguidedexample/) provides more information.
 
+#### Plugin usage example
 
-## Usage
-
-A _plugin descriptor_ specifying the helm repository, chart, version and values
-that should be used in a kubernetes-style resource can be referenced in the
-`generators` section of a `kustomization.yaml` and looks as follows:
-```
-apiVersion: helm.kustomize.mgoltzsche.github.com/v1
+A _plugin descriptor_ specifies the helm repository, chart, version and values that should be used in a kubernetes-style resource can be referenced in the `generators` section of a `kustomization.yaml` and can look as follows:
+```yaml
+apiVersion: khelm.mgoltzsche.github.com/v1
 kind: ChartRenderer
 metadata:
-  name: <NAME>
-  namespace: <NAMESPACE>
-repository: <REPOSITORY>
-chart: <CHART_NAME>
-version: <CHART_VERSION>
-valueFiles:
-- <VALUE_FILE>
-value: <VALUE_OBJECT>
-apiVersions:
-- <API_VERSION>
-exclude:
-- apiVersion: <APIVERSION>
-  kind: <KIND>
-  namespace: <NAMESPACE>
-  name: <NAME>
+  name: cert-manager # fallback for `name`
+  #namespace: cert-manager # fallback for `namespace`
+repository: https://charts.jetstack.io
+chart: cert-manager
+version: 0.9.x
+values:
+  webhook:
+    enabled: false
+```
+_For all available fields see the [table](#configuration-options) below._
+
+More complete examples can be found within the [example](example) directory.
+For instance `cert-manager` can be rendered like this:
+```sh
+kustomize build --enable_alpha_plugins github.com/mgoltzsche/khelm/example/cert-manager
 ```
 
-* `repository`: a helm repository URL.
-* `chart` (mandatory): chart name (using `repository`) or, when `repository` is not specified, the path to a local chart (which will be built recursively).
-* `version`: chart version if a remote chart is specified.
-* `valueFiles`: a list of helm value file paths relative to the generator config file or to the chart.
-* `value`: a values object.
-* `apiVersions`: a list of apiVersions used for Capabilities.APIVersions.
-* `exclude`: a list of selectors used to exclude matching objects from the rendered chart.
+### CLI
 
-### Example
+khelm also supports a helm-like `template` CLI.
 
-Example kustomizations using this plugin can be found in the `example` directory.
-For instance `cert-manager` can be rendered and deployed like this:
-```
-kustomize build --enable_alpha_plugins github.com/mgoltzsche/helm-kustomize-plugin/example/cert-manager | kubectl apply -f -
+#### Binary installation
+```sh
+curl -fsSL https://github.com/mgoltzsche/khelm/releases/latest/download/khelm-linux-amd64 > khelm
+chmod +x khelm
+sudo mv khelm /usr/local/bin/khelm
 ```
 
+#### Binary usage example
+```sh
+khelm template cert-manager --version=0.9.x --repo=https://charts.jetstack.io
+```
+_For all available options see the [table](#configuration-options) below._
 
-## Compatibility & security notice
+#### Docker usage example
+```sh
+docker run docker.pkg.github.com/mgoltzsche/khelm/khelm:latest template cert-manager --version=0.9.x --repo=https://charts.jetstack.io
+```
 
-Plugin support in kustomize is still an alpha feature.  
+### Go API
 
-Helm charts may access the local file system outside the kustomization directory.
+The khelm Go API `github.com/mgoltzsche/khelm/v1/pkg/helm`exposes a `Helm` struct that provides a `Render()` function that returns the rendered resources as `kyaml` objects.
+
+## Configuration options
+
+| Field | CLI        | Description |
+| ----- | ---------- | ----------- |
+| `chart` | ARGUMENT    | Chart file (if `repository` not set) or name. |
+| `version` | `--version` | Chart version. Latest version is used if not specified. |
+| `repository` | `--repo` | URL to the repository the chart should be loaded from. |
+| `valueFiles` | `-f` | Locations of values files.
+| `values` | `--set` | Set values object or in CLI `key1=val1,key2=val2`. |
+| `apiVersions` | `--api-versions` | Kubernetes api versions used for Capabilities.APIVersions. |
+| `name` | `--name` | Release name used to render the chart. |
+| `verify` | `--verify` | If enabled verifies the signature of all charts using the `keyring` (see [Helm 2 provenance and integrity](https://v2.helm.sh/docs/provenance/)). |
+| `keyring` | `--keyring` | GnuPG keyring file (default `~/.gnupg/pubring.gpg`). |
+| `exclude` |  | List of resource selectors that exclude matching resources from the output. Fails if a selector doesn't match any resource. |
+| `exclude[].apiVersion` |  | Excludes resources by apiVersion. |
+| `exclude[].kind` |  | Excludes resources by kind. |
+| `exclude[].namespace` |  | Excludes resources by namespace. |
+| `exclude[].name` |  | Excludes resources by name. |
+| `namespace` | `--namespace` | Set namespace on all namespaced resources (and those of unknown kinds). |
+| `namespacedOnly` | `--namespaced-only` | If enabled fail on known cluster-scoped resources and those of unknown kinds. |
+| `output` | `--output` | Path to write the output to. If it ends with `/` a kustomization is generated. (Not supported by the kustomize plugin.) |
+|  | `--output-replace` | If enabled replace the output directory or file (CLI-only). |
+|  | `--trust-any-repo` | If enabled repositories that are not registered within `repositories.yaml` can be used as well (env var `KHELM_TRUST_ANY_REPO`). Within the kpt function this behaviour can be disabled by mounting `/helm/repository/repositories.yaml` or disabling network access. |
+| `debug` | `--debug` | Enables debug log and provides a stack trace on error. |
+
+### Repository configuration
+
+Repository credentials can be configured using helm's `repositories.yaml` which can be passed through as `Secret` to generic build jobs. khelm downloads repo index files when needed.  
+
+Unlike Helm khelm allows usage of any repository when `repositories.yaml` is not present or `--trust-any-repo` is enabled.
+
+## Helm support
+
+* Helm 2 is supported by the `v1` module version and maintained within the `master` branch.
+* Helm 3 is supported by the `v2` module version and maintained within the `v2` branch.
+
+## Build and test
+
+Build and test the khelm binary (requires Go 1.13) as well as the container image:
+```sh
+make khelm test check image e2e-test
+```
+_The dynamic binary is written to `build/bin/khelm` and the static binary to `build/bin/khelm-static`_.
+
+Alternatively a static binary can be built using `docker`:
+```sh
+make khelm-static
+```
+
+Install the binary on your host at `/usr/local/bin/khelm`:
+```sh
+sudo make install
+```

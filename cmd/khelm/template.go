@@ -51,6 +51,8 @@ func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 	})
 	f := cmd.Flags()
 	f.StringVar(&req.Repository, "repo", "", "Chart repository url where to locate the requested chart")
+	f.StringVar(&req.Repository, "repository", "", "Chart repository url where to locate the requested chart")
+	f.Lookup("repository").Hidden = true
 	f.StringVar(&req.Version, "version", "", "Specify the exact chart version to use. If this is not specified, the latest version is used")
 	f.BoolVar(&trustAnyRepo, flagTrustAnyRepo, trustAnyRepo,
 		fmt.Sprintf("Allow to use repositories that are not registered within repositories.yaml (default is true when repositories.yaml does not exist; %s)", envTrustAnyRepo))

@@ -33,6 +33,7 @@ func TestTemplateCommand(t *testing.T) {
 		{
 			"remote chart with version",
 			[]string{"cert-manager", "--version=0.9.x",
+				"--repository=https://charts.jetstack.io",
 				"--repo=https://charts.jetstack.io",
 				"--trust-any-repo"},
 			34, "chart: cainjector-v0.9.1",
