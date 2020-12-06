@@ -81,6 +81,7 @@ type RendererConfig struct {
 	APIVersions    []string               `yaml:"apiVersions,omitempty"`
 	Exclude        []ResourceSelector     `yaml:"exclude,omitempty"`
 	NamespacedOnly bool                   `yaml:"namespacedOnly,omitempty"`
+	ForceNamespace string                 `yaml:"forceNamespace,omitempty"`
 }
 
 // Validate validates the chart renderer config

@@ -23,7 +23,7 @@ func TestKustomizePlugin(t *testing.T) {
 	defer os.Unsetenv(envTrustAnyRepo)
 	defer os.Unsetenv(envDebug)
 	out := runKustomizePlugin(t, filepath.Dir(file))
-	validateYAML(t, out, 1)
+	validateYAML(t, out, 2)
 	require.Contains(t, string(out), "\n  key: b\n", "output: %s", string(out))
 }
 

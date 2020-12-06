@@ -29,11 +29,11 @@ func (h *Helm) loadChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, e
 	if cfg.Repository == "" {
 		if fileExists {
 			return h.buildAndLoadLocalChart(ctx, cfg)
-		} else if l := strings.Split(cfg.Chart, "/"); len(l) == 2 && l[0] != "" {
+		} else if l := strings.Split(cfg.Chart, "/"); len(l) == 2 && l[0] != "" && l[1] != "" && l[0] != ".." && l[0] != "." {
 			cfg.Repository = "@" + l[0]
 			cfg.Chart = l[1]
 		} else {
-			return nil, errors.New("no repository specified and local file not found")
+			return nil, errors.Errorf("chart directory %q not found and no repository specified", cfg.Chart)
 		}
 	}
 	return h.loadRemoteChart(ctx, cfg)

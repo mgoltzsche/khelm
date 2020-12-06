@@ -3,6 +3,6 @@ kind: ChartRenderer
 metadata:
   name: mychart
   namespace: myns
-chart: ../no-namespace
+chart: ../namespace
 unsupportedField: unsupported-value
 name: xyz

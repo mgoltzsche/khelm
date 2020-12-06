@@ -15,7 +15,7 @@ const (
 )
 
 type manifestTransformer struct {
-	Namespace      string
+	ForceNamespace string
 	Excludes       ResourceMatchers
 	NamespacedOnly bool
 	OutputPath     string
@@ -75,22 +75,36 @@ func (t *manifestTransformer) applyNamespace(o *yaml.RNode, clusterScopedResourc
 		return nil
 	}
 	namespaced, knownKind := openapi.IsNamespaceScoped(meta.TypeMeta)
-	if t.Namespace != "" && (namespaced || !knownKind) {
+	if t.ForceNamespace != "" && (namespaced || !knownKind) {
+		// Forcefully set namespace on resource
 		err = o.PipeE(yaml.LookupCreate(
-			yaml.ScalarNode, "metadata", "namespace"),
-			yaml.FieldSetter{StringValue: t.Namespace})
+			yaml.ScalarNode, yaml.MetadataField, yaml.NamespaceField),
+			yaml.FieldSetter{StringValue: t.ForceNamespace})
 		if err != nil {
 			return err
 		}
 	} else if t.NamespacedOnly && (!namespaced || !knownKind) && meta.Namespace == "" {
+		// Collect cluster-scoped resources to warn about them
 		resID := fmt.Sprintf("apiVersion: %s, kind: %s, name: %s", meta.APIVersion, meta.Kind, meta.Name)
 		*clusterScopedResources = append(*clusterScopedResources, resID)
+	}
+	// Set namespace of ServiceAccount references within a ClusterRoleBinding
+	if !namespaced && knownKind {
+		subjectsList, err := o.Pipe(yaml.Lookup("subjects"))
+		if err == nil {
+			subjects, err := subjectsList.Elements()
+			if err == nil {
+				for _, s := range subjects {
+					_ = s.PipeE(yaml.Lookup(yaml.NamespaceField), yaml.FieldSetter{StringValue: t.ForceNamespace})
+				}
+			}
+		}
 	}
 	return nil
 }
 
 func (t *manifestTransformer) removeManagedByLabel(o *yaml.RNode) {
 	clearManagedBy := yaml.FieldClearer{Name: annotationManagedBy}
-	_ = o.PipeE(yaml.Lookup("metadata", "labels"), clearManagedBy)
-	_ = o.PipeE(yaml.Lookup("spec", "template", "metadata", "labels"), clearManagedBy)
+	_ = o.PipeE(yaml.Lookup(yaml.MetadataField, yaml.LabelsField), clearManagedBy)
+	_ = o.PipeE(yaml.Lookup("spec", "template", yaml.MetadataField, yaml.LabelsField), clearManagedBy)
 }

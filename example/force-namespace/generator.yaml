@@ -1,9 +1,6 @@
 apiVersion: khelm.mgoltzsche.github.com/v1
 kind: ChartRenderer
 metadata:
-  name: mychart
+  name: force-namespace
 chart: ../namespace
-exclude:
-- apiVersion: v1
-  kind: ConfigMap
-  name: myconfiga
+forceNamespace: forced-namespace

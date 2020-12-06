@@ -22,11 +22,11 @@ docker run --rm -v "$DIR:/out" $IMAGE template cert-manager \
 rm -rf "$DIR"
 
 DIR="$(mktemp -d)"
-docker run --rm -v "$DIR:/out" -v "$(pwd)/no-namespace:/chart" $IMAGE template ./chart \
+docker run --rm -v "$DIR:/out" -v "$(pwd)/namespace:/chart" $IMAGE template ./chart \
 	--output /out/ \
 	--debug || STATUS=1
 [ $STATUS -eq 1 ] || [ -f "$DIR/kustomization.yaml" ] || (echo 'fail: kustomization.yaml not written' >&2; false) || STATUS=1
-[ $STATUS -eq 1 ] || [ -f "$DIR/configmap_release-name-myconfigb.yaml" ] || (echo 'fail: resource not written' >&2; false) || STATUS=1
+[ $STATUS -eq 1 ] || [ -f "$DIR/configmap_myconfigb.yaml" ] || (echo 'fail: resource not written' >&2; false) || STATUS=1
 [ $STATUS -eq 0 ] || ls -la "$DIR" >&2
 rm -rf "$DIR"
 

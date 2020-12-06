@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+data:
+  key: b
+  k8sVersion: {{ .Capabilities.KubeVersion }}

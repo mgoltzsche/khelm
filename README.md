@@ -1,4 +1,4 @@
-# khelm [![Go Report Card](https://goreportcard.com/badge/github.com/mgoltzsche/helm-kustomize-plugin)](https://goreportcard.com/report/github.com/mgoltzsche/helm-kustomize-plugin)
+# khelm ![GitHub workflow badge](https://github.com/mgoltzsche/khelm/workflows/Release/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/mgoltzsche/helm-kustomize-plugin)](https://goreportcard.com/report/github.com/mgoltzsche/helm-kustomize-plugin)
 
 A [Helm](https://github.com/helm/helm) chart templating CLI, helm to kustomize converter, [kpt](https://github.com/GoogleContainerTools/kpt) function and [kustomize](https://github.com/kubernetes-sigs/kustomize/) plugin.  
 
@@ -22,10 +22,8 @@ Since [kpt](https://github.com/GoogleContainerTools/kpt) is [published](https://
 * Build local charts automatically when templating
 * Use any repository without registering it in repositories.yaml
 * Automatically fetch and updated required repository index files
-* Set a namespace on all resources
 * Enforce namespace-scoped resources within the template output
-* Integrate with kustomize
-* Integrate with kpt
+* Set a namespace on all resources
 
 ## Supported interfaces
 
@@ -41,7 +39,7 @@ Usage examples can be found in the [example](example) and [e2e](e2e) directories
 
 The khelm kpt function templates a chart and returns the output as single manifest file or kustomization directory (when `outputPath` ends with `/`). The kustomization output can be used to apply further transformations by running a kustomize function afterwards.  
 
-Also, in opposite to the kustomize plugin approach, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to various rendering technologies since they just apply static mainfests (after changing values using `kpt cfg set`) to a cluster using `kpt live apply`.
+Also, in opposite to the kustomize plugin approach, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to rendering technologies and chart servers since they just apply static mainfests (after changing values using `kpt cfg set`) located within a git repository to a cluster using `kpt live apply`.
 
 #### kpt function usage example
 
@@ -66,6 +64,7 @@ cat - > khelm-function.yaml <<-EOF
     chart: cert-manager
     version: 0.9.x
     name: my-cert-manager-release
+    namespace: cert-manager
     values:
       webhook:
         enabled: false
@@ -114,7 +113,7 @@ apiVersion: khelm.mgoltzsche.github.com/v1
 kind: ChartRenderer
 metadata:
   name: cert-manager # fallback for `name`
-  #namespace: cert-manager # fallback for `namespace`
+  namespace: cert-manager # fallback for `namespace`
 repository: https://charts.jetstack.io
 chart: cert-manager
 version: 0.9.x
@@ -174,8 +173,9 @@ The khelm Go API `github.com/mgoltzsche/khelm/v1/pkg/helm`exposes a `Helm` struc
 | `exclude[].kind` |  | Excludes resources by kind. |
 | `exclude[].namespace` |  | Excludes resources by namespace. |
 | `exclude[].name` |  | Excludes resources by name. |
-| `namespace` | `--namespace` | Set namespace on all namespaced resources (and those of unknown kinds). |
+| `namespace` | `--namespace` | Set the namespace used by Helm templates. |
 | `namespacedOnly` | `--namespaced-only` | If enabled fail on known cluster-scoped resources and those of unknown kinds. |
+| `forceNamespace` | `--force-namespace` | Set namespace on all namespaced resources (and those of unknown kinds). |
 | `output` | `--output` | Path to write the output to. If it ends with `/` a kustomization is generated. (Not supported by the kustomize plugin.) |
 |  | `--output-replace` | If enabled replace the output directory or file (CLI-only). |
 |  | `--trust-any-repo` | If enabled repositories that are not registered within `repositories.yaml` can be used as well (env var `KHELM_TRUST_ANY_REPO`). Within the kpt function this behaviour can be disabled by mounting `/helm/repository/repositories.yaml` or disabling network access. |

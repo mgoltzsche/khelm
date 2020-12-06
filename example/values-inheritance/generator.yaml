@@ -2,7 +2,6 @@ apiVersion: khelm.mgoltzsche.github.com/v1
 kind: ChartRenderer
 metadata:
   name: values-inheritance-example
-  namespace: values-inheritance-env
 chart: ./chart
 valueFiles:
 - values.yaml

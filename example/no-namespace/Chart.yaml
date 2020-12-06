@@ -1,4 +1,0 @@
-apiVersion: v1
-description: example chart without namespaced resource
-name: no-namespace
-version: 0.1.0

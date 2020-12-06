@@ -15,7 +15,7 @@ STATUS=0
 	cp build/bin/khelm $PLUGIN_DIR/ChartRenderer
 	chmod +x $PLUGIN_DIR/ChartRenderer
 	export XDG_CONFIG_HOME=$TMP_DIR
-	kustomize build --enable_alpha_plugins example/no-namespace | grep -q ' myconfiga'
+	kustomize build --enable_alpha_plugins example/namespace | grep -q ' myconfiga'
 ) || STATUS=1
 rm -rf $TMP_DIR
 

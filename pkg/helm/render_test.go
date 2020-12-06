@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -35,24 +36,25 @@ var rootDir = func() string {
 func TestRender(t *testing.T) {
 	expectedJenkinsContained := "- host: \"jenkins.example.org\"\n"
 	for _, c := range []struct {
-		name              string
-		file              string
-		expectedNamespace string
-		expectedContained string
+		name               string
+		file               string
+		expectedNamespaces []string
+		expectedContained  string
 	}{
-		{"jenkins", "example/jenkins/generator.yaml", "jenkins", expectedJenkinsContained},
-		{"values-external", "pkg/helm/generatorwithextvalues.yaml", "jenkins", expectedJenkinsContained},
-		{"rook-ceph-version-range", "example/rook-ceph/operator/generator.yaml", "rook-ceph-system", "rook-ceph-v0.9.3"},
-		{"cert-manager", "example/cert-manager/generator.yaml", "cert-manager", "chart: cainjector-v0.9.1"},
-		{"apiversions-condition", "example/apiversions-condition/generator.yaml", "apiversions-condition-env", "  config: fancy-config"},
-		{"no-namespace", "example/no-namespace/generator.yaml", "", "  key: a"},
-		{"kubeVersion", "example/no-namespace/generator.yaml", "", "  k8sVersion: v1.17.0"},
-		{"release-name", "example/no-namespace/generator.yaml", "", "  name: no-namespace-myconfigb"},
-		{"exclude", "example/exclude/generator.yaml", "myns", "  key: b"},
-		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", "myotherns", "http://efk-elasticsearch-client:9200"},
-		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", "myns", "http://efk-elasticsearch-client:9200"},
-		{"values-inheritance", "example/values-inheritance/generator.yaml", "values-inheritance-env", " inherited: inherited value\n  fileoverwrite: overwritten by file\n  valueoverwrite: overwritten by generator config"},
-		{"cluster-scoped", "example/cluster-scoped/generator.yaml", "", "myrolebinding"},
+		{"jenkins", "example/jenkins/generator.yaml", []string{"jenkins"}, expectedJenkinsContained},
+		{"values-external", "pkg/helm/generatorwithextvalues.yaml", []string{"jenkins"}, expectedJenkinsContained},
+		{"rook-ceph-version-range", "example/rook-ceph/operator/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
+		{"cert-manager", "example/cert-manager/generator.yaml", []string{"cert-manager", "kube-system"}, " name: cert-manager-webhook:webhook-authentication-reader"},
+		{"apiversions-condition", "example/apiversions-condition/generator.yaml", []string{}, "  config: fancy-config"},
+		{"namespace", "example/namespace/generator.yaml", []string{"install-namespace", "cluster-role-binding-ns"}, "  key: b"},
+		{"force-namespace", "example/force-namespace/generator.yaml", []string{"forced-namespace"}, "  key: b"},
+		{"kubeVersion", "example/release-name/generator.yaml", []string{}, "  k8sVersion: v1.17.0"},
+		{"release-name", "example/release-name/generator.yaml", []string{}, "  name: my-release-name-config"},
+		{"exclude", "example/exclude/generator.yaml", []string{"cluster-role-binding-ns"}, "  key: b"},
+		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", []string{}, "http://efk-elasticsearch-client:9200"},
+		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", []string{}, "http://efk-elasticsearch-client:9200"},
+		{"values-inheritance", "example/values-inheritance/generator.yaml", []string{}, " inherited: inherited value\n  fileoverwrite: overwritten by file\n  valueoverwrite: overwritten by generator config"},
+		{"cluster-scoped", "example/cluster-scoped/generator.yaml", []string{}, "myrolebinding"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			for _, cached := range []string{"", "cached "} {
@@ -65,16 +67,30 @@ func TestRender(t *testing.T) {
 				require.NoError(t, err, "rendered %syaml:\n%s", cached, b)
 				require.True(t, len(l) > 0, "%s: rendered result of %s is empty", cached, c.file)
 				require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
-				foundNs := ""
+				found := map[string]struct{}{}
 				for _, o := range l {
-					var ok bool
-					foundNs, ok = o["metadata"].(map[string]interface{})["namespace"].(string)
+					ns, ok := o["metadata"].(map[string]interface{})["namespace"].(string)
 					if ok {
-						require.NotEmpty(t, foundNs, "%s%s: output resource has empty namespace set explicitly", cached, c.file)
-						break
+						require.NotEmpty(t, ns, "%s%s: output resource has empty namespace set explicitly", cached, c.file)
+						found[ns] = struct{}{}
+					}
+					subjects, ok := o["subjects"].([]interface{})
+					if ok && len(subjects) > 0 {
+						if subject, ok := subjects[0].(map[string]interface{}); ok {
+							if ns, ok = subject["namespace"].(string); ok {
+								require.NotEmpty(t, ns, "%s%s: output resource has empty subjects[0].namespace set explicitly", cached, c.file)
+								found[ns] = struct{}{}
+							}
+						}
 					}
 				}
-				require.Equal(t, c.expectedNamespace, foundNs, "%s%s: namespace in output resource", cached, c.file)
+				foundNs := []string{}
+				for k := range found {
+					foundNs = append(foundNs, k)
+				}
+				sort.Strings(c.expectedNamespaces)
+				sort.Strings(foundNs)
+				require.Equal(t, c.expectedNamespaces, foundNs, "%s%s: namespaces of output resource", cached, c.file)
 			}
 		})
 	}

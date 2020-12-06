@@ -13,9 +13,7 @@ data:
   chart: cert-manager
   version: 0.9.x
   name: my-cert-manager-release
-  values:
-    webhook:
-      enabled: false
+  namespace: cert-manager
   outputPath: output-helm-kustomize/output-kustomization/
 ---
 apiVersion: v1

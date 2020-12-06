@@ -78,10 +78,10 @@ func renderChart(chrt *chart.Chart, c *ChartConfig, getters getter.Providers) (r
 	}
 
 	transformer := manifestTransformer{
-		Namespace:      namespace,
+		ForceNamespace: c.ForceNamespace,
 		Excludes:       Matchers(c.Exclude),
 		NamespacedOnly: c.NamespacedOnly,
-		OutputPath:     "output",
+		OutputPath:     "khelm-output",
 	}
 
 	r = make([]*yaml.RNode, 0, len(manifests))

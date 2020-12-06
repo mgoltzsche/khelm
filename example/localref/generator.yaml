@@ -3,7 +3,6 @@ kind: ChartRenderer
 metadata:
   name: mychart
   namespace: myns
-#repository: file:///go/src/github.com/mgoltzsche/helm-kustomize-plugin/example/localref
 chart: ./elk
 valueFiles:
   - elk/values.yaml

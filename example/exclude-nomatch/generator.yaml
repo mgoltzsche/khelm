@@ -3,7 +3,7 @@ kind: ChartRenderer
 metadata:
   name: mychart
   namespace: myns
-chart: ../no-namespace
+chart: ../namespace
 exclude:
 - apiVersion: v1
   kind: ConfigMap

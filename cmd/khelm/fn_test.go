@@ -47,10 +47,10 @@ func TestKptFnCommand(t *testing.T) {
 			"chart path only",
 			kptFnConfig{ChartConfig: &helm.ChartConfig{
 				LoaderConfig: helm.LoaderConfig{
-					Chart: filepath.Join(exampleDir, "no-namespace"),
+					Chart: filepath.Join(exampleDir, "namespace"),
 				},
 			}},
-			2, "myconfiga",
+			3, "myconfiga",
 		},
 		{
 			"latest cluster scoped remote chart",
@@ -77,13 +77,13 @@ func TestKptFnCommand(t *testing.T) {
 			"release name",
 			kptFnConfig{ChartConfig: &helm.ChartConfig{
 				LoaderConfig: helm.LoaderConfig{
-					Chart: filepath.Join(exampleDir, "no-namespace"),
+					Chart: filepath.Join(exampleDir, "release-name"),
 				},
 				RendererConfig: helm.RendererConfig{
 					Name: "myrelease",
 				},
 			}},
-			2, "myrelease-myconfigb",
+			1, "myrelease-config",
 		},
 		{
 			"valueFiles",
@@ -138,30 +138,42 @@ func TestKptFnCommand(t *testing.T) {
 			"kubeversion",
 			kptFnConfig{ChartConfig: &helm.ChartConfig{
 				LoaderConfig: helm.LoaderConfig{
-					Chart: filepath.Join(exampleDir, "no-namespace"),
+					Chart: filepath.Join(exampleDir, "release-name"),
 				},
 				RendererConfig: helm.RendererConfig{
 					KubeVersion: "1.12",
 				}}},
-			2, "k8sVersion: v1.12.0",
+			1, "k8sVersion: v1.12.0",
 		},
 		{
 			"namespace",
 			kptFnConfig{ChartConfig: &helm.ChartConfig{
 				LoaderConfig: helm.LoaderConfig{
-					Chart: filepath.Join(exampleDir, "no-namespace"),
+					Chart: filepath.Join(exampleDir, "namespace"),
 				},
 				RendererConfig: helm.RendererConfig{
 					Namespace: "mynamespace",
 				},
 			}},
-			2, "namespace: mynamespace",
+			3, " namespace: mynamespace\n",
+		},
+		{
+			"force namespace",
+			kptFnConfig{ChartConfig: &helm.ChartConfig{
+				LoaderConfig: helm.LoaderConfig{
+					Chart: filepath.Join(exampleDir, "namespace"),
+				},
+				RendererConfig: helm.RendererConfig{
+					ForceNamespace: "forced-namespace",
+				},
+			}},
+			3, " namespace: forced-namespace\n",
 		},
 		{
 			"exclude",
 			kptFnConfig{ChartConfig: &helm.ChartConfig{
 				LoaderConfig: helm.LoaderConfig{
-					Chart: filepath.Join(exampleDir, "no-namespace"),
+					Chart: filepath.Join(exampleDir, "namespace"),
 				},
 				RendererConfig: helm.RendererConfig{
 					Exclude: []helm.ResourceSelector{
@@ -173,31 +185,31 @@ func TestKptFnCommand(t *testing.T) {
 					},
 				},
 			}},
-			1, "myconfigb",
+			2, "myconfigb",
 		},
 		{
 			"output path",
 			kptFnConfig{
 				ChartConfig: &helm.ChartConfig{
 					LoaderConfig: helm.LoaderConfig{
-						Chart: filepath.Join(exampleDir, "no-namespace"),
+						Chart: filepath.Join(exampleDir, "namespace"),
 					},
 				},
 				OutputPath: "my/output/manifest.yaml",
 			},
-			2, "  config.kubernetes.io/path: my/output/manifest.yaml\n",
+			3, "  config.kubernetes.io/path: my/output/manifest.yaml\n",
 		},
 		{
 			"output kustomization",
 			kptFnConfig{
 				ChartConfig: &helm.ChartConfig{
 					LoaderConfig: helm.LoaderConfig{
-						Chart: filepath.Join(exampleDir, "no-namespace"),
+						Chart: filepath.Join(exampleDir, "namespace"),
 					},
 				},
 				OutputPath: "my/output/path/",
 			},
-			3, "resources:\n  - configmap_myconfiga.yaml\n  - configmap_release-name-myconfigb.yaml\n",
+			4, "resources:\n  - configmap_myconfiga.yaml\n  - configmap_myconfigb.yaml\n",
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {

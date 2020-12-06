@@ -21,8 +21,8 @@ func TestTemplateCommand(t *testing.T) {
 	}{
 		{
 			"chart path only",
-			[]string{filepath.Join(exampleDir, "no-namespace")},
-			2, "myconfigb",
+			[]string{filepath.Join(exampleDir, "namespace")},
+			3, "myconfigb",
 		},
 		{
 			"latest cluster scoped remote chart",
@@ -40,8 +40,8 @@ func TestTemplateCommand(t *testing.T) {
 		},
 		{
 			"release name",
-			[]string{filepath.Join(exampleDir, "no-namespace"), "--name=myrelease"},
-			2, "myrelease-myconfigb",
+			[]string{filepath.Join(exampleDir, "release-name"), "--name=myrelease"},
+			1, "myrelease-config",
 		},
 		{
 			"values",
@@ -70,14 +70,19 @@ func TestTemplateCommand(t *testing.T) {
 		},
 		{
 			"kubeversion",
-			[]string{filepath.Join(exampleDir, "no-namespace"),
+			[]string{filepath.Join(exampleDir, "release-name"),
 				"--kube-version=1.17"},
-			2, "k8sVersion: v1.17.0",
+			1, "k8sVersion: v1.17.0",
 		},
 		{
 			"namespace",
-			[]string{filepath.Join(exampleDir, "no-namespace"), "--namespace=mynamespace"},
-			2, "namespace: mynamespace",
+			[]string{filepath.Join(exampleDir, "namespace"), "--namespace=mynamespace"},
+			3, "namespace: mynamespace",
+		},
+		{
+			"namespace",
+			[]string{filepath.Join(exampleDir, "namespace"), "--force-namespace=forced-namespace"},
+			3, "namespace: forced-namespace",
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {

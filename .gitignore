@@ -6,5 +6,7 @@
 /example/**/charts
 /example/**/tmpcharts
 /example/kpt/output-*
-!/example/kpt/output-helm-kustomize/static/inventory-template.yaml
+!/example/kpt/output-helm-kustomize
+/example/kpt/output-helm-kustomize/output-kustomization
+/example/kpt/output-helm-kustomize/output-kustomization/static/manifest.yaml
 
