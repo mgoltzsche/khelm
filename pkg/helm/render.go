@@ -47,20 +47,20 @@ func (h *Helm) Render(ctx context.Context, req *ChartConfig) (r []*yaml.RNode, e
 
 // renderChart renders a manifest from the given chart and values
 // Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/template.go
-func renderChart(chrt *chart.Chart, c *ChartConfig, getters getter.Providers) (r []*yaml.RNode, err error) {
-	namespace := c.Namespace
+func renderChart(chrt *chart.Chart, req *ChartConfig, getters getter.Providers) (r []*yaml.RNode, err error) {
+	namespace := req.Namespace
 	renderOpts := renderutil.Options{
 		ReleaseOptions: chartutil.ReleaseOptions{
-			Name:      c.Name,
+			Name:      req.Name,
 			Namespace: namespace,
 		},
-		KubeVersion: c.KubeVersion,
+		KubeVersion: req.KubeVersion,
 	}
-	if len(c.APIVersions) > 0 {
-		renderOpts.APIVersions = append(c.APIVersions, "v1")
+	if len(req.APIVersions) > 0 {
+		renderOpts.APIVersions = append(req.APIVersions, "v1")
 	}
 
-	rawVals, err := vals(chrt, c.ValueFiles, c.Values, c.BaseDir, getters, "", "", "")
+	rawVals, err := vals(chrt, req.ValueFiles, req.Values, req.BaseDir, getters, "", "", "")
 	if err != nil {
 		return nil, errors.Wrap(err, "load values")
 	}
@@ -78,9 +78,9 @@ func renderChart(chrt *chart.Chart, c *ChartConfig, getters getter.Providers) (r
 	}
 
 	transformer := manifestTransformer{
-		ForceNamespace: c.ForceNamespace,
-		Excludes:       Matchers(c.Exclude),
-		NamespacedOnly: c.NamespacedOnly,
+		ForceNamespace: req.ForceNamespace,
+		Excludes:       Matchers(req.Exclude),
+		NamespacedOnly: req.NamespacedOnly,
 		OutputPath:     "khelm-output",
 	}
 

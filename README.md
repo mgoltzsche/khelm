@@ -1,4 +1,4 @@
-# khelm ![GitHub workflow badge](https://github.com/mgoltzsche/khelm/workflows/Release/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/mgoltzsche/helm-kustomize-plugin)](https://goreportcard.com/report/github.com/mgoltzsche/helm-kustomize-plugin)
+# khelm ![GitHub workflow badge](https://github.com/mgoltzsche/khelm/workflows/Release/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/mgoltzsche/khelm)](https://goreportcard.com/report/github.com/mgoltzsche/khelm)
 
 A [Helm](https://github.com/helm/helm) chart templating CLI, helm to kustomize converter, [kpt](https://github.com/GoogleContainerTools/kpt) function and [kustomize](https://github.com/kubernetes-sigs/kustomize/) plugin.  
 
@@ -85,7 +85,7 @@ This can be done by declaring the khelm and a kustomize function orderly within 
 
 ### kustomize exec plugin
 
-khelm can be used as [kustomize](https://github.com/kubernetes-sigs/kustomize) 3 exec plugin.
+khelm can be used as [kustomize](https://github.com/kubernetes-sigs/kustomize) 3 [exec plugin](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/execpluginguidedexample/).
 Though plugin support in kustomize is still an alpha feature and may be removed in a future version.
 
 #### Plugin installation
@@ -102,8 +102,6 @@ go get github.com/mgoltzsche/khelm/cmd/khelm
 mkdir -p $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
 mv $GOPATH/bin/khelm $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
 ```
-
-The general [kustomize plugin guide](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/execpluginguidedexample/) provides more information.
 
 #### Plugin usage example
 
@@ -196,7 +194,7 @@ Unlike Helm khelm allows usage of any repository when `repositories.yaml` is not
 
 Build and test the khelm binary (requires Go 1.13) as well as the container image:
 ```sh
-make khelm test check image e2e-test
+make clean khelm test check image e2e-test
 ```
 _The dynamic binary is written to `build/bin/khelm` and the static binary to `build/bin/khelm-static`_.
 

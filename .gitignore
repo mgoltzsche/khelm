@@ -8,5 +8,5 @@
 /example/kpt/output-*
 !/example/kpt/output-helm-kustomize
 /example/kpt/output-helm-kustomize/output-kustomization
-/example/kpt/output-helm-kustomize/output-kustomization/static/manifest.yaml
+/example/kpt/output-helm-kustomize/static/manifest.yaml
 
