@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/mgoltzsche/khelm/v1/internal/output"
-	"github.com/mgoltzsche/khelm/v1/pkg/helm"
+	"github.com/mgoltzsche/khelm/internal/output"
+	"github.com/mgoltzsche/khelm/pkg/helm"
 	"github.com/spf13/cobra"
 	"k8s.io/helm/pkg/strvals"
 )

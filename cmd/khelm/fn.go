@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mgoltzsche/khelm/v1/internal/output"
-	"github.com/mgoltzsche/khelm/v1/pkg/helm"
+	"github.com/mgoltzsche/khelm/internal/output"
+	"github.com/mgoltzsche/khelm/pkg/helm"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/kustomize/kyaml/fn/framework"

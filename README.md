@@ -151,7 +151,7 @@ docker run docker.pkg.github.com/mgoltzsche/khelm/khelm:latest template cert-man
 
 ### Go API
 
-The khelm Go API `github.com/mgoltzsche/khelm/v1/pkg/helm`exposes a `Helm` struct that provides a `Render()` function that returns the rendered resources as `kyaml` objects.
+The khelm Go API `github.com/mgoltzsche/khelm/pkg/helm` exposes a `Helm` struct that provides a `Render()` function that returns the rendered resources as `kyaml` objects.
 
 ## Configuration options
 
