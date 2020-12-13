@@ -5,7 +5,7 @@ metadata:
   annotations:
     config.kubernetes.io/function: |
       container:
-        image: docker.pkg.github.com/mgoltzsche/khelm/khelm:latest
+        image: mgoltzsche/khelm:latest
         network: true
     config.kubernetes.io/local-config: "true"
 data:

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-IMAGE=${IMAGE:-docker.pkg.github.com/mgoltzsche/khelm/khelm:latest}
+IMAGE=${IMAGE:-mgoltzsche/khelm:latest}
 
 echo
 echo "  TEST $0: Run CLI without repositories.yaml"

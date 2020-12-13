@@ -56,7 +56,7 @@ cat - > khelm-function.yaml <<-EOF
     annotations:
       config.kubernetes.io/function: |
         container:
-          image: docker.pkg.github.com/mgoltzsche/khelm/khelm:latest
+          image: mgoltzsche/khelm:latest
           network: true
       config.kubernetes.io/local-config: "true"
   data:
@@ -146,7 +146,7 @@ _For all available options see the [table](#configuration-options) below._
 
 #### Docker usage example
 ```sh
-docker run docker.pkg.github.com/mgoltzsche/khelm/khelm:latest template cert-manager --version=0.9.x --repo=https://charts.jetstack.io
+docker run mgoltzsche/khelm:latest template cert-manager --version=0.9.x --repo=https://charts.jetstack.io
 ```
 
 ### Go API
@@ -187,8 +187,8 @@ Unlike Helm khelm allows usage of any repository when `repositories.yaml` is not
 
 ## Helm support
 
-* Helm 2 is supported by the `v1` module version and maintained within the `master` branch.
-* Helm 3 is supported by the `v2` module version and maintained within the `v2` branch.
+* Helm 2 is supported by the `v1` module version.
+* Helm 3 is supported by the `v2` module version.
 
 ## Build and test
 

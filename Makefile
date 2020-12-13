@@ -1,4 +1,4 @@
-IMAGE ?= docker.pkg.github.com/mgoltzsche/khelm/khelm:latest
+IMAGE ?= mgoltzsche/khelm:latest
 
 BUILD_DIR := $(CURDIR)/build
 KHELM := $(BUILD_DIR)/bin/khelm

@@ -36,14 +36,18 @@ jobs:
     - name: Tag image
       run: make image IMAGE=$IMAGE_NAME
 
-    - name: Log into registry
+    - name: Log into GitHub registry
       run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+    - name: Log into DockerHub registry
+      run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login docker.io -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
     - name: Push image
       run: |
         set -e
 
         IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME
+        DOCKERHUB_IMAGE_ID=docker.io/mgoltzsche/khelm
 
         # Change all uppercase to lowercase
         IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
@@ -59,6 +63,12 @@ jobs:
 
         for TAG in $TAGS; do
           echo Push $IMAGE_ID:$TAG
+
+          # Push to DockerHub
+          docker tag $IMAGE_NAME $DOCKERHUB_IMAGE_ID:$TAG
+          docker push $DOCKERHUB_IMAGE_ID:$TAG
+
+          # Push to GitHub registry
           docker tag $IMAGE_NAME $IMAGE_ID:$TAG
           docker push $IMAGE_ID:$TAG
         done
