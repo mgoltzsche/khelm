@@ -5,4 +5,4 @@ metadata:
   namespace: cert-manager
 repository: https://charts.jetstack.io
 chart: cert-manager
-version: 0.9.1
+version: 1.1.0

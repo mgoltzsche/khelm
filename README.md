@@ -151,7 +151,8 @@ docker run mgoltzsche/khelm:latest template cert-manager --version=0.9.x --repo=
 
 ### Go API
 
-The khelm Go API `github.com/mgoltzsche/khelm/pkg/helm` exposes a `Helm` struct that provides a `Render()` function that returns the rendered resources as `kyaml` objects.
+The khelm Go API `github.com/mgoltzsche/khelm/pkg/helm` provides a simple templating interface on top of the Helm Go API.
+It exposes a `Helm` struct that provides a `Render()` function that returns the rendered resources as `kyaml` objects.
 
 ## Configuration options
 
@@ -163,6 +164,7 @@ The khelm Go API `github.com/mgoltzsche/khelm/pkg/helm` exposes a `Helm` struct 
 | `valueFiles` | `-f` | Locations of values files.
 | `values` | `--set` | Set values object or in CLI `key1=val1,key2=val2`. |
 | `apiVersions` | `--api-versions` | Kubernetes api versions used for Capabilities.APIVersions. |
+| `kubeVersion` | `--kube-version` | Kubernetes version used for Capabilities.KubeVersion. |
 | `name` | `--name` | Release name used to render the chart. |
 | `verify` | `--verify` | If enabled verifies the signature of all charts using the `keyring` (see [Helm 2 provenance and integrity](https://v2.helm.sh/docs/provenance/)). |
 | `keyring` | `--keyring` | GnuPG keyring file (default `~/.gnupg/pubring.gpg`). |

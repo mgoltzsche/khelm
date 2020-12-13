@@ -42,7 +42,17 @@ func (h *Helm) Render(ctx context.Context, req *ChartConfig) (r []*yaml.RNode, e
 
 	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
 
-	return renderChart(chartRequested, req, h.Getters)
+	ch := make(chan struct{}, 1)
+	go func() {
+		r, err = renderChart(chartRequested, req, h.Getters)
+		ch <- struct{}{}
+	}()
+	select {
+	case <-ch:
+		return r, err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 // renderChart renders a manifest from the given chart and values

@@ -44,7 +44,7 @@ func TestRender(t *testing.T) {
 		{"jenkins", "example/jenkins/generator.yaml", []string{"jenkins"}, expectedJenkinsContained},
 		{"values-external", "pkg/helm/generatorwithextvalues.yaml", []string{"jenkins"}, expectedJenkinsContained},
 		{"rook-ceph-version-range", "example/rook-ceph/operator/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
-		{"cert-manager", "example/cert-manager/generator.yaml", []string{"cert-manager", "kube-system"}, " name: cert-manager-webhook:webhook-authentication-reader"},
+		{"cert-manager", "example/cert-manager/generator.yaml", []string{"cert-manager", "kube-system"}, " name: cert-manager-webhook"},
 		{"apiversions-condition", "example/apiversions-condition/generator.yaml", []string{}, "  config: fancy-config"},
 		{"namespace", "example/namespace/generator.yaml", []string{"install-namespace", "cluster-role-binding-ns"}, "  key: b"},
 		{"force-namespace", "example/force-namespace/generator.yaml", []string{"forced-namespace"}, "  key: b"},

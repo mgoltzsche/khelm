@@ -11,8 +11,8 @@ metadata:
 data:
   repository: https://charts.jetstack.io
   chart: cert-manager
-  version: 0.9.x
-  name: my-cert-manager-release
+  version: 1.1.0
+  name: cert-manager
   namespace: cert-manager
   outputPath: output-helm-kustomize/output-kustomization/
 ---
@@ -27,4 +27,4 @@ metadata:
     config.kubernetes.io/local-config: 'true'
 data:
   path: output-helm-kustomize/output-kustomization
-  outputPath: output-helm-kustomize/static/manifest.yaml
+  outputPath: output-helm-kustomize/static/generated-manifest.yaml

@@ -9,7 +9,7 @@ echo
 set -e
 
 rm -rf ./kpt/output-local ./kpt/output-kustomization ./kpt/output-remote \
-	./kpt/output-helm-kustomize/output-kustomization ./kpt/output-helm-kustomize/static/manifest.yaml
+	./kpt/output-helm-kustomize/output-kustomization ./kpt/output-helm-kustomize/static/generated-manifest.yaml
 
 (
 	set -ex
@@ -20,9 +20,9 @@ rm -rf ./kpt/output-local ./kpt/output-kustomization ./kpt/output-remote \
 	[ -f ./kpt/output-kustomization/configmap_myconfigb.yaml ]
 	[ -f ./kpt/output-kustomization/kustomization.yaml ]
 	[ -f ./kpt/output-remote.yaml ]
-	[ -f ./kpt/output-helm-kustomize/static/manifest.yaml ]
-	! grep -m1 -B10 -A1 ' namespace: ""' ./kpt/output-helm-kustomize/static/manifest.yaml || (echo 'FAIL: output contains empty namespace field' >&2; false)
-	grep -q ' namespace: kube-system' ./kpt/output-helm-kustomize/static/manifest.yaml || (echo 'FAIL: did not preserve chart resource namespace' >&2; false)
+	[ -f ./kpt/output-helm-kustomize/static/generated-manifest.yaml ]
+	! grep -m1 -B10 -A1 ' namespace: ""' ./kpt/output-helm-kustomize/static/generated-manifest.yaml || (echo 'FAIL: output contains empty namespace field' >&2; false)
+	grep -q ' namespace: kube-system' ./kpt/output-helm-kustomize/static/generated-manifest.yaml || (echo 'FAIL: did not preserve chart resource namespace' >&2; false)
 
 	kustomize build ./kpt/output-kustomization | grep -q ' myconfiga'
 )
