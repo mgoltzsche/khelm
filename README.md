@@ -75,12 +75,12 @@ kpt fn run --network . # Renders the chart into output-manifest.yaml
 _For all available fields see the [table](#configuration-options) below._  
 
 Please note that, in case you need to refer to a local chart directory or values file, the source must be mounted to the function using `kpt fn run --mount=<SRC_MOUNT> .`.  
-The [example kpt project](example/kpt) and the corresponding [e2e test](e2e/kpt-function-test.sh) show how to do that.  
+An [example kpt project](example/kpt/test-cases) and the corresponding [e2e test](e2e/kpt-function-test.sh) show how to do that.  
 
 Kpt can also be leveraged to pull charts from other git repositories into your own repository using the `kpt pkg sync .` [command](https://googlecontainertools.github.io/kpt/reference/pkg/) (with a corresponding dependency set up) before running the khelm function (for this reason the go-getter support has been removed from this project).  
 
 If necessary the chart output can be transformed using kustomize.
-This can be done by declaring the khelm and a kustomize function orderly within a file and specifying the chart output kustomization as input for the kustomize function as shown in [this example](example/kpt/helm-kustomize-pipeline.yaml).
+This can be done by declaring the khelm and a kustomize function orderly within a file and specifying the chart output kustomization as input for the kustomize function as shown in the [cert-manager example](example/kpt/cert-manager).
 
 
 ### kustomize exec plugin

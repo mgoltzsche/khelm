@@ -3,28 +3,24 @@
 cd "$(dirname "$0")/../example"
 
 echo
-echo "  TEST $0: Run kpt functions"
+echo "  TEST $0: Run kpt functions of example/test-cases"
 echo
 
 set -e
 
-rm -rf ./kpt/output-local ./kpt/output-kustomization ./kpt/output-remote \
-	./kpt/output-helm-kustomize/output-kustomization ./kpt/output-helm-kustomize/static/generated-manifest.yaml
+rm -rf ./kpt/test-cases/output-local ./kpt/test-cases/output-kustomization ./kpt/test-cases/output-remote
 
 (
 	set -ex
-	kpt fn run --network --mount "type=bind,source=`pwd`/namespace,target=/source" ./kpt
+	kpt fn run --network --mount "type=bind,source=`pwd`/namespace,target=/source" ./kpt/test-cases
 
-	[ -f ./kpt/output-local.yaml ]
-	[ -f ./kpt/output-kustomization/configmap_myconfiga.yaml ]
-	[ -f ./kpt/output-kustomization/configmap_myconfigb.yaml ]
-	[ -f ./kpt/output-kustomization/kustomization.yaml ]
-	[ -f ./kpt/output-remote.yaml ]
-	[ -f ./kpt/output-helm-kustomize/static/generated-manifest.yaml ]
-	! grep -m1 -B10 -A1 ' namespace: ""' ./kpt/output-helm-kustomize/static/generated-manifest.yaml || (echo 'FAIL: output contains empty namespace field' >&2; false)
-	grep -q ' namespace: kube-system' ./kpt/output-helm-kustomize/static/generated-manifest.yaml || (echo 'FAIL: did not preserve chart resource namespace' >&2; false)
+	[ -f ./kpt/test-cases/output-local.yaml ]
+	[ -f ./kpt/test-cases/output-kustomization/configmap_myconfiga.yaml ]
+	[ -f ./kpt/test-cases/output-kustomization/configmap_myconfigb.yaml ]
+	[ -f ./kpt/test-cases/output-kustomization/kustomization.yaml ]
+	[ -f ./kpt/test-cases/output-remote.yaml ]
 
-	kustomize build ./kpt/output-kustomization | grep -q ' myconfiga'
+	kustomize build ./kpt/test-cases/output-kustomization | grep -q ' myconfiga'
 )
 
 echo SUCCESS
