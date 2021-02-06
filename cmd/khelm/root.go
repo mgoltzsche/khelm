@@ -54,8 +54,7 @@ func Execute(reader io.Reader, writer io.Writer) error {
 		logVersion()
 	}
 	rootCmd := &cobra.Command{
-		Version: versionInfo(),
-		PreRun:  logVersionPreRun,
+		PreRun: logVersionPreRun,
 	}
 	errBuf := bytes.Buffer{}
 
@@ -72,6 +71,7 @@ func Execute(reader io.Reader, writer io.Writer) error {
 		}
 	}
 
+	rootCmd.AddCommand(versionCmd)
 	rootCmd.Example = usageExample
 	rootCmd.Use = "khelm"
 	rootCmd.Short = fmt.Sprintf("khelm %s chart renderer", khelmVersion)
