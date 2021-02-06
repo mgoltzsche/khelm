@@ -51,8 +51,8 @@ func TestRender(t *testing.T) {
 		{"kubeVersion", "example/release-name/generator.yaml", []string{}, "  k8sVersion: v1.17.0"},
 		{"release-name", "example/release-name/generator.yaml", []string{}, "  name: my-release-name-config"},
 		{"exclude", "example/exclude/generator.yaml", []string{"cluster-role-binding-ns"}, "  key: b"},
-		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", []string{}, "http://efk-elasticsearch-client:9200"},
-		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", []string{}, "http://efk-elasticsearch-client:9200"},
+		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
+		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
 		{"values-inheritance", "example/values-inheritance/generator.yaml", []string{}, " inherited: inherited value\n  fileoverwrite: overwritten by file\n  valueoverwrite: overwritten by generator config"},
 		{"cluster-scoped", "example/cluster-scoped/generator.yaml", []string{}, "myrolebinding"},
 	} {
@@ -137,7 +137,7 @@ func TestRenderExclusionNoMatchError(t *testing.T) {
 }
 
 func TestRenderRebuildsLocalDependencies(t *testing.T) {
-	tplDir := filepath.Join(rootDir, "example/localref/elk/templates")
+	tplDir := filepath.Join(rootDir, "example/localref/intermediate-chart/templates")
 	tplFile := filepath.Join(tplDir, "changed.yaml")
 	configFile := filepath.Join(rootDir, "example/localrefref/generator.yaml")
 	os.RemoveAll(tplDir)
@@ -203,7 +203,7 @@ func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
 	idx := repo.NewIndexFile() // write empty index file to cause not found error
 	err = idx.WriteFile(idxFile, 0644)
 	require.NoError(t, err, "write empty index file")
-	err = os.RemoveAll(filepath.Join(rootDir, "example/localref/elk/charts"))
+	err = os.RemoveAll(filepath.Join(rootDir, "example/localref/rook-ceph/charts"))
 	require.NoError(t, err, "remove charts")
 
 	file := filepath.Join(rootDir, "example/localref/generator.yaml")
@@ -215,7 +215,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	// Make sure a fake chart exists that the fake server can serve
 	err := renderFile(t, filepath.Join(rootDir, "example/localrefref/generator.yaml"), true, rootDir, &bytes.Buffer{})
 	require.NoError(t, err)
-	fakeChartTgz := filepath.Join(rootDir, "example/localrefref/charts/efk-0.1.1.tgz")
+	fakeChartTgz := filepath.Join(rootDir, "example/localrefref/charts/intermediate-chart-0.1.1.tgz")
 
 	// Create input chart config and fake private chart server
 	var cfg ChartConfig

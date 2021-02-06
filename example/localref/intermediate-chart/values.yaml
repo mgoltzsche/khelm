@@ -1,0 +1,22 @@
+rook-ceph:
+  image:
+    prefix: rook
+    repository: rook/ceph
+    tag: v0.9.3
+    pullPolicy: IfNotPresent
+  
+  hyperkube:
+    repository: k8s.gcr.io/hyperkube
+    tag: v1.7.12
+    pullPolicy: IfNotPresent
+  
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  rbacEnable: false
+  pspEnable: true

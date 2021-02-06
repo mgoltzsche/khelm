@@ -1,0 +1,4 @@
+apiVersion: v1
+description: intermediate-chart
+name: intermediate-chart
+version: 0.1.1

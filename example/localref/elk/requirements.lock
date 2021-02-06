@@ -1,6 +1,0 @@
-dependencies:
-- name: elastic-stack
-  repository: https://kubernetes-charts.storage.googleapis.com
-  version: 1.6.0
-digest: sha256:4d8edf7b9e1f7f7fccfb58b62632ad500f790bf5be6d2a861fd7c9c7109c88e6
-generated: "2020-09-30T19:01:25.236657086Z"
