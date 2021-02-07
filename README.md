@@ -19,13 +19,14 @@ Since [kpt](https://github.com/GoogleContainerTools/kpt) is [published](https://
 
 ## Features
 
-* Template/render a Helm chart
-* Convert a chart's output into a kustomization
-* Build local charts automatically when templating
-* Use any repository without registering it in repositories.yaml
-* Automatically fetch and updated required repository index files
-* Enforce namespace-scoped resources within the template output
-* Set a namespace on all resources
+* Templates/renders a Helm chart
+* Converts a chart's output into a kustomization
+* Builds local charts automatically when templating
+* Automatically fetches and updates required repository index files when needed
+* Allows to automatically reload dependencies when lock file is out of sync
+* Allows to use any repository without registering it in repositories.yaml
+* Allows to enforce namespace-scoped resources within the template output
+* Allows to enforce a namespace on all resources
 
 ## Supported interfaces
 
