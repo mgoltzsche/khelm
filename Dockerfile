@@ -12,7 +12,7 @@ ARG HELM_VERSION=unknown-version
 RUN go build -o khelm -ldflags "-X main.khelmVersion=$KHELM_VERSION -X main.helmVersion=$HELM_VERSION -s -w -extldflags '-static'" ./cmd/khelm && mv khelm /usr/local/bin/
 
 FROM alpine:3.12
-RUN mkdir /helm && chown root:nobody /helm && chmod 775 /helm
+RUN mkdir /helm && chown root:nobody /helm && chmod 1777 /helm
 ENV HELM_HOME=/helm
 COPY --from=build /usr/local/bin/khelm /usr/local/bin/khelmfn
 ENTRYPOINT ["/usr/local/bin/khelmfn"]
