@@ -79,6 +79,7 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig) (*c
 	if err != nil {
 		return nil, errors.Wrap(err, "init temp repositories.yaml")
 	}
+	repos.RequireTempHelmHome(len(localCharts) > 1)
 	repos, err = repos.Apply()
 	if err != nil {
 		return nil, err
@@ -186,7 +187,29 @@ func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *Loader
 			}
 			name := fmt.Sprintf("%s %s", meta.Name, meta.Version)
 			log.Printf("Building/fetching chart %s dependencies", name)
+
 			if err = buildChartDependencies(ctx, ch.Chart, ch.Path, cfg, repos, settings, getters); err != nil {
+				depErrSuffix := ". Please update the dependencies"
+				if strings.HasSuffix(err.Error(), depErrSuffix) {
+					err = errors.Wrapf(err, "build chart %s", name)
+					if !cfg.ReplaceLockFile {
+						return false, errors.Errorf("%s (enable replaceLockFile for auto-update)", err)
+					}
+					errMsg := err.Error()
+					errMsg = errMsg[:len(errMsg)-len(depErrSuffix)]
+					log.Printf("WARNING: %s - removing it and reloading dependencies", errMsg)
+					ch.Chart.Lock = nil
+					for _, f := range []string{"Chart.lock", "requirements.lock", "charts", "tmpcharts"} {
+						if err = os.RemoveAll(filepath.Join(ch.Path, f)); err != nil {
+							return false, errors.WithStack(err)
+						}
+					}
+					err = buildChartDependencies(ctx, ch.Chart, ch.Path, cfg, repos, settings, getters)
+					if err != nil {
+						return false, errors.Wrapf(err, "build chart %s", name)
+					}
+					continue
+				}
 				return false, errors.Wrapf(err, "build chart %s", name)
 			}
 		}

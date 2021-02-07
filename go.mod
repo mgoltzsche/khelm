@@ -12,5 +12,5 @@ require (
 	helm.sh/helm/v3 v3.4.1
 	k8s.io/client-go v0.19.3
 	rsc.io/letsencrypt v0.0.3 // indirect
-	sigs.k8s.io/kustomize/kyaml v0.10.1
+	sigs.k8s.io/kustomize/kyaml v0.10.7
 )

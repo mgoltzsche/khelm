@@ -1,4 +1,0 @@
-dependencies:
-- name: elastic-stack
-  version: "1.6.0"
-  repository: "https://kubernetes-charts.storage.googleapis.com"

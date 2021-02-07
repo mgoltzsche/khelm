@@ -7,5 +7,6 @@
 /example/**/tmpcharts
 /example/kpt/*/output-*
 /example/kpt/*/generated-*
-/example/kpt/cert-manager/static/generated-manifest.yaml
+/example/kpt/**/requirements.lock
+example/kpt/linkerd/manifests/base/generated-manifest-without-secrets.yaml
 

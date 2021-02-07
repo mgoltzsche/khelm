@@ -1,6 +1,6 @@
 dependencies:
-- name: efk
-  repository: file://../localref/elk
+- name: intermediate-chart
+  repository: file://../localref/intermediate-chart
   version: 0.1.1
-digest: sha256:d92f768c1b07b1a3d9308e9fc2ea94a0523cf8e4f422661e59da4659ee307076
-generated: "2020-10-18T16:23:27.935558963Z"
+digest: sha256:857a80e0f94f83342b1788c2ae59776afb699bd77aa646d9c23e904fb24c0b90
+generated: "2021-02-07T19:00:31.762074191Z"

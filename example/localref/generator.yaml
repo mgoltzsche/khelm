@@ -3,6 +3,4 @@ kind: ChartRenderer
 metadata:
   name: mychart
   namespace: myns
-chart: ./elk
-valueFiles:
-  - elk/values.yaml
+chart: ./intermediate-chart

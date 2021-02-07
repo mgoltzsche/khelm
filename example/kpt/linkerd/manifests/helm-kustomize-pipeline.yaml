@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linkerd2-manifest-generator
+  annotations:
+    config.kubernetes.io/function: |
+      container:
+        image: mgoltzsche/khelm:latest
+        network: false
+    config.kubernetes.io/local-config: "true"
+data:
+  chart: /source/chart/linkerd2
+  name: linkerd
+  namespace: linkerd
+  outputPath: base/generated-manifest-without-secrets.yaml
+  valueFiles:
+  - /source/chart/linkerd2/values-ha.yaml
+  - /source/values.yaml
+  replaceLockFile: true
+  exclude:
+  - apiVersion: v1
+    kind: Secret
+    name: linkerd-identity-issuer
+  - apiVersion: v1
+    kind: Secret
+    name: linkerd-proxy-injector-k8s-tls
+  - apiVersion: v1
+    kind: Secret
+    name: linkerd-sp-validator-k8s-tls
+  - apiVersion: v1
+    kind: Secret
+    name: linkerd-tap-k8s-tls
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: render-kustomization
+  annotations:
+    config.kubernetes.io/function: |
+      container:
+        image: mgoltzsche/kustomizr:0.1
+    config.kubernetes.io/local-config: 'true'
+data:
+  path: ./patched
+  outputPath: ./static/generated-manifest.yaml

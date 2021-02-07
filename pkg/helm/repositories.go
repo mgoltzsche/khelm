@@ -50,6 +50,7 @@ type repositoryConfig interface {
 	Get(repo string) (*repo.Entry, error)
 	UpdateIndex(context.Context) error
 	DownloadIndexFilesIfNotExist(context.Context) error
+	RequireTempHelmHome(bool)
 	Apply() (repositoryConfig, error)
 }
 
@@ -86,6 +87,10 @@ type repositories struct {
 	cacheDir     string
 	entriesAdded bool
 	indexFiles   map[string]*repo.IndexFile
+}
+
+func (f *repositories) RequireTempHelmHome(createTemp bool) {
+	f.entriesAdded = createTemp
 }
 
 func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (r *repositories, err error) {

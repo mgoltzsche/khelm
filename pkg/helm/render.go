@@ -39,8 +39,6 @@ func (h *Helm) Render(ctx context.Context, req *ChartConfig) (r []*yaml.RNode, e
 		return nil, err
 	}
 
-	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
-
 	ch := make(chan struct{}, 1)
 	go func() {
 		r, err = renderChart(chartRequested, req, h.Getters)
@@ -54,6 +52,7 @@ func (h *Helm) Render(ctx context.Context, req *ChartConfig) (r []*yaml.RNode, e
 	}
 }
 
+// renderChart renders a manifest from the given chart and values
 func renderChart(chartRequested *chart.Chart, req *ChartConfig, getters getter.Providers) ([]*yaml.RNode, error) {
 	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
 
@@ -100,7 +99,7 @@ func renderChart(chartRequested *chart.Chart, req *ChartConfig, getters getter.P
 		return nil, err
 	}
 	if err = transformer.Excludes.RequireAllMatched(); err != nil {
-		return nil, errors.Wrap(err, "resource exclusion selector")
+		return nil, errors.Wrap(err, "resource exclusion")
 	}
 	if len(transformed) == 0 {
 		return nil, errors.Errorf("chart %s output is empty", chartRequested.Metadata.Name)

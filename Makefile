@@ -8,11 +8,11 @@ GOLINT := $(BUILD_DIR)/bin/golint
 KPT := $(BUILD_DIR)/bin/kpt
 KUSTOMIZE := $(BUILD_DIR)/bin/kustomize
 
-KPT_VERSION ?= 0.37.0
-KUSTOMIZE_VERSION ?= 3.8.7
+KPT_VERSION ?= 0.37.1
+KUSTOMIZE_VERSION ?= 3.9.3
 
 REV := $(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
-VERSION ?= $(shell echo "$$(git for-each-ref refs/tags/ --count=1 --sort=-version:refname --format='%(refname:short)' 2>/dev/null)-dev-$(REV)" | sed 's/^v//')
+VERSION ?= $(shell echo "$$(git describe --exact-match --tags $(git log -n1 --pretty='%h') 2> /dev/null || echo dev)-$(REV)" | sed 's/^v//')
 HELM_VERSION := $(shell grep helm\.sh/helm/ go.mod | sed -E -e 's/helm\.sh\/helm\/v3|\s+//g' -e 's/^v//')
 GO_LDFLAGS := -X main.khelmVersion=$(VERSION) -X main.helmVersion=$(HELM_VERSION)
 BUILDTAGS ?= 
@@ -63,6 +63,7 @@ e2e-test: image khelm-static kpt kustomize
 	IMAGE=$(IMAGE) ./e2e/image-cli-test.sh; \
 	./e2e/kpt-function-test.sh; \
 	./e2e/kpt-cert-manager-test.sh; \
+	./e2e/kpt-linkerd-test.sh; \
 	}
 
 fmt:

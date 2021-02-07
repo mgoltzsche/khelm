@@ -39,7 +39,7 @@ Usage examples can be found in the [example](example) and [e2e](e2e) directories
 
 The khelm kpt function templates a chart and returns the output as single manifest file or kustomization directory (when `outputPath` ends with `/`). The kustomization output can be used to apply further transformations by running a kustomize function afterwards.  
 
-Also, in opposite to the kustomize plugin approach, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to rendering technologies and chart servers since they just apply static mainfests (after changing values using `kpt cfg set`) located within a git repository to a cluster using `kpt live apply`.
+In opposite to the kustomize plugin approach kpt function outputs can be audited reliably when committed to a git repository, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to rendering technologies and chart servers since they just apply static mainfests (and eventually change values using `kpt cfg set`) to a cluster using `kpt live apply`.
 
 #### kpt function usage example
 
@@ -168,6 +168,7 @@ It exposes a `Helm` struct that provides a `Render()` function that returns the 
 | `name` | `--name` | Release name used to render the chart. |
 | `verify` | `--verify` | If enabled verifies the signature of all charts using the `keyring` (see [Helm 3 provenance and integrity](https://helm.sh/docs/topics/provenance/)). |
 | `keyring` | `--keyring` | GnuPG keyring file (default `~/.gnupg/pubring.gpg`). |
+| `replaceLockFile` | `--replace-lock-file` | Remove requirements.lock and reload charts when it is out of sync. |
 | `excludeCRDs` | `--skip-crds` | If true Custom Resource Definitions are excluded from the output. |
 | `exclude` |  | List of resource selectors that exclude matching resources from the output. Fails if a selector doesn't match any resource. |
 | `exclude[].apiVersion` |  | Excludes resources by apiVersion. |

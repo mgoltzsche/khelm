@@ -57,8 +57,9 @@ func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 	f.BoolVar(&trustAnyRepo, flagTrustAnyRepo, trustAnyRepo,
 		fmt.Sprintf("Allow to use repositories that are not registered within repositories.yaml (default is true when repositories.yaml does not exist; %s)", envTrustAnyRepo))
 	f.BoolVar(&req.NamespacedOnly, "namespaced-only", false, "Fail on known cluster-scoped resources and those of unknown kinds")
-	f.BoolVar(&req.Verify, "verify", false, "Verify the package before using it")
 	f.StringVar(&req.Keyring, "keyring", req.Keyring, "Keyring used to verify the chart")
+	f.BoolVar(&req.Verify, "verify", false, "Verify the package before using it")
+	f.BoolVar(&req.ReplaceLockFile, "replace-lock-file", false, "Remove requirements.lock and reload charts when it is out of sync")
 	f.StringVar(&req.Name, "name", req.Name, "Release name")
 	f.StringVar(&req.Namespace, "namespace", req.Namespace, "Set the installation namespace used by helm templates")
 	f.StringVar(&req.ForceNamespace, "force-namespace", req.ForceNamespace, "Set namespace on all namespaced resources (and those of unknown kinds)")
