@@ -9,7 +9,7 @@ KPT := $(BUILD_DIR)/bin/kpt
 KUSTOMIZE := $(BUILD_DIR)/bin/kustomize
 
 KPT_VERSION ?= 0.37.1
-KUSTOMIZE_VERSION ?= 3.8.10
+KUSTOMIZE_VERSION ?= 3.9.3
 
 REV := $(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
 VERSION ?= $(shell echo "$$(git describe --exact-match --tags $(git log -n1 --pretty='%h') 2> /dev/null || echo dev)-$(REV)" | sed 's/^v//')
