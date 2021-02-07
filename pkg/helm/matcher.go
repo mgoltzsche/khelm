@@ -1,6 +1,9 @@
 package helm
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/pkg/errors"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
@@ -32,10 +35,14 @@ type resourceMatcher struct {
 
 // RequireAllMatched returns an error if any matcher did not match
 func (m ResourceMatchers) RequireAllMatched() error {
+	var errs []string
 	for _, e := range m {
 		if !e.Matched {
-			return errors.Errorf("did not match: %#v", e.ResourceSelector)
+			errs = append(errs, fmt.Sprintf("%#v", e.ResourceSelector))
 		}
+	}
+	if len(errs) > 0 {
+		return errors.Errorf("selectors did not match:\n * %s", strings.Join(errs, "\n * "))
 	}
 	return nil
 }

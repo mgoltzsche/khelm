@@ -89,6 +89,7 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig) (*c
 	if err != nil {
 		return nil, errors.Wrap(err, "init temp repositories.yaml")
 	}
+	repos.RequireTempHelmHome(len(localCharts) > 1)
 	repos, err = repos.Apply()
 	if err != nil {
 		return nil, err
@@ -216,7 +217,21 @@ func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *Loader
 			log.Printf("Building/fetching chart %s dependencies", name)
 			if lock := ch.RequirementsLock; lock != nil {
 				if sum, err := resolver.HashReq(ch.Requirements); err != nil || sum != lock.Digest {
-					return false, errors.Errorf("chart %s requirements.lock is out of sync with requirements.yaml", meta.Name)
+					errMsg := fmt.Sprintf("chart %s requirements.lock is out of sync with requirements.yaml", meta.Name)
+					if !cfg.ReplaceLockFile {
+						return false, errors.Errorf("%s (enable replaceLockFile to ignore this error)", errMsg)
+					}
+					log.Printf("WARNING: %s - removing it and reloading dependencies", errMsg)
+					ch.RequirementsLock = nil
+					if err = os.RemoveAll(filepath.Join(ch.Path, "charts")); err != nil {
+						return false, errors.WithStack(err)
+					}
+					if err = os.RemoveAll(filepath.Join(ch.Path, "tmpcharts")); err != nil {
+						return false, errors.WithStack(err)
+					}
+					if err = os.Remove(filepath.Join(ch.Path, "requirements.lock")); err != nil {
+						return false, errors.WithStack(err)
+					}
 				}
 			}
 			if err = buildChartDependencies(ctx, ch.Chart, ch.Path, cfg, repos, settings, getters); err != nil {
@@ -260,3 +275,68 @@ func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, ch
 	}
 	return errors.WithStack(err)
 }
+
+/*
+func loadChartFromGoGetter(ctx context.Context, cfg *GeneratorConfig) (err error) {
+	uri, err := gogetter.Detect(cfg.Chart, cfg.BaseDir, gogetter.Detectors)
+	u, err := urlhelper.Parse(uri)
+	if err != nil {
+		return
+	}
+	if u.Scheme == "file" {
+		// Use chart from local dir
+		file := u.Path
+		if u.RawPath != "" {
+			file = u.RawPath
+		}
+		cfg.Chart = filepath.Join(cfg.BaseDir, file)
+	} else {
+		// Download file
+		g := gogetter.Getters[u.Scheme]
+		uri, subDir := gogetter.SourceDirSubdir(uri)
+		if g == nil {
+			return errors.Errorf("no getter mapped for URL scheme %q", u.Scheme)
+		}
+		var mode gogetter.ClientMode
+		if mode, err = g.ClientMode(u); err != nil {
+			return err
+		}
+
+		pathEndPos := strings.Index(uri, "?")
+		if pathEndPos < 0 {
+			pathEndPos = len(uri)
+		}
+		uri = uri[:pathEndPos] + "//." + uri[pathEndPos:]
+		cacheDir := filepath.Join(cfg.BaseDir, ".cache", "url")
+		cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(uri)))
+		destDir := filepath.Join(cacheDir, cacheKey)
+
+		if _, e := os.Stat(destDir); e != nil {
+			if err = os.MkdirAll(cacheDir, 0755); err != nil {
+				return
+			}
+			var tmpDir string
+			if tmpDir, err = ioutil.TempDir(cacheDir, ".tmp-"); err != nil {
+				return
+			}
+			defer os.RemoveAll(tmpDir)
+
+			log.Println("Downloading chart", cfg.Chart)
+			c := &gogetter.Client{
+				Dst:  tmpDir,
+				Src:  uri,
+				Ctx:  ctx,
+				Mode: mode,
+			}
+			if err = c.Get(); err != nil {
+				return
+			}
+			if err = os.Rename(tmpDir, destDir); err != nil {
+				return
+			}
+		}
+		cfg.Chart = filepath.Join(destDir, filepath.FromSlash(subDir))
+	}
+	return
+}
+*/

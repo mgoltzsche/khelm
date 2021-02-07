@@ -63,6 +63,7 @@ e2e-test: image khelm-static kpt kustomize
 	IMAGE=$(IMAGE) ./e2e/image-cli-test.sh; \
 	./e2e/kpt-function-test.sh; \
 	./e2e/kpt-cert-manager-test.sh; \
+	./e2e/kpt-linkerd-test.sh; \
 	}
 
 fmt:

@@ -69,10 +69,9 @@ func renderChart(chrt *chart.Chart, req *ChartConfig, getters getter.Providers) 
 	if len(req.APIVersions) > 0 {
 		renderOpts.APIVersions = append(req.APIVersions, "v1")
 	}
-
 	rawVals, err := vals(chrt, req.ValueFiles, req.Values, req.BaseDir, getters, "", "", "")
 	if err != nil {
-		return nil, errors.Wrap(err, "load values")
+		return nil, errors.Wrapf(err, "load values for chart %s", chrt.Metadata.Name)
 	}
 	config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
 
@@ -108,7 +107,7 @@ func renderChart(chrt *chart.Chart, req *ChartConfig, getters getter.Providers) 
 	}
 
 	if err = transformer.Excludes.RequireAllMatched(); err != nil {
-		return nil, errors.Wrap(err, "resource exclusion selector")
+		return nil, errors.Wrap(err, "resource exclusion")
 	}
 
 	return

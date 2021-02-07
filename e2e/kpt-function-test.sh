@@ -3,7 +3,7 @@
 cd "$(dirname "$0")/../example"
 
 echo
-echo "  TEST $0: Run kpt functions of example/test-cases"
+echo "  TEST $0: Run kpt functions of example/kpt/test-cases"
 echo
 
 set -e

@@ -1,0 +1,55 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: k8spkg
+    app.kubernetes.io/part-of: linkerd
+    k8spkg.mgoltzsche.github.com/namespaces: kube-system.linkerd
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    cert-manager.io/inject-apiserver-ca: "true"
+  name: testwebhookconfig
+webhooks:
+- clientConfig:
+    service:
+      name: linkerd-proxy-injector
+      namespace: linkerd
+      path: /
+      # caBundle injected by cert-manager's cainjector
+  failurePolicy: Fail
+  name: linkerd-proxy-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: linkerd.io/is-control-plane
+      operator: DoesNotExist
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
+  sideEffects: None
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: test-ca-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: test-ca-cert
+spec:
+  secretName: test-ca
+  duration: 43800h # 5y
+  issuerRef:
+    name: test-ca-issuer
+    kind: Issuer
+  commonName: my.ca
+  isCA: true

@@ -1,0 +1,17 @@
+controllerReplicas: 1
+enablePodAntiAffinity: true
+global:
+  linkerdVersion: &linkerd_version stable-2.9.2
+  identityTrustAnchorsPEM: replace-ca-crt
+  proxy:
+    image:
+      version: *linkerd_version
+debugContainer:
+    image:
+      version: *linkerd_version
+identity:
+  issuer:
+    tls:
+      crtPEM: replace-issuer-crt
+      keyPEM: replace-issuer-key
+    crtExpiry: remove-crt-expiry

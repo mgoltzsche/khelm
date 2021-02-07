@@ -168,6 +168,7 @@ It exposes a `Helm` struct that provides a `Render()` function that returns the 
 | `name` | `--name` | Release name used to render the chart. |
 | `verify` | `--verify` | If enabled verifies the signature of all charts using the `keyring` (see [Helm 2 provenance and integrity](https://v2.helm.sh/docs/provenance/)). |
 | `keyring` | `--keyring` | GnuPG keyring file (default `~/.gnupg/pubring.gpg`). |
+| `replaceLockFile` | `--replace-lock-file` | Remove requirements.lock and reload charts when it is out of sync. |
 | `exclude` |  | List of resource selectors that exclude matching resources from the output. Fails if a selector doesn't match any resource. |
 | `exclude[].apiVersion` |  | Excludes resources by apiVersion. |
 | `exclude[].kind` |  | Excludes resources by kind. |

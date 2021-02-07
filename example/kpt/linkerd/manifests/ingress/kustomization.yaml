@@ -1,0 +1,15 @@
+resources:
+- ../patched
+- certificate.yaml
+- ingress.yaml
+namespace: linkerd
+configurations:
+- kustomizeconfig.yaml
+vars:
+- name: LINKERD_DASHBOARD_HOST
+  objref:
+    kind: Certificate
+    name: linkerd-dashboard-cert
+    apiVersion: cert-manager.io/v1alpha2
+  fieldref:
+    fieldpath: spec.commonName
