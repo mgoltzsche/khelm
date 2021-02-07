@@ -1,6 +1,6 @@
-all: generate
+all: manifest
 
-generate:
+manifest:
 	kpt fn run --as-current-user --mount "type=bind,src=`pwd`,dst=/source,rw=true" manifests
 
 update:
@@ -13,6 +13,3 @@ deploy:
 
 undeploy:
 	kpt live destroy manifests/static
-
-install-cert-manager:
-	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.1.0/cert-manager.yaml
