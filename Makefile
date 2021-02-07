@@ -71,9 +71,11 @@ fmt:
 
 clean:
 	rm -f $(BUILD_DIR)/bin/khelm
+	rm -f $(BUILD_DIR)/bin/khelm-static
 
 clean-all:
 	rm -rf $(BUILD_DIR)
+	find . -name charts -type d -exec rm -rf {} \;
 
 check: gofmt vet golint gosec ## Runs all linters
 

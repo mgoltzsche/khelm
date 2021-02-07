@@ -14,7 +14,7 @@ rm -f "$GENERATED_FILE"
 
 (
 	set -ex
-	make -C "$EXAMPLE_DIR/kpt/linkerd" update generate
+	make -C "$EXAMPLE_DIR/kpt/linkerd" update manifest
 
 	[ -f "$GENERATED_FILE" ]
 	grep -Eq ' name: linkerd-config-tpl$' "$GENERATED_FILE" || (echo 'FAIL: output does not contain linkerd-config-tpl' >&2; false)
