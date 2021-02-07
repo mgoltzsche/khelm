@@ -2,6 +2,8 @@
 
 A [Helm](https://github.com/helm/helm) chart templating CLI, helm to kustomize converter, [kpt](https://github.com/GoogleContainerTools/kpt) function and [kustomize](https://github.com/kubernetes-sigs/kustomize/) plugin.  
 
+Formerly known as "helm-kustomize-plugin".
+
 
 ## Motivation / History
 
