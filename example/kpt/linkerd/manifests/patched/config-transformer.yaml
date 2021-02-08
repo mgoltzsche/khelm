@@ -27,3 +27,5 @@ spec:
         | .grafana.partials.global.identityTrustAnchorsPEM = $caCert
         | .prometheus.global.identityTrustAnchorsPEM = $caCert
         | .prometheus.partials.global.identityTrustAnchorsPEM = $caCert
+      caHash: |
+        .caSecret["ca.crt"].string | @base64

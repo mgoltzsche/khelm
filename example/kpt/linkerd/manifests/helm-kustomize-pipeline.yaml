@@ -30,6 +30,9 @@ data:
   - apiVersion: v1
     kind: Secret
     name: linkerd-tap-k8s-tls
+  - apiVersion: v1
+    kind: ConfigMap
+    name: linkerd-config
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -38,7 +41,7 @@ metadata:
   annotations:
     config.kubernetes.io/function: |
       container:
-        image: mgoltzsche/kustomizr:0.1
+        image: mgoltzsche/kustomizr:latest
     config.kubernetes.io/local-config: 'true'
 data:
   path: ./patched

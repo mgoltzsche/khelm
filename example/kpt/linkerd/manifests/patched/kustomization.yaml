@@ -1,21 +1,22 @@
-namespace: linkerd
 resources:
 - ../base
-- ../ktransform/crds
-- ../ktransform
+- ../ktransform-namespaced
 - certificates.yaml
 - config-transformer.yaml
 patchesStrategicMerge:
 - patches/proxy-use-identity-ca.yaml
 - patches/apiserviceconfig-annotate-cabundle.yaml
 - patches/apiservice-use-cert-secrets.yaml
-patchesJSON6902:
-- target:
-    version: v1
-    kind: ConfigMap
-    name: linkerd-config
-    namespace: linkerd
-  patch: |-
-    - op: replace
-      path: /metadata/name
-      value: linkerd-config-tpl
+# TODO: make this work without copying the ConfigMap (base/configmap.yaml)
+# (a solution could be to support explicit inclusions within khelm opposed to exclusions and render the chart twice into different kustomizations)
+# The following doesn't work since it renames references to the ConfigMap as well:
+#patchesJSON6902:
+#- target:
+#    version: v1
+#    kind: ConfigMap
+#    name: linkerd-config
+#    namespace: linkerd
+#  patch: |-
+#    - op: replace
+#      path: /metadata/name
+#      value: linkerd-config-tpl

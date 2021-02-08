@@ -8,6 +8,9 @@ spec:
     spec:
       containers:
       - name: identity
+        # TODO: remove patched image
+        # patched to replace -identity-trust-anchors-pem option with env var LINKERD2_IDENTITY_TRUST_ANCHORS
+        image: mgoltzsche/linkerd2-controller:local
         args:
         - identity
         - -log-level=info
@@ -20,6 +23,12 @@ spec:
         # TODO: inject base64 encoded CA cert here somehow
         #- -identity-trust-anchors-pem=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJnekNDQVNtZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDAKZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTWpFd01qQTNNREF4TmpJd1doY05Nakl3TWpBMwpNREF4TmpRd1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqCllXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUmtuZDBveVEwN0ROQmdVb2s5OFh0eUhyWWYKWFNXTldSbFdTdXpqSzFUNWtZTUVzdXJjVUdQbTgyR2hNOHBIbFBjUjB6QUlzby9qMFZzUE5UUFJ3L2VsbzBJdwpRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFQNzMrRjA2VzZJYTMwdjYKUllyNHNmbllxZDY5QkErZVNUUnlBMmh6VXlMekFpQnJGR1lZVWpWZjArN1RlaW1DVXBlZjNYU1BtWnNkaWx5QQp1VnRrUklMVUp3PT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
         - -identity-scheme=linkerd.io/tls
+        env:
+        - name: LINKERD2_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            configMapKeyRef:
+              key: caHash
+              name: linkerd-config
       - name: linkerd-proxy
         env:
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS

@@ -822,41 +822,11 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: ktransform
-  namespace: linkerd
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: ktransform
-subjects:
-- kind: ServiceAccount
-  name: ktransform
-  namespace: linkerd
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-  name: linkerd-heartbeat
-  namespace: linkerd
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: linkerd-heartbeat
-subjects:
-- kind: ServiceAccount
-  name: linkerd-heartbeat
-  namespace: linkerd
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
   labels:
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-linkerd-tap-auth-reader
-  namespace: linkerd
+  namespace: kube-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -864,6 +834,36 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-tap
+  namespace: linkerd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ktransform
+  namespace: linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ktransform
+subjects:
+- kind: ServiceAccount
+  name: ktransform
+  namespace: linkerd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  name: linkerd-heartbeat
+  namespace: linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-heartbeat
+subjects:
+- kind: ServiceAccount
+  name: linkerd-heartbeat
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1088,7 +1088,7 @@ subjects:
   name: linkerd-web
   namespace: linkerd
 ---
-apiVersion: v1
+apiVersion: v1 # TODO: extract this from the helm chart instead of manually placing it here
 data:
   values: |
     controllerImage: ghcr.io/linkerd/controller
@@ -1587,7 +1587,154 @@ data:
         limit: 250Mi
         request: 50Mi
     tracing:
+      collector:
+        image: omnition/opencensus-collector:0.1.11
       enabled: false
+      global:
+        clusterDomain: cluster.local
+        clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
+        cniEnabled: false
+        controlPlaneTracing: false
+        controllerComponentLabel: linkerd.io/control-plane-component
+        controllerLogLevel: info
+        controllerNamespaceLabel: linkerd.io/control-plane-ns
+        createdByAnnotation: linkerd.io/created-by
+        enableEndpointSlices: false
+        grafanaUrl: ""
+        identityTrustAnchorsPEM: replace-ca-crt
+        identityTrustDomain: cluster.local
+        imagePullPolicy: IfNotPresent
+        imagePullSecrets: []
+        linkerdNamespaceLabel: linkerd.io/is-control-plane
+        linkerdVersion: stable-2.9.2
+        namespace: linkerd
+        podAnnotations: {}
+        podLabels: {}
+        prometheusUrl: ""
+        proxy:
+          cores: 0
+          enableExternalProfiles: false
+          image:
+            name: ghcr.io/linkerd/proxy
+            pullPolicy: IfNotPresent
+            version: stable-2.9.2
+          inboundConnectTimeout: 100ms
+          logFormat: plain
+          logLevel: warn,linkerd=info
+          outboundConnectTimeout: 1000ms
+          ports:
+            admin: 4191
+            control: 4190
+            inbound: 4143
+            outbound: 4140
+          requireIdentityOnInboundPorts: ""
+          resources:
+            cpu:
+              limit: ""
+              request: 100m
+            memory:
+              limit: 250Mi
+              request: 20Mi
+          trace:
+            collectorSvcAccount: default
+            collectorSvcAddr: ""
+          uid: 2102
+          waitBeforeExitSeconds: 0
+        proxyInit:
+          closeWaitTimeoutSecs: 0
+          ignoreInboundPorts: 25,443,587,3306,11211
+          ignoreOutboundPorts: 25,443,587,3306,11211
+          image:
+            name: ghcr.io/linkerd/proxy-init
+            pullPolicy: IfNotPresent
+            version: v1.3.6
+          resources:
+            cpu:
+              limit: 100m
+              request: 10m
+            memory:
+              limit: 50Mi
+              request: 10Mi
+          xtMountPath:
+            mountPath: /run
+            name: linkerd-proxy-init-xtables-lock
+        proxyInjectAnnotation: linkerd.io/inject
+        proxyInjectDisabled: disabled
+        workloadNamespaceLabel: linkerd.io/workload-ns
+      jaeger:
+        image: jaegertracing/all-in-one:1.19.2
+      partials:
+        global:
+          clusterDomain: cluster.local
+          clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
+          cniEnabled: false
+          controlPlaneTracing: false
+          controllerComponentLabel: linkerd.io/control-plane-component
+          controllerLogLevel: info
+          controllerNamespaceLabel: linkerd.io/control-plane-ns
+          createdByAnnotation: linkerd.io/created-by
+          enableEndpointSlices: false
+          grafanaUrl: ""
+          identityTrustAnchorsPEM: replace-ca-crt
+          identityTrustDomain: cluster.local
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          linkerdNamespaceLabel: linkerd.io/is-control-plane
+          linkerdVersion: stable-2.9.2
+          namespace: linkerd
+          podAnnotations: {}
+          podLabels: {}
+          prometheusUrl: ""
+          proxy:
+            cores: 0
+            enableExternalProfiles: false
+            image:
+              name: ghcr.io/linkerd/proxy
+              pullPolicy: IfNotPresent
+              version: stable-2.9.2
+            inboundConnectTimeout: 100ms
+            logFormat: plain
+            logLevel: warn,linkerd=info
+            outboundConnectTimeout: 1000ms
+            ports:
+              admin: 4191
+              control: 4190
+              inbound: 4143
+              outbound: 4140
+            requireIdentityOnInboundPorts: ""
+            resources:
+              cpu:
+                limit: ""
+                request: 100m
+              memory:
+                limit: 250Mi
+                request: 20Mi
+            trace:
+              collectorSvcAccount: default
+              collectorSvcAddr: ""
+            uid: 2102
+            waitBeforeExitSeconds: 0
+          proxyInit:
+            closeWaitTimeoutSecs: 0
+            ignoreInboundPorts: 25,443,587,3306,11211
+            ignoreOutboundPorts: 25,443,587,3306,11211
+            image:
+              name: ghcr.io/linkerd/proxy-init
+              pullPolicy: IfNotPresent
+              version: v1.3.6
+            resources:
+              cpu:
+                limit: 100m
+                request: 10m
+              memory:
+                limit: 50Mi
+                request: 10Mi
+            xtMountPath:
+              mountPath: /run
+              name: linkerd-proxy-init-xtables-lock
+          proxyInjectAnnotation: linkerd.io/inject
+          proxyInjectDisabled: disabled
+          workloadNamespaceLabel: linkerd.io/workload-ns
     webImage: ghcr.io/linkerd/web
     webResources:
       cpu:
@@ -2113,40 +2260,12 @@ spec:
                 - controller
             topologyKey: kubernetes.io/hostname
       containers:
-      - args:
-        - public-api
-        - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
-        - -controller-namespace=linkerd
-        - -log-level=info
-        - -cluster-domain=cluster.local
-        - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
-        image: ghcr.io/linkerd/controller:stable-2.9.2
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9995
-          initialDelaySeconds: 10
-        name: public-api
-        ports:
-        - containerPort: 8085
-          name: http
-        - containerPort: 9995
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9995
-        resources:
-          limits:
-            memory: 250Mi
-          requests:
-            cpu: 100m
-            memory: 50Mi
-        securityContext:
-          runAsUser: 2103
       - env:
+        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            secretKeyRef:
+              key: ca.crt
+              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -2186,11 +2305,6 @@ spec:
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -2242,11 +2356,44 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         # Added to enforce update
         volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
         - mountPath: /etc/ssl/certs/ca-identity-cert.pem
           name: identity-ca
           subPath: ca.crt
+        - mountPath: /var/run/linkerd/identity/end-entity
+          name: linkerd-identity-end-entity
+      - args:
+        - public-api
+        - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
+        - -controller-namespace=linkerd
+        - -log-level=info
+        - -cluster-domain=cluster.local
+        - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
+        image: ghcr.io/linkerd/controller:stable-2.9.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: public-api
+        ports:
+        - containerPort: 8085
+          name: http
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        resources:
+          limits:
+            memory: 250Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          runAsUser: 2103
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -2287,13 +2434,14 @@ spec:
         beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-controller
       volumes:
-      - name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - name: identity-ca
         secret:
           secretName: linkerd-identity-issuer-tls
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -2351,42 +2499,12 @@ spec:
                 - destination
             topologyKey: kubernetes.io/hostname
       containers:
-      - args:
-        - destination
-        - -addr=:8086
-        - -controller-namespace=linkerd
-        - -enable-h2-upgrade=true
-        - -log-level=info
-        - -enable-endpoint-slices=false
-        - -cluster-domain=cluster.local
-        - -identity-trust-domain=cluster.local
-        image: ghcr.io/linkerd/controller:stable-2.9.2
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9996
-          initialDelaySeconds: 10
-        name: destination
-        ports:
-        - containerPort: 8086
-          name: grpc
-        - containerPort: 9996
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9996
-        resources:
-          limits:
-            memory: 250Mi
-          requests:
-            cpu: 100m
-            memory: 50Mi
-        securityContext:
-          runAsUser: 2103
       - env:
+        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            secretKeyRef:
+              key: ca.crt
+              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -2426,11 +2544,6 @@ spec:
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -2482,11 +2595,46 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         # Added to enforce update
         volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
         - mountPath: /etc/ssl/certs/ca-identity-cert.pem
           name: identity-ca
           subPath: ca.crt
+        - mountPath: /var/run/linkerd/identity/end-entity
+          name: linkerd-identity-end-entity
+      - args:
+        - destination
+        - -addr=:8086
+        - -controller-namespace=linkerd
+        - -enable-h2-upgrade=true
+        - -log-level=info
+        - -enable-endpoint-slices=false
+        - -cluster-domain=cluster.local
+        - -identity-trust-domain=cluster.local
+        image: ghcr.io/linkerd/controller:stable-2.9.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9996
+          initialDelaySeconds: 10
+        name: destination
+        ports:
+        - containerPort: 8086
+          name: grpc
+        - containerPort: 9996
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9996
+        resources:
+          limits:
+            memory: 250Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          runAsUser: 2103
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -2527,13 +2675,14 @@ spec:
         beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-destination
       volumes:
-      - name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - name: identity-ca
         secret:
           secretName: linkerd-identity-issuer-tls
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -2569,40 +2718,11 @@ spec:
     spec:
       containers:
       - env:
-        - name: GF_PATHS_DATA
-          value: /data
-        - name: GODEBUG
-          value: netdns=go
-        image: ghcr.io/linkerd/grafana:stable-2.9.2
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /api/health
-            port: 3000
-          initialDelaySeconds: 30
-        name: grafana
-        ports:
-        - containerPort: 3000
-          name: http
-        readinessProbe:
-          httpGet:
-            path: /api/health
-            port: 3000
-        resources:
-          limits:
-            memory: 1024Mi
-          requests:
-            cpu: 100m
-            memory: 50Mi
-        securityContext:
-          runAsUser: 472
-        volumeMounts:
-        - mountPath: /data
-          name: data
-        - mountPath: /etc/grafana
-          name: grafana-config
-          readOnly: true
-      - env:
+        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            secretKeyRef:
+              key: ca.crt
+              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -2642,11 +2762,6 @@ spec:
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -2698,11 +2813,45 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         # Added to enforce update
         volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
         - mountPath: /etc/ssl/certs/ca-identity-cert.pem
           name: identity-ca
           subPath: ca.crt
+        - mountPath: /var/run/linkerd/identity/end-entity
+          name: linkerd-identity-end-entity
+      - env:
+        - name: GF_PATHS_DATA
+          value: /data
+        - name: GODEBUG
+          value: netdns=go
+        image: ghcr.io/linkerd/grafana:stable-2.9.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+        name: grafana
+        ports:
+        - containerPort: 3000
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+        resources:
+          limits:
+            memory: 1024Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          runAsUser: 472
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        - mountPath: /etc/grafana
+          name: grafana-config
+          readOnly: true
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -2741,7 +2890,11 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-grafana
       volumes:
-      - name: data
+      - name: identity-ca
+        secret:
+          secretName: linkerd-identity-issuer-tls
+      - emptyDir: {}
+        name: data
       - configMap:
           items:
           - key: grafana.ini
@@ -2752,13 +2905,11 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
-      - name: linkerd-proxy-init-xtables-lock
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - name: identity-ca
-        secret:
-          secretName: linkerd-identity-issuer-tls
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -2828,7 +2979,15 @@ spec:
         # TODO: inject base64 encoded CA cert here somehow
         #- -identity-trust-anchors-pem=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJnekNDQVNtZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDAKZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTWpFd01qQTNNREF4TmpJd1doY05Nakl3TWpBMwpNREF4TmpRd1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqCllXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUmtuZDBveVEwN0ROQmdVb2s5OFh0eUhyWWYKWFNXTldSbFdTdXpqSzFUNWtZTUVzdXJjVUdQbTgyR2hNOHBIbFBjUjB6QUlzby9qMFZzUE5UUFJ3L2VsbzBJdwpRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFQNzMrRjA2VzZJYTMwdjYKUllyNHNmbllxZDY5QkErZVNUUnlBMmh6VXlMekFpQnJGR1lZVWpWZjArN1RlaW1DVXBlZjNYU1BtWnNkaWx5QQp1VnRrUklMVUp3PT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
         - -identity-scheme=linkerd.io/tls
-        image: ghcr.io/linkerd/controller:stable-2.9.2
+        env:
+        - name: LINKERD2_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            configMapKeyRef:
+              key: caHash
+              name: linkerd-config
+        # TODO: remove patched image
+        # patched to replace -identity-trust-anchors-pem option with env var LINKERD2_IDENTITY_TRUST_ANCHORS
+        image: mgoltzsche/linkerd2-controller:local
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2858,6 +3017,11 @@ spec:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
       - env:
+        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            secretKeyRef:
+              key: ca.crt
+              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -2897,11 +3061,6 @@ spec:
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -2953,11 +3112,11 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         # Added to enforce update
         volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
         - mountPath: /etc/ssl/certs/ca-identity-cert.pem
           name: identity-ca
           subPath: ca.crt
+        - mountPath: /var/run/linkerd/identity/end-entity
+          name: linkerd-identity-end-entity
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -2998,16 +3157,17 @@ spec:
         beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-identity
       volumes:
-      - name: identity-issuer # overwritten
-        secret:
-          secretName: linkerd-identity-issuer-tls-converted
-      - name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - name: identity-ca
         secret:
           secretName: linkerd-identity-issuer-tls
+      - name: identity-issuer # overwritten
+        secret:
+          secretName: linkerd-identity-issuer-tls-converted
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -3042,47 +3202,12 @@ spec:
         linkerd.io/workload-ns: linkerd
     spec:
       containers:
-      - args:
-        - --config.file=/etc/prometheus/prometheus.yml
-        - --log.level=info
-        - --storage.tsdb.path=/data
-        - --storage.tsdb.retention.time=6h
-        image: prom/prometheus:v2.19.3
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /-/healthy
-            port: 9090
-          initialDelaySeconds: 30
-          timeoutSeconds: 30
-        name: prometheus
-        ports:
-        - containerPort: 9090
-          name: admin-http
-        readinessProbe:
-          httpGet:
-            path: /-/ready
-            port: 9090
-          initialDelaySeconds: 30
-          timeoutSeconds: 30
-        resources:
-          limits:
-            memory: 8192Mi
-          requests:
-            cpu: 300m
-            memory: 300Mi
-        securityContext:
-          runAsGroup: 65534
-          runAsNonRoot: true
-          runAsUser: 65534
-        volumeMounts:
-        - mountPath: /data
-          name: data
-        - mountPath: /etc/prometheus/prometheus.yml
-          name: prometheus-config
-          readOnly: true
-          subPath: prometheus.yml
       - env:
+        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            secretKeyRef:
+              key: ca.crt
+              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -3122,11 +3247,6 @@ spec:
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -3178,11 +3298,51 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         # Added to enforce update
         volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
         - mountPath: /etc/ssl/certs/ca-identity-cert.pem
           name: identity-ca
           subPath: ca.crt
+        - mountPath: /var/run/linkerd/identity/end-entity
+          name: linkerd-identity-end-entity
+      - args:
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --log.level=info
+        - --storage.tsdb.path=/data
+        - --storage.tsdb.retention.time=6h
+        image: prom/prometheus:v2.19.3
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        name: prometheus
+        ports:
+        - containerPort: 9090
+          name: admin-http
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        resources:
+          limits:
+            memory: 8192Mi
+          requests:
+            cpu: 300m
+            memory: 300Mi
+        securityContext:
+          runAsGroup: 65534
+          runAsNonRoot: true
+          runAsUser: 65534
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        - mountPath: /etc/prometheus/prometheus.yml
+          name: prometheus-config
+          readOnly: true
+          subPath: prometheus.yml
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -3223,17 +3383,19 @@ spec:
         fsGroup: 65534
       serviceAccountName: linkerd-prometheus
       volumes:
-      - name: data
-      - configMap:
-          name: linkerd-prometheus-config
-        name: prometheus-config
-      - name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - name: identity-ca
         secret:
           secretName: linkerd-identity-issuer-tls
+      - emptyDir: {}
+        name: data
+      - configMap:
+          name: linkerd-prometheus-config
+        name: prometheus-config
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -3289,42 +3451,12 @@ spec:
                 - proxy-injector
             topologyKey: kubernetes.io/hostname
       containers:
-      - args:
-        - proxy-injector
-        - -log-level=info
-        image: ghcr.io/linkerd/controller:stable-2.9.2
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9995
-          initialDelaySeconds: 10
-        name: proxy-injector
-        ports:
-        - containerPort: 8443
-          name: proxy-injector
-        - containerPort: 9995
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9995
-        resources:
-          limits:
-            memory: 250Mi
-          requests:
-            cpu: 100m
-            memory: 50Mi
-        securityContext:
-          runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
-        - mountPath: /var/run/linkerd/tls
-          name: tls
-          readOnly: true
       - env:
+        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            secretKeyRef:
+              key: ca.crt
+              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -3364,11 +3496,6 @@ spec:
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -3420,11 +3547,46 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         # Added to enforce update
         volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
         - mountPath: /etc/ssl/certs/ca-identity-cert.pem
           name: identity-ca
           subPath: ca.crt
+        - mountPath: /var/run/linkerd/identity/end-entity
+          name: linkerd-identity-end-entity
+      - args:
+        - proxy-injector
+        - -log-level=info
+        image: ghcr.io/linkerd/controller:stable-2.9.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: proxy-injector
+        ports:
+        - containerPort: 8443
+          name: proxy-injector
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        resources:
+          limits:
+            memory: 250Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -3465,19 +3627,20 @@ spec:
         beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-proxy-injector
       volumes:
-      - configMap:
-          name: linkerd-config-tpl
-        name: config # overwritten
-      - name: tls # overwritten
-        secret:
-          secretName: linkerd-apiservice-tls
-      - name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - name: identity-ca
         secret:
           secretName: linkerd-identity-issuer-tls
+      - name: tls # overwritten
+        secret:
+          secretName: linkerd-apiservice-tls
+      - configMap:
+          name: linkerd-config
+        name: config # overwritten
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -3533,40 +3696,12 @@ spec:
                 - sp-validator
             topologyKey: kubernetes.io/hostname
       containers:
-      - args:
-        - sp-validator
-        - -log-level=info
-        image: ghcr.io/linkerd/controller:stable-2.9.2
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9997
-          initialDelaySeconds: 10
-        name: sp-validator
-        ports:
-        - containerPort: 8443
-          name: sp-validator
-        - containerPort: 9997
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9997
-        resources:
-          limits:
-            memory: 250Mi
-          requests:
-            cpu: 100m
-            memory: 50Mi
-        securityContext:
-          runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/tls
-          name: tls
-          readOnly: true
       - env:
+        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            secretKeyRef:
+              key: ca.crt
+              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -3606,11 +3741,6 @@ spec:
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -3662,11 +3792,44 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         # Added to enforce update
         volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
         - mountPath: /etc/ssl/certs/ca-identity-cert.pem
           name: identity-ca
           subPath: ca.crt
+        - mountPath: /var/run/linkerd/identity/end-entity
+          name: linkerd-identity-end-entity
+      - args:
+        - sp-validator
+        - -log-level=info
+        image: ghcr.io/linkerd/controller:stable-2.9.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
+        name: sp-validator
+        ports:
+        - containerPort: 8443
+          name: sp-validator
+        - containerPort: 9997
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9997
+        resources:
+          limits:
+            memory: 250Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -3707,16 +3870,17 @@ spec:
         beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-sp-validator
       volumes:
-      - name: tls # overwritten
-        secret:
-          secretName: linkerd-apiservice-tls
-      - name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - name: identity-ca
         secret:
           secretName: linkerd-identity-issuer-tls
+      - name: tls # overwritten
+        secret:
+          secretName: linkerd-apiservice-tls
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -3774,44 +3938,12 @@ spec:
                 - tap
             topologyKey: kubernetes.io/hostname
       containers:
-      - args:
-        - tap
-        - -controller-namespace=linkerd
-        - -log-level=info
-        - -identity-trust-domain=cluster.local
-        image: ghcr.io/linkerd/controller:stable-2.9.2
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9998
-          initialDelaySeconds: 10
-        name: tap
-        ports:
-        - containerPort: 8088
-          name: grpc
-        - containerPort: 8089
-          name: apiserver
-        - containerPort: 9998
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9998
-        resources:
-          limits:
-            memory: 250Mi
-          requests:
-            cpu: 100m
-            memory: 50Mi
-        securityContext:
-          runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/tls
-          name: tls
-          readOnly: true
       - env:
+        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            secretKeyRef:
+              key: ca.crt
+              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -3851,11 +3983,6 @@ spec:
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -3907,11 +4034,48 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         # Added to enforce update
         volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
         - mountPath: /etc/ssl/certs/ca-identity-cert.pem
           name: identity-ca
           subPath: ca.crt
+        - mountPath: /var/run/linkerd/identity/end-entity
+          name: linkerd-identity-end-entity
+      - args:
+        - tap
+        - -controller-namespace=linkerd
+        - -log-level=info
+        - -identity-trust-domain=cluster.local
+        image: ghcr.io/linkerd/controller:stable-2.9.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9998
+          initialDelaySeconds: 10
+        name: tap
+        ports:
+        - containerPort: 8088
+          name: grpc
+        - containerPort: 8089
+          name: apiserver
+        - containerPort: 9998
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9998
+        resources:
+          limits:
+            memory: 250Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -3952,16 +4116,17 @@ spec:
         beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-tap
       volumes:
-      - name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
-      - name: tls # overwritten
-        secret:
-          secretName: linkerd-apiservice-tls
       - name: identity-ca
         secret:
           secretName: linkerd-identity-issuer-tls
+      - name: tls # overwritten
+        secret:
+          secretName: linkerd-apiservice-tls
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -3996,40 +4161,12 @@ spec:
         linkerd.io/workload-ns: linkerd
     spec:
       containers:
-      - args:
-        - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
-        - -cluster-domain=cluster.local
-        - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
-        - -controller-namespace=linkerd
-        - -log-level=info
-        - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
-        image: ghcr.io/linkerd/web:stable-2.9.2
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9994
-          initialDelaySeconds: 10
-        name: web
-        ports:
-        - containerPort: 8084
-          name: http
-        - containerPort: 9994
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9994
-        resources:
-          limits:
-            memory: 250Mi
-          requests:
-            cpu: 100m
-            memory: 50Mi
-        securityContext:
-          runAsUser: 2103
       - env:
+        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+          valueFrom:
+            secretKeyRef:
+              key: ca.crt
+              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -4069,11 +4206,6 @@ spec:
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -4125,11 +4257,44 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         # Added to enforce update
         volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
         - mountPath: /etc/ssl/certs/ca-identity-cert.pem
           name: identity-ca
           subPath: ca.crt
+        - mountPath: /var/run/linkerd/identity/end-entity
+          name: linkerd-identity-end-entity
+      - args:
+        - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
+        - -cluster-domain=cluster.local
+        - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
+        - -controller-namespace=linkerd
+        - -log-level=info
+        - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
+        image: ghcr.io/linkerd/web:stable-2.9.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9994
+          initialDelaySeconds: 10
+        name: web
+        ports:
+        - containerPort: 8084
+          name: http
+        - containerPort: 9994
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9994
+        resources:
+          limits:
+            memory: 250Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          runAsUser: 2103
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -4170,13 +4335,14 @@ spec:
         beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-web
       volumes:
-      - name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - name: identity-ca
         secret:
           secretName: linkerd-identity-issuer-tls
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 apiVersion: batch/v1beta1
 kind: CronJob
@@ -4326,6 +4492,8 @@ spec:
   - configMap:
       name: linkerd-config
     transformation:
+      caHash: |
+        .caSecret["ca.crt"].string | @base64
       values: |
         .caSecret["ca.crt"].string as $caCert
         | .linkerdConfigTpl["values"].object
