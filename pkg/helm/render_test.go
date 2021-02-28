@@ -51,6 +51,7 @@ func TestRender(t *testing.T) {
 		{"kubeVersion", "example/release-name/generator.yaml", []string{}, "  k8sVersion: v1.17.0"},
 		{"release-name", "example/release-name/generator.yaml", []string{}, "  name: my-release-name-config"},
 		{"exclude", "example/exclude/generator.yaml", []string{"cluster-role-binding-ns"}, "  key: b"},
+		{"include", "example/include/generator.yaml", []string{}, "  key: b"},
 		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
 		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
 		{"values-inheritance", "example/values-inheritance/generator.yaml", []string{}, " inherited: inherited value\n  fileoverwrite: overwritten by file\n  valueoverwrite: overwritten by generator config"},

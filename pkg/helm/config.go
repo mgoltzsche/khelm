@@ -80,6 +80,7 @@ type RendererConfig struct {
 	Values         map[string]interface{} `yaml:"values,omitempty"`
 	KubeVersion    string                 `yaml:"kubeVersion,omitempty"`
 	APIVersions    []string               `yaml:"apiVersions,omitempty"`
+	Include        []ResourceSelector     `yaml:"include,omitempty"`
 	Exclude        []ResourceSelector     `yaml:"exclude,omitempty"`
 	NamespacedOnly bool                   `yaml:"namespacedOnly,omitempty"`
 	ForceNamespace string                 `yaml:"forceNamespace,omitempty"`

@@ -188,6 +188,30 @@ func TestKptFnCommand(t *testing.T) {
 			2, "myconfigb",
 		},
 		{
+			"include",
+			kptFnConfig{ChartConfig: &helm.ChartConfig{
+				LoaderConfig: helm.LoaderConfig{
+					Chart: filepath.Join(exampleDir, "namespace"),
+				},
+				RendererConfig: helm.RendererConfig{
+					Include: []helm.ResourceSelector{
+						{
+							APIVersion: "v1",
+							Kind:       "ConfigMap",
+						},
+					},
+					Exclude: []helm.ResourceSelector{
+						{
+							APIVersion: "v1",
+							Kind:       "ConfigMap",
+							Name:       "myconfiga",
+						},
+					},
+				},
+			}},
+			1, "myconfigb",
+		},
+		{
 			"output path",
 			kptFnConfig{
 				ChartConfig: &helm.ChartConfig{

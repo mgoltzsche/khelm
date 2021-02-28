@@ -25,16 +25,25 @@ func (id *ResourceSelector) Match(o *yaml.ResourceMeta) bool {
 }
 
 // ResourceMatchers is a group of matchers
-type ResourceMatchers []*resourceMatcher
+type ResourceMatchers interface {
+	MatchAny(o *yaml.ResourceMeta) bool
+	RequireAllMatched() error
+}
 
-// ResourceMatcher matches
+type matchAll struct{}
+
+func (m *matchAll) RequireAllMatched() error         { return nil }
+func (m *matchAll) MatchAny(*yaml.ResourceMeta) bool { return true }
+
+type resourceMatchers []*resourceMatcher
+
 type resourceMatcher struct {
 	ResourceSelector
 	Matched bool
 }
 
 // RequireAllMatched returns an error if any matcher did not match
-func (m ResourceMatchers) RequireAllMatched() error {
+func (m resourceMatchers) RequireAllMatched() error {
 	var errs []string
 	for _, e := range m {
 		if !e.Matched {
@@ -48,7 +57,7 @@ func (m ResourceMatchers) RequireAllMatched() error {
 }
 
 // MatchAny returns true if any matches matches the given object
-func (m ResourceMatchers) MatchAny(o *yaml.ResourceMeta) bool {
+func (m resourceMatchers) MatchAny(o *yaml.ResourceMeta) bool {
 	for _, e := range m {
 		if e.ResourceSelector.Match(o) {
 			e.Matched = true
@@ -64,5 +73,5 @@ func Matchers(selectors []ResourceSelector) ResourceMatchers {
 	for i, selector := range selectors {
 		matchers[i] = &resourceMatcher{selector, false}
 	}
-	return matchers
+	return resourceMatchers(matchers)
 }

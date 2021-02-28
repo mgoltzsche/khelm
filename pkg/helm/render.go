@@ -86,8 +86,14 @@ func renderChart(chrt *chart.Chart, req *ChartConfig, getters getter.Providers) 
 		return nil, errors.Errorf("chart %s does not contain any manifests", chrt.Metadata.Name)
 	}
 
+	var inclusions ResourceMatchers = &matchAll{}
+	if len(req.Include) > 0 {
+		inclusions = Matchers(req.Include)
+	}
+
 	transformer := manifestTransformer{
 		ForceNamespace: req.ForceNamespace,
+		Includes:       inclusions,
 		Excludes:       Matchers(req.Exclude),
 		NamespacedOnly: req.NamespacedOnly,
 		OutputPath:     "khelm-output",
@@ -104,6 +110,10 @@ func renderChart(chrt *chart.Chart, req *ChartConfig, getters getter.Providers) 
 			return nil, errors.WithMessage(err, filepath.Base(m.Name))
 		}
 		r = append(r, transformed...)
+	}
+
+	if err = transformer.Includes.RequireAllMatched(); err != nil {
+		return nil, errors.Wrap(err, "resource inclusion")
 	}
 
 	if err = transformer.Excludes.RequireAllMatched(); err != nil {

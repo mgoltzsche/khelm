@@ -16,6 +16,7 @@ const (
 
 type manifestTransformer struct {
 	ForceNamespace string
+	Includes       ResourceMatchers
 	Excludes       ResourceMatchers
 	NamespacedOnly bool
 	OutputPath     string
@@ -41,7 +42,12 @@ func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.R
 			break
 		}
 
-		// Filter excluded resources
+		// Exclude all not explicitly included resources
+		if !t.Includes.MatchAny(&meta) {
+			continue
+		}
+
+		// Exclude resources
 		if t.Excludes.MatchAny(&meta) {
 			continue
 		}

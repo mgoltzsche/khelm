@@ -7,6 +7,14 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
+func TestMatchAll(t *testing.T) {
+	testee := &matchAll{}
+	matched := testee.MatchAny(testResource("someapi/v1", "SomeKind", "no-match", ""))
+	require.True(t, matched, "matched")
+	err := testee.RequireAllMatched()
+	require.NoError(t, err, "RequireAllMatched")
+}
+
 func TestMatchAny(t *testing.T) {
 	input := []*yaml.ResourceMeta{}
 	for _, suffix := range []string{"a", "b"} {

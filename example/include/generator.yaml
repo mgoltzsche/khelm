@@ -1,0 +1,12 @@
+apiVersion: khelm.mgoltzsche.github.com/v1
+kind: ChartRenderer
+metadata:
+  name: mychart
+chart: ../namespace
+include:
+- apiVersion: v1
+  kind: ConfigMap
+exclude:
+- apiVersion: v1
+  kind: ConfigMap
+  name: myconfiga
