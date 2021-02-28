@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/mgoltzsche/khelm/internal/matcher"
+	"github.com/mgoltzsche/khelm/pkg/config"
 	"github.com/pkg/errors"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/getter"
@@ -21,7 +23,7 @@ import (
 var whitespaceRegex = regexp.MustCompile(`^\s*$`)
 
 // Render manifest from helm chart configuration (shorthand)
-func (h *Helm) Render(ctx context.Context, req *ChartConfig) (r []*yaml.RNode, err error) {
+func (h *Helm) Render(ctx context.Context, req *config.ChartConfig) (r []*yaml.RNode, err error) {
 	if errs := req.Validate(); len(errs) > 0 {
 		return nil, errors.Errorf("invalid chart renderer config:\n * %s", strings.Join(errs, "\n * "))
 	}
@@ -57,7 +59,7 @@ func (h *Helm) Render(ctx context.Context, req *ChartConfig) (r []*yaml.RNode, e
 
 // renderChart renders a manifest from the given chart and values
 // Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/template.go
-func renderChart(chrt *chart.Chart, req *ChartConfig, getters getter.Providers) (r []*yaml.RNode, err error) {
+func renderChart(chrt *chart.Chart, req *config.ChartConfig, getters getter.Providers) (r []*yaml.RNode, err error) {
 	namespace := req.Namespace
 	renderOpts := renderutil.Options{
 		ReleaseOptions: chartutil.ReleaseOptions{
@@ -86,15 +88,15 @@ func renderChart(chrt *chart.Chart, req *ChartConfig, getters getter.Providers) 
 		return nil, errors.Errorf("chart %s does not contain any manifests", chrt.Metadata.Name)
 	}
 
-	var inclusions ResourceMatchers = &matchAll{}
+	inclusions := matcher.Any()
 	if len(req.Include) > 0 {
-		inclusions = Matchers(req.Include)
+		inclusions = matcher.FromResourceSelectors(req.Include)
 	}
 
 	transformer := manifestTransformer{
 		ForceNamespace: req.ForceNamespace,
 		Includes:       inclusions,
-		Excludes:       Matchers(req.Exclude),
+		Excludes:       matcher.FromResourceSelectors(req.Exclude),
 		NamespacedOnly: req.NamespacedOnly,
 		OutputPath:     "khelm-output",
 	}

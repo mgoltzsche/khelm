@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/mgoltzsche/khelm/pkg/config"
 	"github.com/mgoltzsche/khelm/pkg/helm"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
@@ -22,7 +23,7 @@ func marshal(resources []*yaml.RNode, writer io.Writer) error {
 	return enc.Close()
 }
 
-func render(h *helm.Helm, req *helm.ChartConfig) ([]*yaml.RNode, error) {
+func render(h *helm.Helm, req *config.ChartConfig) ([]*yaml.RNode, error) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)

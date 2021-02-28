@@ -1,4 +1,4 @@
-package helm
+package config
 
 import (
 	"bytes"
@@ -84,6 +84,30 @@ type RendererConfig struct {
 	Exclude        []ResourceSelector     `yaml:"exclude,omitempty"`
 	NamespacedOnly bool                   `yaml:"namespacedOnly,omitempty"`
 	ForceNamespace string                 `yaml:"forceNamespace,omitempty"`
+}
+
+// ResourceSelector specifies a Kubernetes resource selector
+type ResourceSelector struct {
+	APIVersion string `yaml:"apiVersion,omitempty"`
+	Kind       string `yaml:"kind,omitempty"`
+	Namespace  string `yaml:"namespace,omitempty"`
+	Name       string `yaml:"name,omitempty"`
+}
+
+// KubernetesResourceMeta represents a kubernetes resource's meta data
+type KubernetesResourceMeta interface {
+	GetAPIVersion() string
+	GetKind() string
+	GetNamespace() string
+	GetName() string
+}
+
+// Match returns true if all non-empty fields match the ones in the provided object
+func (id *ResourceSelector) Match(o KubernetesResourceMeta) bool {
+	return (id.APIVersion == "" || id.APIVersion == o.GetAPIVersion()) &&
+		(id.Kind == "" || id.Kind == o.GetKind()) &&
+		(id.Namespace == "" || id.Namespace == o.GetNamespace()) &&
+		(id.Name == "" || id.Name == o.GetName())
 }
 
 // Validate validates the chart renderer config

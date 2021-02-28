@@ -5,13 +5,14 @@ import (
 	"io"
 
 	"github.com/mgoltzsche/khelm/internal/output"
+	"github.com/mgoltzsche/khelm/pkg/config"
 	"github.com/mgoltzsche/khelm/pkg/helm"
 	"github.com/spf13/cobra"
 	"k8s.io/helm/pkg/strvals"
 )
 
 func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
-	req := helm.NewChartConfig()
+	req := config.NewChartConfig()
 	req.Name = "release-name"
 	outOpts := output.Options{Writer: writer}
 	trustAnyRepo := false

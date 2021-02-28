@@ -16,6 +16,7 @@ import (
 	"time"
 
 	helmyaml "github.com/ghodss/yaml"
+	"github.com/mgoltzsche/khelm/pkg/config"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	"k8s.io/helm/pkg/getter"
@@ -219,7 +220,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	fakeChartTgz := filepath.Join(rootDir, "example/localrefref/charts/intermediate-chart-0.1.1.tgz")
 
 	// Create input chart config and fake private chart server
-	var cfg ChartConfig
+	var cfg config.ChartConfig
 	cfg.Chart = "private-chart"
 	cfg.Name = "myrelease"
 	cfg.Version = fmt.Sprintf("0.0.%d", time.Now().Unix())
@@ -268,7 +269,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 
 type fakePrivateChartServerHandler struct {
 	repo         *repo.Entry
-	config       *LoaderConfig
+	config       *config.LoaderConfig
 	fakeChartTgz string
 }
 
@@ -324,13 +325,13 @@ func renderFile(t *testing.T, file string, trustAnyRepo bool, rootDir string, wr
 	f, err := os.Open(file)
 	require.NoError(t, err)
 	defer f.Close()
-	cfg, err := ReadGeneratorConfig(f)
+	cfg, err := config.ReadGeneratorConfig(f)
 	require.NoError(t, err, "ReadGeneratorConfig(%s)", file)
 	cfg.BaseDir = filepath.Dir(file)
 	return render(t, cfg.ChartConfig, trustAnyRepo, writer)
 }
 
-func render(t *testing.T, req ChartConfig, trustAnyRepo bool, writer io.Writer) error {
+func render(t *testing.T, req config.ChartConfig, trustAnyRepo bool, writer io.Writer) error {
 	log.SetFlags(0)
 	h := NewHelm()
 	h.TrustAnyRepository = &trustAnyRepo

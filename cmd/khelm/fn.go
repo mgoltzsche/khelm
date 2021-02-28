@@ -2,10 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"path"
+	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/mgoltzsche/khelm/internal/matcher"
 	"github.com/mgoltzsche/khelm/internal/output"
+	"github.com/mgoltzsche/khelm/pkg/config"
 	"github.com/mgoltzsche/khelm/pkg/helm"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -21,31 +25,60 @@ const (
 )
 
 func kptFnCommand(h *helm.Helm) *cobra.Command {
-	req := helm.NewChartConfig()
+	req := config.NewChartConfig()
 	fnCfg := kptFnConfigMap{Data: kptFnConfig{ChartConfig: req}}
 	resourceList := &framework.ResourceList{FunctionConfig: &fnCfg}
 	cmd := framework.Command(resourceList, func() (err error) {
+		outputPath := fnCfg.Data.OutputPath
+		if outputPath == "" {
+			outputPath = defaultOutputPath
+		}
+		outputPaths := make([]string, len(fnCfg.Data.OutputPathMapping)+1)
+		outputPaths[0] = outputPath
+		for i, m := range fnCfg.Data.OutputPathMapping {
+			outputPaths[i+1] = m.OutputPath
+			if m.OutputPath == "" {
+				return errors.Errorf("no outputPath specified for outputMapping[%d]", i)
+			}
+			if len(m.ResourceSelectors) == 0 {
+				return errors.Errorf("no resourceSelectors specified for outputMapping[%d] -> %q", i, m.OutputPath)
+			}
+		}
+
+		// Template the helm chart
 		h.Settings.Debug = h.Settings.Debug || fnCfg.Data.Debug
 		rendered, err := render(h, req)
 		if err != nil {
 			return err
 		}
 
-		outputPath := fnCfg.Data.OutputPath
-		if outputPath == "" {
-			outputPath = defaultOutputPath
+		// Apply output path mappings and annotate resources
+		kustomizationDirs, err := mapOutputPaths(rendered, fnCfg.Data.OutputPathMapping, outputPath)
+		if err != nil {
+			return err
 		}
 
-		if output.IsDirectory(outputPath) {
-			kustomization, err := generateKustomization(rendered)
+		// Generate kustomizations
+		dirs := make([]string, 0, len(kustomizationDirs))
+		for dir := range kustomizationDirs {
+			dirs = append(dirs, dir)
+		}
+		sort.Strings(dirs)
+		kustomizationResources := make([]*yaml.RNode, len(dirs))
+		for i, dir := range dirs {
+			resources := kustomizationDirs[dir]
+			kustomizationPath := path.Join(dir, "kustomization.yaml")
+			kustomization, err := generateKustomization(resources)
 			if err != nil {
-				return errors.Wrap(err, "generate kustomization.yaml")
+				return errors.Wrapf(err, "generate %s", kustomizationPath)
 			}
-			rendered = append(rendered, kustomization)
+			setKptAnnotations(kustomization, kustomizationPath, 0)
+			kustomizationResources[i] = kustomization
 		}
+		rendered = append(kustomizationResources, rendered...)
 
-		addKptAnnotations(rendered, outputPath)
-		resourceList.Items = filterByOutputPath(resourceList.Items, outputPath)
+		// Apply output
+		resourceList.Items = filterByOutputPath(resourceList.Items, outputPaths)
 		resourceList.Items = append(resourceList.Items, rendered...)
 
 		return nil
@@ -72,45 +105,80 @@ type kptFnConfigMap struct {
 }
 
 type kptFnConfig struct {
-	*helm.ChartConfig `yaml:",inline"`
-	OutputPath        string `yaml:"outputPath,omitempty"`
-	Debug             bool   `yaml:"debug,omitempty"`
+	*config.ChartConfig `yaml:",inline"`
+	OutputPath          string               `yaml:"outputPath,omitempty"`
+	OutputPathMapping   []kptFnOutputMapping `yaml:"outputPathMapping,omitempty"`
+	Debug               bool                 `yaml:"debug,omitempty"`
 }
 
-func filterByOutputPath(resources []*yaml.RNode, outputPath string) []*yaml.RNode {
+type kptFnOutputMapping struct {
+	ResourceSelectors []config.ResourceSelector `yaml:"resourceSelectors,omitempty"`
+	OutputPath        string                    `yaml:"outputPath"`
+}
+
+func filterByOutputPath(resources []*yaml.RNode, outputPaths []string) []*yaml.RNode {
 	r := make([]*yaml.RNode, 0, len(resources))
 	for _, o := range resources {
 		meta, err := o.GetMeta()
-		if err != nil || meta.Annotations == nil || !isGeneratedOutputPath(meta.Annotations[annotationPath], outputPath) {
+		if err != nil || meta.Annotations == nil || !isGeneratedOutputPath(meta.Annotations[annotationPath], outputPaths) {
 			r = append(r, o)
 		}
 	}
 	return r
 }
 
-func isGeneratedOutputPath(path, outputPath string) bool {
-	return path == outputPath || output.IsDirectory(outputPath) && strings.HasPrefix(path, outputPath)
+func isGeneratedOutputPath(path string, outputPaths []string) bool {
+	for _, p := range outputPaths {
+		if path == p || output.IsDirectory(p) && strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
 }
 
-func addKptAnnotations(resources []*yaml.RNode, outputPath string) []string {
-	outPath := outputPath
-	outPaths := make([]string, 0, len(resources))
+func mapOutputPaths(resources []*yaml.RNode, outputMappings []kptFnOutputMapping, defaultOutputPath string) (map[string][]*yaml.RNode, error) {
+	matchers := make([]matcher.ResourceMatchers, len(outputMappings))
+	for i, m := range outputMappings {
+		matchers[i] = matcher.FromResourceSelectors(m.ResourceSelectors)
+	}
+	kustomizationDirs := map[string][]*yaml.RNode{}
 	for i, o := range resources {
 		meta, err := o.GetMeta()
 		if err != nil {
 			continue
 		}
 
-		// Set kpt order and path annotations
-		if output.IsDirectory(outputPath) {
-			outPath = output.ResourcePath(meta, outputPath)
+		resID := meta.GetIdentifier()
+		outPath := defaultOutputPath
+		for i, m := range matchers {
+			if m.Match(&resID) {
+				outPath = outputMappings[i].OutputPath
+				break
+			}
 		}
-		lookupAnnotations := yaml.LookupCreate(yaml.MappingNode, yaml.MetadataField, yaml.AnnotationsField)
-		_ = o.PipeE(lookupAnnotations, yaml.FieldSetter{Name: annotationIndex, StringValue: strconv.Itoa(i)})
-		_ = o.PipeE(lookupAnnotations, yaml.FieldSetter{Name: annotationPath, StringValue: outPath})
-		outPaths = append(outPaths, outPath)
+
+		// Set kpt order and path annotations
+		if output.IsDirectory(outPath) {
+			kustomizationDirs[outPath] = append(kustomizationDirs[outPath], o)
+			outPath = output.ResourcePath(meta, outPath)
+		}
+		setKptAnnotations(o, outPath, i)
 	}
-	return outPaths
+
+	for _, m := range matchers {
+		err := m.RequireAllMatched()
+		if err != nil {
+			return nil, errors.Wrap(err, "outputMapping")
+		}
+	}
+
+	return kustomizationDirs, nil
+}
+
+func setKptAnnotations(o *yaml.RNode, path string, index int) {
+	lookupAnnotations := yaml.LookupCreate(yaml.MappingNode, yaml.MetadataField, yaml.AnnotationsField)
+	_ = o.PipeE(lookupAnnotations, yaml.FieldSetter{Name: annotationIndex, StringValue: strconv.Itoa(index)})
+	_ = o.PipeE(lookupAnnotations, yaml.FieldSetter{Name: annotationPath, StringValue: path})
 }
 
 func resourceNames(resources []*yaml.RNode, outputBasePath string) []string {

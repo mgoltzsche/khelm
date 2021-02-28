@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/mgoltzsche/khelm/internal/matcher"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/kustomize/kyaml/openapi"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
@@ -16,8 +17,8 @@ const (
 
 type manifestTransformer struct {
 	ForceNamespace string
-	Includes       ResourceMatchers
-	Excludes       ResourceMatchers
+	Includes       matcher.ResourceMatchers
+	Excludes       matcher.ResourceMatchers
 	NamespacedOnly bool
 	OutputPath     string
 }
@@ -42,13 +43,15 @@ func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.R
 			break
 		}
 
+		resourceID := meta.GetIdentifier()
+
 		// Exclude all not explicitly included resources
-		if !t.Includes.MatchAny(&meta) {
+		if !t.Includes.Match(&resourceID) {
 			continue
 		}
 
 		// Exclude resources
-		if t.Excludes.MatchAny(&meta) {
+		if t.Excludes.Match(&resourceID) {
 			continue
 		}
 
