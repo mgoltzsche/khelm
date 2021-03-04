@@ -6,11 +6,17 @@ packageMetadata:
     shortDescription: linkerd 2
 # Run `kpt pkg sync .` when changing dependencies
 dependencies:
-  - name: chart
+  - name: dep/linkerd
     git:
         repo: https://github.com/linkerd/linkerd2
-        directory: charts
-        ref: stable-2.9.2
+        directory: .
+        ref: edge-21.3.1
+    updateStrategy: fast-forward
+  - name: dep/reloader
+    git:
+        repo: https://github.com/stakater/Reloader
+        directory: deployments/kubernetes
+        ref: v0.0.81
     updateStrategy: fast-forward
   - name: manifests/ktransform
     git:

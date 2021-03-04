@@ -2,7 +2,7 @@
 
 EXAMPLE_DIR="$(dirname "$0")/../example"
 
-GENERATED_MANIFEST="$EXAMPLE_DIR/kpt/linkerd/manifests/static/generated-manifest.yaml"
+GENERATED_MANIFEST="$EXAMPLE_DIR/kpt/linkerd/manifests/static/linkerd/generated-manifest.yaml"
 
 echo
 echo "  TEST $0: Run kpt functions of example/kpt/linkerd"

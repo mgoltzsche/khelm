@@ -1,0 +1,5 @@
+resources:
+- generated-manifest-without-secrets.yaml
+patchesStrategicMerge:
+- patches/apiserviceconfig-annotate-cabundle.yaml
+- patches/apiservice-use-cert-secrets.yaml

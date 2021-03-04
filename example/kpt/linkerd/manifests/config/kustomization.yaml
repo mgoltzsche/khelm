@@ -1,0 +1,12 @@
+resources:
+- generated-config.yaml
+patchesJSON6902:
+- target:
+    version: v1
+    kind: ConfigMap
+    name: linkerd-config
+    namespace: linkerd
+  patch: |-
+    - op: replace
+      path: /metadata/name
+      value: linkerd-config-tpl

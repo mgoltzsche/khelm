@@ -7,6 +7,8 @@ spec:
   input:
     caSecret:
       secret: linkerd-identity-issuer-tls
+    apiServiceTLSSecret:
+      secret: linkerd-apiservice-tls
     linkerdConfigTpl:
       configMap: linkerd-config-tpl
   output:
@@ -20,12 +22,15 @@ spec:
       name: linkerd-config
     transformation:
       values: |
-        .caSecret["ca.crt"].string as $caCert
+        .
+        | .caSecret["ca.crt"].string as $caCert
+        | .apiServiceTLSSecret["tls.crt"].string as $tlsCert
         | .linkerdConfigTpl["values"].object
-        | .global.identityTrustAnchorsPEM = $caCert
-        | .grafana.global.identityTrustAnchorsPEM = $caCert
-        | .grafana.partials.global.identityTrustAnchorsPEM = $caCert
-        | .prometheus.global.identityTrustAnchorsPEM = $caCert
-        | .prometheus.partials.global.identityTrustAnchorsPEM = $caCert
+        | .identityTrustAnchorsPEM = $caCert
+        | .identity.issuer.tls.crtPEM = $tlsCert
+        | .profileValidator.crtPEM = $tlsCert
+        | .profileValidator.caBundle = $caCert
+        | .proxyInjector.crtPEM = $tlsCert
+        | .proxyInjector.caBundle = $caCert
       caHash: |
         .caSecret["ca.crt"].string | @base64

@@ -8,5 +8,5 @@
 /example/kpt/*/output-*
 /example/kpt/*/generated-*
 /example/kpt/**/requirements.lock
-example/kpt/linkerd/manifests/base/generated-manifest-without-secrets.yaml
-
+/example/**/generated-manifest-without-secrets.yaml
+/example/kpt/linkerd/dep
