@@ -112,7 +112,7 @@ type kptFnConfig struct {
 }
 
 type kptFnOutputMapping struct {
-	ResourceSelectors []config.ResourceSelector `yaml:"resourceSelectors,omitempty"`
+	ResourceSelectors []config.ResourceSelector `yaml:"selectors,omitempty"`
 	OutputPath        string                    `yaml:"outputPath"`
 }
 

@@ -16,7 +16,7 @@ data:
   # write ConfigMap to separate dir to be able to rename it using kustomize without renaming refs
   outputPathMapping:
   - outputPath: config/generated-config.yaml
-    resourceSelectors:
+    selectors:
     - apiVersion: v1
       kind: ConfigMap
       name: linkerd-config

@@ -189,10 +189,10 @@ It exposes a `Helm` struct that provides a `Render()` function that returns the 
 | `forceNamespace` | `--force-namespace` | Set namespace on all namespaced resources (and those of unknown kinds). |
 | `outputPath` | `--output` | Path to write the output to. If it ends with `/` a kustomization is generated. (Not supported by the kustomize plugin.) |
 | `outputPathMapping[].outputPath` |  | output path to which all resources should be written that match `resourceSelectors`. (Only supported by the kpt function.) |
-| `outputPathMapping[].resourceSelectors[].apiVersion` |  | Selects resources by apiVersion. |
-| `outputPathMapping[].resourceSelectors[].kind` |  | Selects resources by kind. |
-| `outputPathMapping[].resourceSelectors[].namespace` |  | Selects resources by namespace. |
-| `outputPathMapping[].resourceSelectors[].name` |  | Selects resources by name. |
+| `outputPathMapping[].selectors[].apiVersion` |  | Selects resources by apiVersion. |
+| `outputPathMapping[].selectors[].kind` |  | Selects resources by kind. |
+| `outputPathMapping[].selectors[].namespace` |  | Selects resources by namespace. |
+| `outputPathMapping[].selectors[].name` |  | Selects resources by name. |
 |  | `--output-replace` | If enabled replace the output directory or file (CLI-only). |
 |  | `--trust-any-repo` | If enabled repositories that are not registered within `repositories.yaml` can be used as well (env var `KHELM_TRUST_ANY_REPO`). Within the kpt function this behaviour can be disabled by mounting `/helm/repository/repositories.yaml` or disabling network access. |
 | `debug` | `--debug` | Enables debug log and provides a stack trace on error. |
