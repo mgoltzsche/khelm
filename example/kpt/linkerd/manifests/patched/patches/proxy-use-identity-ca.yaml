@@ -3,23 +3,20 @@ kind: Deployment
 metadata:
   name: linkerd-identity
   namespace: linkerd
+  annotations:
+    secret.reloader.stakater.com/reload: "linkerd-identity-issuer-tls"
 spec:
   template:
     spec:
       containers:
       - name: identity
-        args:
-        - identity
-        - -log-level=info
-        - -controller-namespace=linkerd
-        - -identity-trust-domain=cluster.local
-        - -identity-issuance-lifetime=24h0m0s
-        - -identity-clock-skew-allowance=20s
-        # removed -identity-trust-anchors-pem here because we don't know it yet.
-        # however removing it means that the Deployment will not notice Secret changes since it doesn't get redeployed.
-        # TODO: inject base64 encoded CA cert here somehow
-        #- -identity-trust-anchors-pem=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJnekNDQVNtZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDAKZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTWpFd01qQTNNREF4TmpJd1doY05Nakl3TWpBMwpNREF4TmpRd1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqCllXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUmtuZDBveVEwN0ROQmdVb2s5OFh0eUhyWWYKWFNXTldSbFdTdXpqSzFUNWtZTUVzdXJjVUdQbTgyR2hNOHBIbFBjUjB6QUlzby9qMFZzUE5UUFJ3L2VsbzBJdwpRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFQNzMrRjA2VzZJYTMwdjYKUllyNHNmbllxZDY5QkErZVNUUnlBMmh6VXlMekFpQnJGR1lZVWpWZjArN1RlaW1DVXBlZjNYU1BtWnNkaWx5QQp1VnRrUklMVUp3PT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-        - -identity-scheme=linkerd.io/tls
+        env:
+        - name: LINKERD2_IDENTITY_TRUST_ANCHORS
+          value: null
+          valueFrom:
+            configMapKeyRef:
+              key: caHash
+              name: linkerd-config
       - name: linkerd-proxy
         env:
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -46,6 +43,8 @@ kind: Deployment
 metadata:
   name: linkerd-destination
   namespace: linkerd
+  annotations:
+    secret.reloader.stakater.com/reload: "linkerd-identity-issuer-tls"
 spec:
   template:
     spec:
@@ -73,87 +72,8 @@ kind: Deployment
 metadata:
   name: linkerd-controller
   namespace: linkerd
-spec:
-  template:
-    spec:
-      containers:
-      - name: linkerd-proxy
-        env:
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: null
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
-        # Added to enforce update
-        volumeMounts:
-        - name: identity-ca
-          subPath: ca.crt
-          mountPath: /etc/ssl/certs/ca-identity-cert.pem
-      volumes:
-      - name: identity-ca
-        secret:
-          secretName: linkerd-identity-issuer-tls
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: linkerd-web
-  namespace: linkerd
-spec:
-  template:
-    spec:
-      containers:
-      - name: linkerd-proxy
-        env:
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: null
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
-        # Added to enforce update
-        volumeMounts:
-        - name: identity-ca
-          subPath: ca.crt
-          mountPath: /etc/ssl/certs/ca-identity-cert.pem
-      volumes:
-      - name: identity-ca
-        secret:
-          secretName: linkerd-identity-issuer-tls
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: linkerd-prometheus
-  namespace: linkerd
-spec:
-  template:
-    spec:
-      containers:
-      - name: linkerd-proxy
-        env:
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: null
-          valueFrom:
-            secretKeyRef:
-              key: ca.crt
-              name: linkerd-identity-issuer-tls
-        # Added to enforce update
-        volumeMounts:
-        - name: identity-ca
-          subPath: ca.crt
-          mountPath: /etc/ssl/certs/ca-identity-cert.pem
-      volumes:
-      - name: identity-ca
-        secret:
-          secretName: linkerd-identity-issuer-tls
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: linkerd-grafana
-  namespace: linkerd
+  annotations:
+    configmap.reloader.stakater.com/reload: "linkerd-config"
 spec:
   template:
     spec:

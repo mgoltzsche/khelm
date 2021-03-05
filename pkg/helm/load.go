@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -19,7 +20,7 @@ import (
 )
 
 // loadChart loads chart from local or remote location
-func (h *Helm) loadChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, error) {
+func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
 	if cfg.Chart == "" {
 		return nil, errors.New("no chart specified")
 	}
@@ -38,7 +39,7 @@ func (h *Helm) loadChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, e
 	return h.loadRemoteChart(ctx, cfg)
 }
 
-func (h *Helm) loadRemoteChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, error) {
+func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
 	repoURLs := map[string]struct{}{cfg.Repository: {}}
 	repos, err := reposForURLs(repoURLs, h.TrustAnyRepository, &h.Settings, h.Getters)
 	if err != nil {
@@ -60,7 +61,7 @@ func (h *Helm) loadRemoteChart(ctx context.Context, cfg *ChartConfig) (*chart.Ch
 	return loader.Load(chartPath)
 }
 
-func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *ChartConfig) (*chart.Chart, error) {
+func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
 	chartPath := absPath(cfg.Chart, cfg.BaseDir)
 	chartRequested, err := loader.Load(chartPath)
 	if err != nil {
@@ -134,7 +135,7 @@ type localChart struct {
 	LocalDependencies bool
 }
 
-func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *ChartConfig, localCharts *[]localChart, deps *[]*chart.Dependency, depth int) (needsRepoIndexUpdate bool, err error) {
+func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *config.ChartConfig, localCharts *[]localChart, deps *[]*chart.Dependency, depth int) (needsRepoIndexUpdate bool, err error) {
 	if depth > 20 {
 		return false, errors.New("collect local charts recursively: max depth of 20 reached - cyclic dependency?")
 	}
@@ -177,7 +178,7 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *ChartConf
 	return needsRepoIndexUpdate, nil
 }
 
-func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (needsReload bool, err error) {
+func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *config.LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (needsReload bool, err error) {
 	for _, ch := range localCharts {
 		if err = action.CheckDependencies(ch.Chart, ch.Chart.Metadata.Dependencies); err != nil || ch.LocalDependencies {
 			needsReload = true
@@ -222,7 +223,7 @@ func dependencyFilePath(chartPath string, d *chart.Dependency) string {
 	return filepath.Join(chartPath, "charts", name)
 }
 
-func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, chartPath string, cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) error {
+func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, chartPath string, cfg *config.LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) error {
 	man := &downloader.Manager{
 		Out:              log.Writer(),
 		ChartPath:        chartPath,

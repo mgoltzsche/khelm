@@ -72,8 +72,9 @@ fmt:
 clean:
 	rm -f $(BUILD_DIR)/bin/khelm
 	rm -f $(BUILD_DIR)/bin/khelm-static
+	rm -rf example/kpt/linkerd/dep
 
-clean-all:
+clean-all: clean
 	rm -rf $(BUILD_DIR)
 	find . -name charts -type d -exec rm -rf {} \;
 

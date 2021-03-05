@@ -9,12 +9,19 @@ metadata:
         network: false
     config.kubernetes.io/local-config: "true"
 data:
-  chart: /source/chart/linkerd2
+  chart: /source/dep/linkerd/charts/linkerd2
   name: linkerd
   namespace: linkerd
   outputPath: base/generated-manifest-without-secrets.yaml
+  # write ConfigMap to separate dir to be able to rename it using kustomize without renaming refs
+  outputPathMapping:
+  - outputPath: config/generated-config.yaml
+    selectors:
+    - apiVersion: v1
+      kind: ConfigMap
+      name: linkerd-config
   valueFiles:
-  - /source/chart/linkerd2/values-ha.yaml
+  - /source/dep/linkerd/charts/linkerd2/values-ha.yaml
   - /source/values.yaml
   replaceLockFile: true
   exclude:
@@ -27,19 +34,58 @@ data:
   - apiVersion: v1
     kind: Secret
     name: linkerd-sp-validator-k8s-tls
-  - apiVersion: v1
-    kind: Secret
-    name: linkerd-tap-k8s-tls
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: render-kustomization
+  name: linkerd2-viz-manifest-generator
   annotations:
     config.kubernetes.io/function: |
       container:
-        image: mgoltzsche/kustomizr:0.1
+        image: mgoltzsche/khelm:latest
+        network: false
+    config.kubernetes.io/local-config: "true"
+data:
+  chart: /source/dep/linkerd/viz/charts/linkerd-viz
+  name: linkerd-viz
+  namespace: linkerd
+  outputPath: viz/generated-manifest-without-secrets.yaml
+  valueFiles:
+  - /source/dep/linkerd/viz/charts/linkerd-viz/values-ha.yaml
+  - /source/values-viz.yaml
+  replaceLockFile: true
+  exclude:
+  - apiVersion: v1
+    kind: Secret
+    name: tap-injector-k8s-tls
+  - apiVersion: v1
+    kind: Secret
+    name: tap-k8s-tls
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: render-linkerd-kustomization
+  annotations:
+    config.kubernetes.io/function: |
+      container:
+        image: mgoltzsche/kustomizr:1.0.1
+        network: false
     config.kubernetes.io/local-config: 'true'
 data:
   path: ./patched
-  outputPath: ./static/generated-manifest.yaml
+  outputPath: ./static/linkerd/generated-manifest.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: render-reloader-kustomization
+  annotations:
+    config.kubernetes.io/function: |
+      container:
+        image: mgoltzsche/kustomizr:1.0.1
+        network: false
+    config.kubernetes.io/local-config: 'true'
+data:
+  path: /source/manifests/reloader
+  outputPath: ./static/reloader/generated-manifest.yaml

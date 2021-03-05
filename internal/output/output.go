@@ -157,6 +157,10 @@ func writeToFile(resources []*yaml.RNode, outFile string, replace bool) error {
 	if replace {
 		flags = os.O_CREATE | os.O_WRONLY | os.O_TRUNC
 	}
+	err := os.MkdirAll(filepath.Dir(outFile), 0750)
+	if err != nil {
+		return errors.Wrap(err, "write output file")
+	}
 	f, err := os.OpenFile(outFile, flags, 0640)
 	if err != nil {
 		if _, e := os.Stat(outFile); e == nil && !replace {

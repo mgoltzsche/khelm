@@ -13,7 +13,7 @@ import (
 )
 
 func TestKustomizePlugin(t *testing.T) {
-	file := filepath.Join("..", "..", "example", "exclude", "generator.yaml")
+	file := filepath.Join("..", "..", "example", "include", "generator.yaml")
 	kustomizeGenCfg, err := ioutil.ReadFile(file)
 	require.NoError(t, err)
 	os.Setenv(envKustomizePluginConfig, string(kustomizeGenCfg))
@@ -23,7 +23,7 @@ func TestKustomizePlugin(t *testing.T) {
 	defer os.Unsetenv(envTrustAnyRepo)
 	defer os.Unsetenv(envDebug)
 	out := runKustomizePlugin(t, filepath.Dir(file))
-	validateYAML(t, out, 2)
+	validateYAML(t, out, 1)
 	require.Contains(t, string(out), "\n  key: b\n", "output: %s", string(out))
 }
 

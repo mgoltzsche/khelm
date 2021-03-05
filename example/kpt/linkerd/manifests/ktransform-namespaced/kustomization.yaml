@@ -1,0 +1,4 @@
+namespace: linkerd
+resources:
+- ../ktransform/crds
+- ../ktransform

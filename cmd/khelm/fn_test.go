@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/mgoltzsche/khelm/v2/internal/output"
-	"github.com/mgoltzsche/khelm/v2/pkg/helm"
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
@@ -45,8 +45,8 @@ func TestKptFnCommand(t *testing.T) {
 	}{
 		{
 			"chart path only",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "namespace"),
 				},
 			}},
@@ -54,8 +54,8 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"latest cluster scoped remote chart",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Repository: "https://charts.jetstack.io",
 					Chart:      "cert-manager",
 				},
@@ -64,8 +64,8 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"remote chart with version",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Repository: "https://charts.jetstack.io",
 					Chart:      "cert-manager",
 					Version:    "0.9.x",
@@ -75,11 +75,11 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"release name",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "release-name"),
 				},
-				RendererConfig: helm.RendererConfig{
+				RendererConfig: config.RendererConfig{
 					Name: "myrelease",
 				},
 			}},
@@ -87,22 +87,22 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"valueFiles",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "values-inheritance", "chart"),
 				},
-				RendererConfig: helm.RendererConfig{
+				RendererConfig: config.RendererConfig{
 					ValueFiles: []string{filepath.Join(exampleDir, "values-inheritance", "values.yaml")},
 				}}},
 			1, " valueoverwrite: overwritten by file",
 		},
 		{
 			"values",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "values-inheritance", "chart"),
 				},
-				RendererConfig: helm.RendererConfig{
+				RendererConfig: config.RendererConfig{
 					Values: map[string]interface{}{
 						"example": map[string]string{"overrideValue": "explicitly"},
 					},
@@ -111,11 +111,11 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"values override",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "values-inheritance", "chart"),
 				},
-				RendererConfig: helm.RendererConfig{
+				RendererConfig: config.RendererConfig{
 					ValueFiles: []string{filepath.Join(exampleDir, "values-inheritance", "values.yaml")},
 					Values: map[string]interface{}{
 						"example": map[string]string{"overrideValue": "explicitly"},
@@ -125,33 +125,33 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"apiversions",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "apiversions-condition", "chart"),
 				},
-				RendererConfig: helm.RendererConfig{
+				RendererConfig: config.RendererConfig{
 					APIVersions: []string{"myfancyapi/v1", ""},
 				}}},
 			1, "fancycr",
 		},
 		{
 			"kubeversion",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "release-name"),
 				},
-				RendererConfig: helm.RendererConfig{
+				RendererConfig: config.RendererConfig{
 					KubeVersion: "1.12",
 				}}},
 			1, "k8sVersion: v1.12.0",
 		},
 		{
 			"namespace",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "namespace"),
 				},
-				RendererConfig: helm.RendererConfig{
+				RendererConfig: config.RendererConfig{
 					Namespace: "mynamespace",
 				},
 			}},
@@ -159,11 +159,11 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"force namespace",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "namespace"),
 				},
-				RendererConfig: helm.RendererConfig{
+				RendererConfig: config.RendererConfig{
 					ForceNamespace: "forced-namespace",
 				},
 			}},
@@ -171,12 +171,12 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"exclude",
-			kptFnConfig{ChartConfig: &helm.ChartConfig{
-				LoaderConfig: helm.LoaderConfig{
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "namespace"),
 				},
-				RendererConfig: helm.RendererConfig{
-					Exclude: []helm.ResourceSelector{
+				RendererConfig: config.RendererConfig{
+					Exclude: []config.ResourceSelector{
 						{
 							APIVersion: "v1",
 							Kind:       "ConfigMap",
@@ -188,10 +188,34 @@ func TestKptFnCommand(t *testing.T) {
 			2, "myconfigb",
 		},
 		{
+			"include",
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
+					Chart: filepath.Join(exampleDir, "namespace"),
+				},
+				RendererConfig: config.RendererConfig{
+					Include: []config.ResourceSelector{
+						{
+							APIVersion: "v1",
+							Kind:       "ConfigMap",
+						},
+					},
+					Exclude: []config.ResourceSelector{
+						{
+							APIVersion: "v1",
+							Kind:       "ConfigMap",
+							Name:       "myconfiga",
+						},
+					},
+				},
+			}},
+			1, "myconfigb",
+		},
+		{
 			"output path",
 			kptFnConfig{
-				ChartConfig: &helm.ChartConfig{
-					LoaderConfig: helm.LoaderConfig{
+				ChartConfig: &config.ChartConfig{
+					LoaderConfig: config.LoaderConfig{
 						Chart: filepath.Join(exampleDir, "namespace"),
 					},
 				},
@@ -202,8 +226,8 @@ func TestKptFnCommand(t *testing.T) {
 		{
 			"output kustomization",
 			kptFnConfig{
-				ChartConfig: &helm.ChartConfig{
-					LoaderConfig: helm.LoaderConfig{
+				ChartConfig: &config.ChartConfig{
+					LoaderConfig: config.LoaderConfig{
 						Chart: filepath.Join(exampleDir, "namespace"),
 					},
 				},

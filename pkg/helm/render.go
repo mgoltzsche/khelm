@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/mgoltzsche/khelm/v2/internal/matcher"
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -20,7 +22,7 @@ import (
 )
 
 // Render manifest from helm chart configuration (shorthand)
-func (h *Helm) Render(ctx context.Context, req *ChartConfig) (r []*yaml.RNode, err error) {
+func (h *Helm) Render(ctx context.Context, req *config.ChartConfig) (r []*yaml.RNode, err error) {
 	if errs := req.Validate(); len(errs) > 0 {
 		return nil, errors.Errorf("invalid chart renderer config:\n * %s", strings.Join(errs, "\n * "))
 	}
@@ -53,7 +55,7 @@ func (h *Helm) Render(ctx context.Context, req *ChartConfig) (r []*yaml.RNode, e
 }
 
 // renderChart renders a manifest from the given chart and values
-func renderChart(chartRequested *chart.Chart, req *ChartConfig, getters getter.Providers) ([]*yaml.RNode, error) {
+func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters getter.Providers) ([]*yaml.RNode, error) {
 	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
 
 	// Load values
@@ -87,9 +89,15 @@ func renderChart(chartRequested *chart.Chart, req *ChartConfig, getters getter.P
 		return nil, errors.Wrap(err, "render chart")
 	}
 
+	inclusions := matcher.Any()
+	if len(req.Include) > 0 {
+		inclusions = matcher.FromResourceSelectors(req.Include)
+	}
+
 	transformer := manifestTransformer{
 		ForceNamespace: req.ForceNamespace,
-		Excludes:       Matchers(req.Exclude),
+		Includes:       inclusions,
+		Excludes:       matcher.FromResourceSelectors(req.Exclude),
 		NamespacedOnly: req.NamespacedOnly,
 		OutputPath:     "khelm-output",
 	}
@@ -97,6 +105,10 @@ func renderChart(chartRequested *chart.Chart, req *ChartConfig, getters getter.P
 	transformed, err := transformer.TransformManifest(bytes.NewReader([]byte(release.Manifest)))
 	if err != nil {
 		return nil, err
+	}
+
+	if err = transformer.Includes.RequireAllMatched(); err != nil {
+		return nil, errors.Wrap(err, "resource inclusion")
 	}
 	if err = transformer.Excludes.RequireAllMatched(); err != nil {
 		return nil, errors.Wrap(err, "resource exclusion")

@@ -3,6 +3,7 @@ package helm
 import (
 	"bytes"
 
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/cli/values"
@@ -14,7 +15,7 @@ const (
 	generatorConfigValuesURL       = generatorConfigValuesURLScheme + ":values"
 )
 
-func loadValues(cfg *ChartConfig, getters getter.Providers) (map[string]interface{}, error) {
+func loadValues(cfg *config.ChartConfig, getters getter.Providers) (map[string]interface{}, error) {
 	valueFiles := absPaths(cfg.ValueFiles, cfg.BaseDir)
 	valueGetters := append(getters, getter.Provider{
 		Schemes: []string{generatorConfigValuesURLScheme},

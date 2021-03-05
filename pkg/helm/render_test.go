@@ -16,12 +16,12 @@ import (
 	"time"
 
 	helmyaml "github.com/ghodss/yaml"
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
-
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
@@ -51,6 +51,7 @@ func TestRender(t *testing.T) {
 		{"kubeVersion", "example/release-name/generator.yaml", []string{}, "  k8sVersion: v1.17.0"},
 		{"release-name", "example/release-name/generator.yaml", []string{}, "  name: my-release-name-config"},
 		{"exclude", "example/exclude/generator.yaml", []string{"cluster-role-binding-ns"}, "  key: b"},
+		{"include", "example/include/generator.yaml", []string{}, "  key: b"},
 		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
 		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
 		{"values-inheritance", "example/values-inheritance/generator.yaml", []string{}, " inherited: inherited value\n  fileoverwrite: overwritten by file\n  valueoverwrite: overwritten by generator config"},
@@ -210,7 +211,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	fakeChartTgz := filepath.Join(rootDir, "example/localrefref/charts/intermediate-chart-0.1.1.tgz")
 
 	// Create input chart config and fake private chart server
-	var cfg ChartConfig
+	var cfg config.ChartConfig
 	cfg.Chart = "private-chart"
 	cfg.Name = "myrelease"
 	cfg.Version = fmt.Sprintf("0.0.%d", time.Now().Unix())
@@ -259,7 +260,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 
 type fakePrivateChartServerHandler struct {
 	repo         *repo.Entry
-	config       *LoaderConfig
+	config       *config.LoaderConfig
 	fakeChartTgz string
 }
 
@@ -314,13 +315,13 @@ func renderFile(t *testing.T, file string, trustAnyRepo bool, rootDir string, wr
 	f, err := os.Open(file)
 	require.NoError(t, err)
 	defer f.Close()
-	cfg, err := ReadGeneratorConfig(f)
+	cfg, err := config.ReadGeneratorConfig(f)
 	require.NoError(t, err, "ReadGeneratorConfig(%s)", file)
 	cfg.BaseDir = filepath.Dir(file)
 	return render(t, cfg.ChartConfig, trustAnyRepo, writer)
 }
 
-func render(t *testing.T, req ChartConfig, trustAnyRepo bool, writer io.Writer) error {
+func render(t *testing.T, req config.ChartConfig, trustAnyRepo bool, writer io.Writer) error {
 	log.SetFlags(0)
 	h := NewHelm()
 	h.TrustAnyRepository = &trustAnyRepo

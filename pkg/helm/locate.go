@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
@@ -20,7 +21,7 @@ import (
 // locateChart fetches the chart if not present in cache and returns its path.
 // (derived from https://github.com/helm/helm/blob/fc9b46067f8f24a90b52eba31e09b31e69011e93/pkg/action/install.go#L621 -
 // with efficient caching)
-func locateChart(ctx context.Context, cfg *LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (string, error) {
+func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (string, error) {
 	name := cfg.Chart
 
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {

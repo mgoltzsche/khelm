@@ -1,0 +1,7 @@
+linkerdVersion: &linkerd_version edge-21.3.1
+clusterDomain: cluster.local
+identityTrustAnchorsPEM: replace-ca-crt
+installNamespace: false
+namespace: linkerd
+tap:
+  caBundle: replace-ca-crt
