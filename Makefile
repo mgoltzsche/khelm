@@ -72,6 +72,7 @@ fmt:
 clean:
 	rm -f $(BUILD_DIR)/bin/khelm
 	rm -f $(BUILD_DIR)/bin/khelm-static
+	rm -rf example/localrefref/charts
 	rm -rf example/kpt/linkerd/dep
 
 clean-all: clean
