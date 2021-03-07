@@ -7,11 +7,31 @@ There are just a few small guidelines you need to follow.
 
 This project follows the [Contributor Covenant Code of Conduct](./CODE_OF_CONDUCT.md).
 
+## Creating issues
+
+Feedback, questions, bug reports and feature requests are welcome in form of issues.
+Though before creating an issue please have a look [here](https://github.com/mgoltzsche/khelm/issues) if the issue doesn't exist already in order to avoid duplicates.
+When you cannot find a corresponding issue please create a [new one](https://github.com/mgoltzsche/khelm/issues/new).
+
+### Bug reports
+
+When reporting a bug please answer the following questions within the issue description:
+* Which environment and version did you use? Does it happen with the latest version as well?
+* What did you do and what happened? (in a reproducible way ideally)
+* What do you expect instead?
+
+### Feature requests
+
+When creating a feature request please explain the feature within the issue description, how you want it to behave and why you need it this way.
+
 ## Providing pull requests (PRs)
 
+While there is no need to create an issue before creating a PR please consider discussing large changes within an issue first.
+
+When creating a PR the following rules apply:
 * Create one PR per feature.
 * Provide one commit per PR.
-* Provide a description with each PR and commit that describes the problem, how it was solved, how that changes the behaviour for the user (if any) and links an issue (if any).
+* Provide a description with each PR and commit that links an issue (if any), describes the problem, how it was solved and how the solution changes the user-facing behaviour.
 * All submissions require a review.
 * All commits should be signed using PGP and a [DCO](https://en.wikipedia.org/wiki/Developer_Certificate_of_Origin). This can be done using `git commit -s -S`.
 * When providing a bug fix or feature PR please also provide tests.
