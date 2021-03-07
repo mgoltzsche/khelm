@@ -105,8 +105,14 @@ func (t *manifestTransformer) applyNamespace(o *yaml.RNode, clusterScopedResourc
 	namespaced, knownKind := openapi.IsNamespaceScoped(meta.TypeMeta)
 	if t.ForceNamespace != "" && (namespaced || !knownKind) {
 		// Forcefully set namespace on resource
-		err = o.PipeE(yaml.LookupCreate(
-			yaml.ScalarNode, yaml.MetadataField, yaml.NamespaceField),
+		err = o.PipeE(
+			yaml.LookupCreate(yaml.MappingNode, yaml.MetadataField),
+			yaml.FieldClearer{Name: yaml.NamespaceField})
+		if err != nil {
+			return err
+		}
+		err = o.PipeE(
+			yaml.LookupCreate(yaml.ScalarNode, yaml.MetadataField, yaml.NamespaceField),
 			yaml.FieldSetter{StringValue: t.ForceNamespace})
 		if err != nil {
 			return err

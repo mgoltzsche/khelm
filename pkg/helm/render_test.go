@@ -48,7 +48,7 @@ func TestRender(t *testing.T) {
 		{"cert-manager", "example/cert-manager/generator.yaml", []string{"cert-manager", "kube-system"}, " name: cert-manager-webhook"},
 		{"apiversions-condition", "example/apiversions-condition/generator.yaml", []string{}, "  config: fancy-config"},
 		{"expand-list", "example/expand-list/generator.yaml", []string{"ns1", "ns2", "ns3"}, "\n  name: myserviceaccount2\n"},
-		{"namespace", "example/namespace/generator.yaml", []string{"install-namespace", "cluster-role-binding-ns"}, "  key: b"},
+		{"namespace", "example/namespace/generator.yaml", []string{"default-namespace", "cluster-role-binding-ns"}, "  key: b"},
 		{"force-namespace", "example/force-namespace/generator.yaml", []string{"forced-namespace"}, "  key: b"},
 		{"kubeVersion", "example/release-name/generator.yaml", []string{}, "  k8sVersion: v1.17.0"},
 		{"release-name", "example/release-name/generator.yaml", []string{}, "  name: my-release-name-config"},
@@ -72,10 +72,14 @@ func TestRender(t *testing.T) {
 				require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
 				found := map[string]struct{}{}
 				for _, o := range l {
-					ns, ok := o["metadata"].(map[string]interface{})["namespace"].(string)
+					ns := ""
+					meta := o["metadata"].(map[string]interface{})
+					nsVal, ok := meta["namespace"]
 					if ok {
-						require.NotEmpty(t, ns, "%s%s: output resource has empty namespace set explicitly", cached, c.file)
-						found[ns] = struct{}{}
+						if ns, ok = nsVal.(string); ok {
+							found[ns] = struct{}{}
+						}
+						require.NotEmpty(t, ns, "%s%s: output resource declares empty namespace field", cached, c.file)
 					}
 					subjects, ok := o["subjects"].([]interface{})
 					if ok && len(subjects) > 0 {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"path"
 	"sort"
 	"strconv"
@@ -41,7 +42,7 @@ func kptFnCommand(h *helm.Helm) *cobra.Command {
 				return errors.Errorf("no outputPath specified for outputMapping[%d]", i)
 			}
 			if len(m.ResourceSelectors) == 0 {
-				return errors.Errorf("no resourceSelectors specified for outputMapping[%d] -> %q", i, m.OutputPath)
+				return errors.Errorf("no selectors specified for outputMapping[%d] -> %q", i, m.OutputPath)
 			}
 		}
 
@@ -53,7 +54,7 @@ func kptFnCommand(h *helm.Helm) *cobra.Command {
 		}
 
 		// Apply output path mappings and annotate resources
-		kustomizationDirs, err := mapOutputPaths(rendered, fnCfg.Data.OutputPathMapping, outputPath)
+		kustomizationDirs, err := mapOutputPaths(rendered, fnCfg.Data.OutputPathMapping, outputPath, h.Settings.Debug)
 		if err != nil {
 			return err
 		}
@@ -72,7 +73,10 @@ func kptFnCommand(h *helm.Helm) *cobra.Command {
 			if err != nil {
 				return errors.Wrapf(err, "generate %s", kustomizationPath)
 			}
-			setKptAnnotations(kustomization, kustomizationPath, 0)
+			err = setKptAnnotations(kustomization, kustomizationPath, 0, h.Settings.Debug)
+			if err != nil {
+				return errors.Wrap(err, "set kpt annotations on kustomization")
+			}
 			kustomizationResources[i] = kustomization
 		}
 		rendered = append(kustomizationResources, rendered...)
@@ -80,7 +84,6 @@ func kptFnCommand(h *helm.Helm) *cobra.Command {
 		// Apply output
 		resourceList.Items = filterByOutputPath(resourceList.Items, outputPaths)
 		resourceList.Items = append(resourceList.Items, rendered...)
-
 		return nil
 	})
 	return cmd
@@ -136,7 +139,7 @@ func isGeneratedOutputPath(path string, outputPaths []string) bool {
 	return false
 }
 
-func mapOutputPaths(resources []*yaml.RNode, outputMappings []kptFnOutputMapping, defaultOutputPath string) (map[string][]*yaml.RNode, error) {
+func mapOutputPaths(resources []*yaml.RNode, outputMappings []kptFnOutputMapping, defaultOutputPath string, debug bool) (map[string][]*yaml.RNode, error) {
 	matchers := make([]matcher.ResourceMatchers, len(outputMappings))
 	for i, m := range outputMappings {
 		matchers[i] = matcher.FromResourceSelectors(m.ResourceSelectors)
@@ -162,7 +165,10 @@ func mapOutputPaths(resources []*yaml.RNode, outputMappings []kptFnOutputMapping
 			kustomizationDirs[outPath] = append(kustomizationDirs[outPath], o)
 			outPath = output.ResourcePath(meta, outPath)
 		}
-		setKptAnnotations(o, outPath, i)
+		err = setKptAnnotations(o, outPath, i, debug)
+		if err != nil {
+			return nil, errors.Wrapf(err, "set annotations on %s/%s", meta.Kind, meta.Name)
+		}
 	}
 
 	for _, m := range matchers {
@@ -175,10 +181,31 @@ func mapOutputPaths(resources []*yaml.RNode, outputMappings []kptFnOutputMapping
 	return kustomizationDirs, nil
 }
 
-func setKptAnnotations(o *yaml.RNode, path string, index int) {
+func setKptAnnotations(o *yaml.RNode, path string, index int, debug bool) error {
+	if debug {
+		m, err := o.GetMeta()
+		if err != nil {
+			return err
+		}
+		log.Printf("Mapping %s %s to path %s", m.Kind, m.Name, path)
+	}
+	// Remove annotations field if empty.
+	// This is required because LookupCreate() doesn't create the MappingNode if it exists but is empty (#13).
+	err := o.PipeE(yaml.LookupCreate(yaml.MappingNode, yaml.MetadataField), yaml.FieldClearer{Name: yaml.AnnotationsField, IfEmpty: true})
+	if err != nil {
+		return err
+	}
+	// Add path annotations
 	lookupAnnotations := yaml.LookupCreate(yaml.MappingNode, yaml.MetadataField, yaml.AnnotationsField)
-	_ = o.PipeE(lookupAnnotations, yaml.FieldSetter{Name: annotationIndex, StringValue: strconv.Itoa(index)})
-	_ = o.PipeE(lookupAnnotations, yaml.FieldSetter{Name: annotationPath, StringValue: path})
+	err = o.PipeE(lookupAnnotations, yaml.FieldSetter{Name: annotationIndex, StringValue: strconv.Itoa(index)})
+	if err != nil {
+		return err
+	}
+	err = o.PipeE(lookupAnnotations, yaml.FieldSetter{Name: annotationPath, StringValue: path})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func resourceNames(resources []*yaml.RNode, outputBasePath string) []string {

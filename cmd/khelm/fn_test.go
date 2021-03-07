@@ -41,7 +41,7 @@ func TestKptFnCommand(t *testing.T) {
 		name           string
 		input          kptFnConfig
 		mustContainObj int
-		mustContain    string
+		mustContain    []string
 	}{
 		{
 			"chart path only",
@@ -50,7 +50,7 @@ func TestKptFnCommand(t *testing.T) {
 					Chart: filepath.Join(exampleDir, "namespace"),
 				},
 			}},
-			3, "myconfiga",
+			3, []string{"myconfiga"},
 		},
 		{
 			"latest cluster scoped remote chart",
@@ -60,7 +60,7 @@ func TestKptFnCommand(t *testing.T) {
 					Chart:      "cert-manager",
 				},
 			}},
-			-1, "acme.cert-manager.io",
+			-1, []string{"acme.cert-manager.io"},
 		},
 		{
 			"remote chart with version",
@@ -71,7 +71,7 @@ func TestKptFnCommand(t *testing.T) {
 					Version:    "0.9.x",
 				},
 			}},
-			34, "chart: cainjector-v0.9.1",
+			34, []string{"chart: cainjector-v0.9.1"},
 		},
 		{
 			"release name",
@@ -83,7 +83,7 @@ func TestKptFnCommand(t *testing.T) {
 					Name: "myrelease",
 				},
 			}},
-			1, "myrelease-config",
+			1, []string{"myrelease-config"},
 		},
 		{
 			"valueFiles",
@@ -94,7 +94,7 @@ func TestKptFnCommand(t *testing.T) {
 				RendererConfig: config.RendererConfig{
 					ValueFiles: []string{filepath.Join(exampleDir, "values-inheritance", "values.yaml")},
 				}}},
-			1, " valueoverwrite: overwritten by file",
+			1, []string{" valueoverwrite: overwritten by file"},
 		},
 		{
 			"values",
@@ -107,7 +107,7 @@ func TestKptFnCommand(t *testing.T) {
 						"example": map[string]string{"overrideValue": "explicitly"},
 					},
 				}}},
-			1, " valueoverwrite: explicitly",
+			1, []string{" valueoverwrite: explicitly"},
 		},
 		{
 			"values override",
@@ -121,7 +121,7 @@ func TestKptFnCommand(t *testing.T) {
 						"example": map[string]string{"overrideValue": "explicitly"},
 					},
 				}}},
-			1, " valueoverwrite: explicitly",
+			1, []string{" valueoverwrite: explicitly"},
 		},
 		{
 			"apiversions",
@@ -132,7 +132,7 @@ func TestKptFnCommand(t *testing.T) {
 				RendererConfig: config.RendererConfig{
 					APIVersions: []string{"myfancyapi/v1", ""},
 				}}},
-			1, "fancycr",
+			1, []string{"fancycr"},
 		},
 		{
 			"kubeversion",
@@ -143,7 +143,7 @@ func TestKptFnCommand(t *testing.T) {
 				RendererConfig: config.RendererConfig{
 					KubeVersion: "1.12",
 				}}},
-			1, "k8sVersion: v1.12.0",
+			1, []string{"k8sVersion: v1.12.0"},
 		},
 		{
 			"expand-list",
@@ -152,7 +152,7 @@ func TestKptFnCommand(t *testing.T) {
 					Chart: filepath.Join(exampleDir, "expand-list"),
 				},
 			}},
-			3, "\n  name: myserviceaccount2\n",
+			3, []string{"\n  name: myserviceaccount2\n"},
 		},
 		{
 			"namespace",
@@ -164,7 +164,7 @@ func TestKptFnCommand(t *testing.T) {
 					Namespace: "mynamespace",
 				},
 			}},
-			3, " namespace: mynamespace\n",
+			3, []string{" namespace: mynamespace\n"},
 		},
 		{
 			"force namespace",
@@ -176,7 +176,7 @@ func TestKptFnCommand(t *testing.T) {
 					ForceNamespace: "forced-namespace",
 				},
 			}},
-			3, " namespace: forced-namespace\n",
+			3, []string{" namespace: forced-namespace\n"},
 		},
 		{
 			"exclude",
@@ -194,7 +194,7 @@ func TestKptFnCommand(t *testing.T) {
 					},
 				},
 			}},
-			2, "myconfigb",
+			2, []string{"myconfigb"},
 		},
 		{
 			"include",
@@ -218,10 +218,10 @@ func TestKptFnCommand(t *testing.T) {
 					},
 				},
 			}},
-			1, "myconfigb",
+			1, []string{"myconfigb"},
 		},
 		{
-			"output path",
+			"annotate output path",
 			kptFnConfig{
 				ChartConfig: &config.ChartConfig{
 					LoaderConfig: config.LoaderConfig{
@@ -230,7 +230,23 @@ func TestKptFnCommand(t *testing.T) {
 				},
 				OutputPath: "my/output/manifest.yaml",
 			},
-			3, "  config.kubernetes.io/path: my/output/manifest.yaml\n",
+			3, []string{" annotations:\n    config.kubernetes.io/index: 1\n    config.kubernetes.io/path: my/output/manifest.yaml\n"},
+		},
+		{
+			"annotate output path when annotations empty",
+			kptFnConfig{
+				ChartConfig: &config.ChartConfig{
+					LoaderConfig: config.LoaderConfig{
+						Chart: filepath.Join(exampleDir, "empty-annotations"),
+					},
+				},
+				OutputPath: "my/output/path/",
+			},
+			3, []string{
+				"\n    config.kubernetes.io/path: my/output/path/kustomization.yaml\n",
+				"\n    config.kubernetes.io/path: my/output/path/serviceaccount_sa1.yaml\n",
+				"\n    config.kubernetes.io/path: my/output/path/serviceaccount_sa2.yaml\n",
+			},
 		},
 		{
 			"output kustomization",
@@ -242,7 +258,7 @@ func TestKptFnCommand(t *testing.T) {
 				},
 				OutputPath: "my/output/path/",
 			},
-			4, "resources:\n  - configmap_myconfiga.yaml\n  - configmap_myconfigb.yaml\n",
+			4, []string{"resources:\n  - configmap_myconfiga.yaml\n  - configmap_myconfigb.yaml\n"},
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -285,7 +301,9 @@ func TestKptFnCommand(t *testing.T) {
 					t.Log("\n" + out.String())
 				}
 			}
-			require.Contains(t, out.String(), c.mustContain, "output of %#v", c.input)
+			for _, mustContain := range c.mustContain {
+				require.Contains(t, out.String(), mustContain, "output of %#v", c.input)
+			}
 		})
 	}
 }

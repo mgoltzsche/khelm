@@ -2,5 +2,5 @@ apiVersion: khelm.mgoltzsche.github.com/v1
 kind: ChartRenderer
 metadata:
   name: namespace-test
-  namespace: install-namespace
+  namespace: default-namespace
 chart: .
