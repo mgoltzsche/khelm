@@ -246,6 +246,7 @@ func TestKptFnCommand(t *testing.T) {
 				"\n    config.kubernetes.io/path: my/output/path/kustomization.yaml\n",
 				"\n    config.kubernetes.io/path: my/output/path/serviceaccount_sa1.yaml\n",
 				"\n    config.kubernetes.io/path: my/output/path/serviceaccount_sa2.yaml\n",
+				" myannotation: should-be-preserved\n",
 			},
 		},
 		{
