@@ -146,6 +146,15 @@ func TestKptFnCommand(t *testing.T) {
 			1, "k8sVersion: v1.12.0",
 		},
 		{
+			"expand-list",
+			kptFnConfig{ChartConfig: &config.ChartConfig{
+				LoaderConfig: config.LoaderConfig{
+					Chart: filepath.Join(exampleDir, "expand-list"),
+				},
+			}},
+			3, "\n  name: myserviceaccount2\n",
+		},
+		{
 			"namespace",
 			kptFnConfig{ChartConfig: &config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{

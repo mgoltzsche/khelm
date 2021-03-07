@@ -47,6 +47,7 @@ func TestRender(t *testing.T) {
 		{"rook-ceph-version-range", "example/rook-ceph/operator/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
 		{"cert-manager", "example/cert-manager/generator.yaml", []string{"cert-manager", "kube-system"}, " name: cert-manager-webhook"},
 		{"apiversions-condition", "example/apiversions-condition/generator.yaml", []string{}, "  config: fancy-config"},
+		{"expand-list", "example/expand-list/generator.yaml", []string{"ns1", "ns2", "ns3"}, "\n  name: myserviceaccount2\n"},
 		{"namespace", "example/namespace/generator.yaml", []string{"install-namespace", "cluster-role-binding-ns"}, "  key: b"},
 		{"force-namespace", "example/force-namespace/generator.yaml", []string{"forced-namespace"}, "  key: b"},
 		{"kubeVersion", "example/release-name/generator.yaml", []string{}, "  k8sVersion: v1.17.0"},

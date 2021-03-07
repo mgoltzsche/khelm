@@ -1,0 +1,5 @@
+apiVersion: khelm.mgoltzsche.github.com/v1
+kind: ChartRenderer
+metadata:
+  name: expand-list
+chart: .

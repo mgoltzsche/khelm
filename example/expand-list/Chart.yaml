@@ -1,0 +1,4 @@
+apiVersion: v1
+description: example chart that outputs resources nested within a List resource
+name: list
+version: 0.1.0
