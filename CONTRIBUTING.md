@@ -24,11 +24,11 @@ When reporting a bug please answer the following questions within the issue desc
 
 When creating a feature request please explain the feature within the issue description, how you want it to behave and why you need it this way.
 
-## Providing pull requests (PRs)
+## Creating pull requests (PRs)
 
 While there is no need to create an issue before creating a PR please consider discussing large changes within an issue first.
 
-When creating a PR the following rules apply:
+When creating a PR please follow these rules:
 * Create one PR per feature.
 * Provide one commit per PR.
 * Provide a description with each PR and commit that links an issue (if any), describes the problem, how it was solved and how the solution changes the user-facing behaviour.
