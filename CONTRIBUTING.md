@@ -39,7 +39,8 @@ When creating a PR please follow these rules:
 * Provide a description with each PR and commit that links an issue (if any), describes the problem, how it was solved and how the solution changes the user-facing behaviour.
 * All submissions require a review.
 * All commits should be signed using PGP and a [DCO](https://en.wikipedia.org/wiki/Developer_Certificate_of_Origin). This can be done using `git commit -s -S`.
-* When providing a bug fix or feature PR please also provide tests.
+* When submitting a bug fix or feature PR please also provide tests.
+* When submitting a new feature please document it.
 
 ## Building and testing the source
 
