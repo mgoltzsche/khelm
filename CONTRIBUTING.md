@@ -1,6 +1,6 @@
 # How to contribute
 
-Contributions, questions and feedback to this project are welcome.
+Contributions, questions and feedback are welcome.
 There are just a few small guidelines you need to follow.
 
 ## Community guidelines
@@ -11,18 +11,23 @@ This project follows the [Contributor Covenant Code of Conduct](./CODE_OF_CONDUC
 
 Feedback, questions, bug reports and feature requests are welcome in form of issues.
 Though before creating an issue please have a look [here](https://github.com/mgoltzsche/khelm/issues) if the issue doesn't exist already in order to avoid duplicates.
-When you cannot find a corresponding issue please create a [new one](https://github.com/mgoltzsche/khelm/issues/new).
+When you cannot find a corresponding issue please create a [new one](https://github.com/mgoltzsche/khelm/issues/new/choose).
 
 ### Bug reports
 
-When reporting a bug please answer the following questions within the issue description:
-* Which environment and version did you use? Does it happen with the latest version as well?
+When reporting a bug please answer the following questions:
+* Which environment and version do you use? Does it happen with the latest version as well?
 * What did you do and what happened? (in a reproducible way ideally)
 * What do you expect instead?
 
 ### Feature requests
 
-When creating a feature request please explain the feature within the issue description, how you want it to behave and why you need it this way.
+When creating a feature request please answer the following questions:
+* What is the problem?
+* What do you want to change?
+* How do you want it to behave?
+* Why do you need it?
+* Which alternatives did you consider?
 
 ## Creating pull requests (PRs)
 
