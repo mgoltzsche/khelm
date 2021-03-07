@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Raise a question.
+about: Raise a question
 title: "[QUESTION]"
 labels: ''
 assignees: ''

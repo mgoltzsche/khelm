@@ -19,7 +19,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-**khelm version:***
+**khelm version:**
 The khelm version you used.
 Please copy the first line of the khelm log when templating or the output of `khelm version` (make sure you use the binary the problem occured with) here.
 
