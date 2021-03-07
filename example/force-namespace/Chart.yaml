@@ -1,0 +1,4 @@
+apiVersion: v2
+description: example chart with resources with and without namespace
+name: namespace
+version: 0.1.0

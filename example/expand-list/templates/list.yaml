@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: List
+  items:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: myserviceaccount1
+      namespace: ns1
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: myserviceaccount2
+      namespace: ns2
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myconfig
+  namespace: ns3

@@ -38,30 +38,10 @@ func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.R
 			continue
 		}
 
-		meta, err := o.GetMeta()
+		err = t.addResources(o, &r, &clusterScopedResources)
 		if err != nil {
 			break
 		}
-
-		resourceID := meta.GetIdentifier()
-
-		// Exclude all not explicitly included resources
-		if !t.Includes.Match(&resourceID) {
-			continue
-		}
-
-		// Exclude resources
-		if t.Excludes.Match(&resourceID) {
-			continue
-		}
-
-		// Set namespace
-		err = t.applyNamespace(o, &clusterScopedResources)
-		if err != nil {
-			break
-		}
-
-		r = append(r, o)
 	}
 	if err == io.EOF {
 		err = nil
@@ -75,6 +55,48 @@ func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.R
 	return
 }
 
+func (t *manifestTransformer) addResources(o *yaml.RNode, r *[]*yaml.RNode, clusterScopedResources *[]string) error {
+	meta, err := o.GetMeta()
+	if err != nil {
+		return err
+	}
+
+	if meta.Kind == "List" && meta.APIVersion == "v1" { // Flatten list
+		if m := o.Field("items"); m != nil {
+			items, err := m.Value.Elements()
+			if err != nil {
+				return errors.Wrap(err, "get List resource items")
+			}
+			for _, item := range items {
+				if err = t.addResources(item, r, clusterScopedResources); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	resourceID := meta.GetIdentifier()
+
+	// Exclude all not explicitly included resources
+	if !t.Includes.Match(&resourceID) {
+		return nil
+	}
+
+	// Exclude resources
+	if t.Excludes.Match(&resourceID) {
+		return nil
+	}
+
+	// Set namespace
+	err = t.applyNamespace(o, clusterScopedResources)
+	if err != nil {
+		return err
+	}
+	*r = append(*r, o)
+	return nil
+}
+
 func (t *manifestTransformer) applyNamespace(o *yaml.RNode, clusterScopedResources *[]string) error {
 	meta, err := o.GetMeta()
 	if err != nil {
@@ -83,8 +105,14 @@ func (t *manifestTransformer) applyNamespace(o *yaml.RNode, clusterScopedResourc
 	namespaced, knownKind := openapi.IsNamespaceScoped(meta.TypeMeta)
 	if t.ForceNamespace != "" && (namespaced || !knownKind) {
 		// Forcefully set namespace on resource
-		err = o.PipeE(yaml.LookupCreate(
-			yaml.ScalarNode, yaml.MetadataField, yaml.NamespaceField),
+		err = o.PipeE(
+			yaml.LookupCreate(yaml.MappingNode, yaml.MetadataField),
+			yaml.FieldClearer{Name: yaml.NamespaceField})
+		if err != nil {
+			return err
+		}
+		err = o.PipeE(
+			yaml.LookupCreate(yaml.ScalarNode, yaml.MetadataField, yaml.NamespaceField),
 			yaml.FieldSetter{StringValue: t.ForceNamespace})
 		if err != nil {
 			return err

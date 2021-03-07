@@ -80,9 +80,9 @@ func TestTemplateCommand(t *testing.T) {
 			3, "namespace: mynamespace",
 		},
 		{
-			"namespace",
-			[]string{filepath.Join(exampleDir, "namespace"), "--force-namespace=forced-namespace"},
-			3, "namespace: forced-namespace",
+			"force-namespace",
+			[]string{filepath.Join(exampleDir, "force-namespace"), "--force-namespace=forced-namespace"},
+			5, "namespace: forced-namespace",
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
