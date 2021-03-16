@@ -90,7 +90,7 @@ type repositories struct {
 }
 
 func (f *repositories) RequireTempHelmHome(createTemp bool) {
-	f.entriesAdded = createTemp
+	f.entriesAdded = f.entriesAdded || createTemp
 }
 
 func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (r *repositories, err error) {

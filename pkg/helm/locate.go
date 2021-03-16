@@ -54,6 +54,10 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 	}
 
 	if _, err = os.Stat(cacheFile); err == nil {
+		cacheFile, err = filepath.EvalSymlinks(cacheFile)
+		if err != nil {
+			return "", errors.Wrap(err, "normalize cached file path")
+		}
 		if cfg.Verify {
 			if _, err := downloader.VerifyChart(cacheFile, cfg.Keyring); err != nil {
 				return "", err
