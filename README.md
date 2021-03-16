@@ -87,10 +87,10 @@ If necessary the chart output can be transformed using kustomize.
 This can be done by declaring the khelm and a kustomize function orderly within a file and specifying the chart output kustomization as input for the kustomize function as shown in the [cert-manager example](example/kpt/cert-manager).
 A more complex example that also manages a Helm chart from another git repository locally as kpt dependency can be found [here](example/kpt/linkerd).
 
-#### Caching Helm repo indexes and dependencies
+#### Caching Helm Charts and repository index files
 
 When external Helm Charts are used the download of their repositories' index files and of the charts itself can take a significant amount of time that adds up when running multiple functions or calling a function frequently during development.  
-To speed up these cases you can enable caching by mounting a host directory to `/helm` within the function container as shown [here](example/kpt/cache-dependencies).
+To speed this up caching can be enabled by mounting a host directory to `/helm` within the function container as shown [here](example/kpt/cache-dependencies).
 
 ### kustomize exec plugin
 
@@ -203,7 +203,9 @@ It exposes a `Helm` struct that provides a `Render()` function that returns the 
 
 ### Repository configuration
 
-Repository credentials can be configured using helm's `repositories.yaml` which can be passed through as `Secret` to generic build jobs. khelm downloads repo index files when needed.  
+Repository credentials can be configured using Helm's `repositories.yaml` which can be passed through as `Secret` to generic build jobs. khelm downloads the corresponding repo index files when needed.  
+
+When running khelm as kpt function or within a container the `repositories.yaml` should be mounted to `/helm/repository/repositories.yaml`.  
 
 Unlike Helm khelm allows usage of any repository when `repositories.yaml` is not present or `--trust-any-repo` is enabled.
 
