@@ -78,7 +78,7 @@ kpt fn run --network . # Renders the chart into output-manifest.yaml
 ```
 _For all available fields see the [table](#configuration-options) below._  
 
-Please note that, in case you need to refer to a local chart directory or values file, the source must be mounted to the function using `kpt fn run --mount=<SRC_MOUNT> .`.  
+Please note that, in case you need to refer to a local chart directory or values file, the source must be mounted to the function using e.g. `kpt fn run --mount="type=bind,src=$(pwd),dst=/source,rw=true" .`.  
 An [example kpt project](example/kpt/test-cases) and the corresponding [e2e test](e2e/kpt-function-test.sh) show how to do that.  
 
 Kpt can also be leveraged to pull charts from other git repositories into your own repository using the `kpt pkg sync .` [command](https://googlecontainertools.github.io/kpt/reference/pkg/) (with a corresponding dependency set up) before running the khelm function (for this reason the go-getter support has been removed from this project).  
@@ -90,7 +90,9 @@ A more complex example that also manages a Helm chart from another git repositor
 #### Caching Helm Charts and repository index files
 
 When external Helm Charts are used the download of their repositories' index files and of the charts itself can take a significant amount of time that adds up when running multiple functions or calling a function frequently during development.  
-To speed this up caching can be enabled by mounting a host directory to `/helm` within the function container as shown [here](example/kpt/cache-dependencies).
+To speed this up caching can be enabled by mounting a host directory into the container at `/helm`, e.g. `kpt fn run --mount "type=bind,src=$HOME/.khelm,dst=/helm,rw=true" .` as also shown [here](example/kpt/cache-dependencies).  
+_Please be aware that the presence of `/helm/repository/repositories.yaml` enables a strict repository policy by default (see [repository configuration](#repository-configuration))._
+_Therefore, to be independent of existing Helm 2 installations, a host's `~/.helm` directory should not be mounted to `/helm` in most cases._
 
 ### kustomize exec plugin
 
@@ -207,7 +209,7 @@ Repository credentials can be configured using Helm's `repositories.yaml` which 
 
 When running khelm as kpt function or within a container the `repositories.yaml` should be mounted to `/helm/repository/repositories.yaml`.  
 
-Unlike Helm khelm allows usage of any repository when `repositories.yaml` is not present or `--trust-any-repo` is enabled.
+Unlike Helm khelm allows usage of any repository when `repositories.yaml` is not present or `--trust-any-repo` (env var `KHELM_TRUST_ANY_REPO`) is enabled.
 
 ## Helm support
 
