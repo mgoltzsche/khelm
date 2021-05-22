@@ -1,15 +1,20 @@
 IMAGE ?= mgoltzsche/khelm:latest
 
 BUILD_DIR := $(CURDIR)/build
-KHELM := $(BUILD_DIR)/bin/khelm
-KHELM_STATIC := $(BUILD_DIR)/bin/khelm-static
-GOSEC := $(BUILD_DIR)/bin/go-sec
-GOLINT := $(BUILD_DIR)/bin/golint
-KPT := $(BUILD_DIR)/bin/kpt
-KUSTOMIZE := $(BUILD_DIR)/bin/kustomize
+BIN_DIR := $(BUILD_DIR)/bin
+KHELM := $(BIN_DIR)/khelm
+KHELM_STATIC := $(BIN_DIR)/khelm-static
+GOSEC := $(BIN_DIR)/go-sec
+GOLINT := $(BIN_DIR)/golint
+KPT := $(BIN_DIR)/kpt
+KUSTOMIZE := $(BIN_DIR)/kustomize
 
-KPT_VERSION ?= 0.37.1
+KPT_VERSION ?= 0.39.2
 KUSTOMIZE_VERSION ?= 3.9.3
+BATS_VERSION = v1.3.0
+
+BATS_DIR = $(BUILD_DIR)/tools/bats
+BATS = $(BIN_DIR)/bats
 
 REV := $(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
 VERSION ?= $(shell echo "$$(git describe --exact-match --tags $(git log -n1 --pretty='%h') 2> /dev/null || echo dev)-$(REV)" | sed 's/^v//')
@@ -53,19 +58,20 @@ test: $(BUILD_DIR)
 coverage: test
 	go tool cover -html=$(BUILD_DIR)/coverage.out -o $(BUILD_DIR)/coverage.html
 
-e2e-test: image khelm-static kpt kustomize
-	@echo
-	@echo 'RUNNING E2E TESTS (PATH=$(BUILD_DIR)/bin)...'
+e2e-test: image khelm-static kpt kustomize | $(BATS)
+	@echo 'Running e2e tests (PATH=$(BUILD_DIR)/bin)'
 	@{ \
-	set -e ; \
-	export PATH="$(BUILD_DIR)/bin:$$PATH"; \
-	./e2e/kustomize-plugin-test.sh; \
-	IMAGE=$(IMAGE) ./e2e/image-cli-test.sh; \
-	./e2e/kpt-function-test.sh; \
-	./e2e/kpt-cache-test.sh; \
-	./e2e/kpt-cert-manager-test.sh; \
-	./e2e/kpt-linkerd-test.sh; \
+	export PATH="$(BIN_DIR):$$PATH" IMAGE=$(IMAGE); \
+	$(BATS) -T ./e2e; \
 	}
+
+#	./e2e/kustomize-plugin-test.sh; \
+#	IMAGE=$(IMAGE) ./e2e/image-cli-test.sh; \
+#	./e2e/kpt-function-test.sh; \
+#	./e2e/kpt-cache-test.sh; \
+#	./e2e/kpt-cert-manager-test.sh; \
+#	./e2e/kpt-linkerd-test.sh; \
+#	}
 
 fmt:
 	go fmt ./...
@@ -142,6 +148,18 @@ $(KUSTOMIZE): $(BUILD_DIR)
 	cp -f $$TMP_DIR/kustomize $(KUSTOMIZE); \
 	chmod -R +x $(KUSTOMIZE); \
 	rm -rf $$TMP_DIR; \
+	}
+
+$(BATS):
+	@echo Downloading bats
+	@{ \
+	set -e ;\
+	mkdir -p $(BIN_DIR) ;\
+	TMP_DIR=$$(mktemp -d) ;\
+	cd $$TMP_DIR ;\
+	git clone -c 'advice.detachedHead=false' --branch $(BATS_VERSION) https://github.com/bats-core/bats-core.git . >/dev/null;\
+	./install.sh $(BATS_DIR) ;\
+	ln -s $(BATS_DIR)/bin/bats $(BATS) ;\
 	}
 
 $(BUILD_DIR):
