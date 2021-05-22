@@ -51,6 +51,9 @@ func NewChartConfig() (cfg *ChartConfig) {
 }
 
 func (cfg *ChartConfig) applyDefaults() {
+	if cfg.Namespace == "" {
+		cfg.Namespace = "default"
+	}
 	if cfg.KubeVersion == "" {
 		cfg.KubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
 	}
@@ -82,6 +85,7 @@ type RendererConfig struct {
 	APIVersions    []string               `yaml:"apiVersions,omitempty"`
 	Include        []ResourceSelector     `yaml:"include,omitempty"`
 	Exclude        []ResourceSelector     `yaml:"exclude,omitempty"`
+	ExcludeHooks   bool                   `yaml:"excludeHooks,omitempty"`
 	NamespacedOnly bool                   `yaml:"namespacedOnly,omitempty"`
 	ForceNamespace string                 `yaml:"forceNamespace,omitempty"`
 }
@@ -94,22 +98,6 @@ type ResourceSelector struct {
 	Name       string `yaml:"name,omitempty"`
 }
 
-// KubernetesResourceMeta represents a kubernetes resource's meta data
-type KubernetesResourceMeta interface {
-	GetAPIVersion() string
-	GetKind() string
-	GetNamespace() string
-	GetName() string
-}
-
-// Match returns true if all non-empty fields match the ones in the provided object
-func (id *ResourceSelector) Match(o KubernetesResourceMeta) bool {
-	return (id.APIVersion == "" || id.APIVersion == o.GetAPIVersion()) &&
-		(id.Kind == "" || id.Kind == o.GetKind()) &&
-		(id.Namespace == "" || id.Namespace == o.GetNamespace()) &&
-		(id.Name == "" || id.Name == o.GetName())
-}
-
 // Validate validates the chart renderer config
 func (cfg *ChartConfig) Validate() (errs []string) {
 	if cfg.Chart == "" {
@@ -117,6 +105,9 @@ func (cfg *ChartConfig) Validate() (errs []string) {
 	}
 	if cfg.Name == "" {
 		errs = append(errs, "release name not specified")
+	}
+	if cfg.Namespace == "" {
+		errs = append(errs, "release namespace not specified")
 	}
 	return
 }

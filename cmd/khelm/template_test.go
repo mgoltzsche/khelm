@@ -84,6 +84,16 @@ func TestTemplateCommand(t *testing.T) {
 			[]string{filepath.Join(exampleDir, "force-namespace"), "--force-namespace=forced-namespace"},
 			5, "namespace: forced-namespace",
 		},
+		{
+			"chart-hooks",
+			[]string{filepath.Join(exampleDir, "chart-hooks")},
+			10, "helm.sh/hook",
+		},
+		{
+			"chart-hooks-excluded",
+			[]string{filepath.Join(exampleDir, "chart-hooks"), "--no-hooks"},
+			1, "myvalue",
+		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			var out bytes.Buffer

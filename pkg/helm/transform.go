@@ -20,7 +20,6 @@ type manifestTransformer struct {
 	Includes       matcher.ResourceMatchers
 	Excludes       matcher.ResourceMatchers
 	NamespacedOnly bool
-	OutputPath     string
 }
 
 func (t *manifestTransformer) TransformManifest(manifest io.Reader) (r []*yaml.RNode, err error) {
@@ -76,15 +75,13 @@ func (t *manifestTransformer) addResources(o *yaml.RNode, r *[]*yaml.RNode, clus
 		return nil
 	}
 
-	resourceID := meta.GetIdentifier()
-
 	// Exclude all not explicitly included resources
-	if !t.Includes.Match(&resourceID) {
+	if !t.Includes.Match(&meta) {
 		return nil
 	}
 
 	// Exclude resources
-	if t.Excludes.Match(&resourceID) {
+	if t.Excludes.Match(&meta) {
 		return nil
 	}
 

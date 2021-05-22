@@ -10,8 +10,8 @@ import (
 
 func TestMatchAll(t *testing.T) {
 	testee := Any()
-	resID := testResource("someapi/v1", "SomeKind", "no-match", "").GetIdentifier()
-	matched := testee.Match(&resID)
+	resID := testResource("someapi/v1", "SomeKind", "no-match", "")
+	matched := testee.Match(resID)
 	require.True(t, matched, "matched")
 	err := testee.RequireAllMatched()
 	require.NoError(t, err, "RequireAllMatched")
@@ -47,8 +47,7 @@ func TestMatchAny(t *testing.T) {
 		testee := FromResourceSelectors(c.selectors)
 		matched := []string{}
 		for _, o := range input {
-			resID := o.GetIdentifier()
-			if testee.Match(&resID) {
+			if testee.Match(o) {
 				matched = append(matched, o.Name)
 			}
 		}
@@ -58,28 +57,29 @@ func TestMatchAny(t *testing.T) {
 
 func TestRequireAllMatched(t *testing.T) {
 	testee := FromResourceSelectors([]config.ResourceSelector{{Name: "myresource1"}, {Name: "myresource2"}})
-	input := testResource("someapi/v1", "SomeKind", "no-match", "").GetIdentifier()
-	matched := testee.Match(&input)
+	input := testResource("someapi/v1", "SomeKind", "no-match", "")
+	matched := testee.Match(input)
 	require.False(t, matched, "matched")
 	err := testee.RequireAllMatched()
 	require.Error(t, err)
-	input = testResource("someapi/v1", "SomeKind", "myresource1", "").GetIdentifier()
-	matched = testee.Match(&input)
+	input = testResource("someapi/v1", "SomeKind", "myresource1", "")
+	matched = testee.Match(input)
 	require.True(t, matched, "matched")
 	err = testee.RequireAllMatched()
 	require.Error(t, err)
-	input = testResource("someapi/v1", "SomeKind", "myresource2", "").GetIdentifier()
-	matched = testee.Match(&input)
+	input = testResource("someapi/v1", "SomeKind", "myresource2", "")
+	matched = testee.Match(input)
 	require.True(t, matched, "matched")
 	err = testee.RequireAllMatched()
 	require.NoError(t, err)
 }
 
 func testResource(apiVersion, kind, name, namespace string) *yaml.ResourceMeta {
-	return &yaml.ResourceMeta{TypeMeta: yaml.TypeMeta{
-		APIVersion: apiVersion,
-		Kind:       kind,
-	},
+	return &yaml.ResourceMeta{
+		TypeMeta: yaml.TypeMeta{
+			APIVersion: apiVersion,
+			Kind:       kind,
+		},
 		ObjectMeta: yaml.ObjectMeta{NameMeta: yaml.NameMeta{
 			Name:      name,
 			Namespace: namespace,

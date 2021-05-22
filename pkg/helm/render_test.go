@@ -37,27 +37,40 @@ var rootDir = func() string {
 func TestRender(t *testing.T) {
 	expectedJenkinsContained := "- host: \"jenkins.example.org\"\n"
 	for _, c := range []struct {
-		name               string
-		file               string
-		expectedNamespaces []string
-		expectedContained  string
+		name                  string
+		file                  string
+		expectedNamespaces    []string
+		expectedContained     string
+		expectedResourceNames []string
 	}{
-		{"jenkins", "example/jenkins/generator.yaml", []string{"jenkins"}, expectedJenkinsContained},
-		{"values-external", "pkg/helm/generatorwithextvalues.yaml", []string{"jenkins"}, expectedJenkinsContained},
-		{"rook-ceph-version-range", "example/rook-ceph/operator/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
-		{"cert-manager", "example/cert-manager/generator.yaml", []string{"cert-manager", "kube-system"}, " name: cert-manager-webhook"},
-		{"apiversions-condition", "example/apiversions-condition/generator.yaml", []string{}, "  config: fancy-config"},
-		{"expand-list", "example/expand-list/generator.yaml", []string{"ns1", "ns2", "ns3"}, "\n  name: myserviceaccount2\n"},
-		{"namespace", "example/namespace/generator.yaml", []string{"default-namespace", "cluster-role-binding-ns"}, "  key: b"},
-		{"force-namespace", "example/force-namespace/generator.yaml", []string{"forced-namespace"}, "  key: b"},
-		{"kubeVersion", "example/release-name/generator.yaml", []string{}, "  k8sVersion: v1.17.0"},
-		{"release-name", "example/release-name/generator.yaml", []string{}, "  name: my-release-name-config"},
-		{"exclude", "example/exclude/generator.yaml", []string{"cluster-role-binding-ns"}, "  key: b"},
-		{"include", "example/include/generator.yaml", []string{}, "  key: b"},
-		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
-		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", []string{}, "rook-ceph-v0.9.3"},
-		{"values-inheritance", "example/values-inheritance/generator.yaml", []string{}, " inherited: inherited value\n  fileoverwrite: overwritten by file\n  valueoverwrite: overwritten by generator config"},
-		{"cluster-scoped", "example/cluster-scoped/generator.yaml", []string{}, "myrolebinding"},
+		{"jenkins", "example/jenkins/generator.yaml", []string{"jenkins"}, expectedJenkinsContained, nil},
+		{"values-external", "pkg/helm/generatorwithextvalues.yaml", []string{"jenkins"}, expectedJenkinsContained, nil},
+		{"rook-ceph-version-range", "example/rook-ceph/operator/generator.yaml", []string{}, "rook-ceph-v0.9.3", nil},
+		{"cert-manager", "example/cert-manager/generator.yaml", []string{"cert-manager", "kube-system"}, " name: cert-manager-webhook", nil},
+		{"apiversions-condition", "example/apiversions-condition/generator.yaml", []string{}, "  config: fancy-config", nil},
+		{"expand-list", "example/expand-list/generator.yaml", []string{"ns1", "ns2", "ns3"}, "\n  name: myserviceaccount2\n", nil},
+		{"namespace", "example/namespace/generator.yaml", []string{"default-namespace", "cluster-role-binding-ns"}, "  key: b", nil},
+		{"force-namespace", "example/force-namespace/generator.yaml", []string{"forced-namespace"}, "  key: b", nil},
+		{"kubeVersion", "example/release-name/generator.yaml", []string{}, "  k8sVersion: v1.17.0", nil},
+		{"release-name", "example/release-name/generator.yaml", []string{}, "  name: my-release-name-config", nil},
+		{"exclude", "example/exclude/generator.yaml", []string{"cluster-role-binding-ns"}, "  key: b", nil},
+		{"include", "example/include/generator.yaml", []string{}, "  key: b", nil},
+		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", []string{}, "rook-ceph-v0.9.3", nil},
+		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", []string{}, "rook-ceph-v0.9.3", nil},
+		{"values-inheritance", "example/values-inheritance/generator.yaml", []string{}, " inherited: inherited value\n  fileoverwrite: overwritten by file\n  valueoverwrite: overwritten by generator config", nil},
+		{"cluster-scoped", "example/cluster-scoped/generator.yaml", []string{}, "myrolebinding", nil},
+		{"chart-hooks", "example/chart-hooks/generator.yaml", []string{"default"}, "  key: myvalue", []string{
+			"chart-hooks-myconfig",
+			"chart-hooks-post-delete",
+			"chart-hooks-post-install",
+			"chart-hooks-post-upgrade",
+			"chart-hooks-pre-delete",
+			"chart-hooks-pre-install",
+			"chart-hooks-pre-rollback",
+			"chart-hooks-pre-upgrade",
+			"chart-hooks-test",
+		}},
+		{"chart-hooks-disabled", "example/chart-hooks-disabled/generator.yaml", []string{"default"}, "  key: myvalue", []string{"chart-hooks-disabled-myconfig"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			for _, cached := range []string{"", "cached "} {
@@ -70,14 +83,16 @@ func TestRender(t *testing.T) {
 				require.NoError(t, err, "rendered %syaml:\n%s", cached, b)
 				require.True(t, len(l) > 0, "%s: rendered result of %s is empty", cached, c.file)
 				require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
-				found := map[string]struct{}{}
+				foundResourceNames := []string{}
+				foundNamespaces := map[string]struct{}{}
 				for _, o := range l {
 					ns := ""
 					meta := o["metadata"].(map[string]interface{})
+					foundResourceNames = append(foundResourceNames, meta["name"].(string))
 					nsVal, ok := meta["namespace"]
 					if ok {
 						if ns, ok = nsVal.(string); ok {
-							found[ns] = struct{}{}
+							foundNamespaces[ns] = struct{}{}
 						}
 						require.NotEmpty(t, ns, "%s%s: output resource declares empty namespace field", cached, c.file)
 					}
@@ -86,18 +101,23 @@ func TestRender(t *testing.T) {
 						if subject, ok := subjects[0].(map[string]interface{}); ok {
 							if ns, ok = subject["namespace"].(string); ok {
 								require.NotEmpty(t, ns, "%s%s: output resource has empty subjects[0].namespace set explicitly", cached, c.file)
-								found[ns] = struct{}{}
+								foundNamespaces[ns] = struct{}{}
 							}
 						}
 					}
 				}
+
 				foundNs := []string{}
-				for k := range found {
+				for k := range foundNamespaces {
 					foundNs = append(foundNs, k)
 				}
 				sort.Strings(c.expectedNamespaces)
 				sort.Strings(foundNs)
 				require.Equal(t, c.expectedNamespaces, foundNs, "%s%s: namespaces of output resource", cached, c.file)
+
+				if len(c.expectedResourceNames) > 0 {
+					require.Equal(t, c.expectedResourceNames, foundResourceNames, "resource names")
+				}
 			}
 		})
 	}
@@ -225,7 +245,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	fakeChartTgz := filepath.Join(rootDir, "example/localrefref/charts/intermediate-chart-0.1.1.tgz")
 
 	// Create input chart config and fake private chart server
-	var cfg config.ChartConfig
+	cfg := config.NewChartConfig()
 	cfg.Chart = "private-chart"
 	cfg.Name = "myrelease"
 	cfg.Version = fmt.Sprintf("0.0.%d", time.Now().Unix())
@@ -266,7 +286,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			cfg.Repository = c.repo
-			err = render(t, cfg, false, &bytes.Buffer{})
+			err = render(t, *cfg, false, &bytes.Buffer{})
 			require.NoError(t, err, "render chart with repository credentials")
 		})
 	}

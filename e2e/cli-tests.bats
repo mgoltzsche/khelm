@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 IMAGE=${IMAGE:-mgoltzsche/khelm:latest}
+EXAMPLE_DIR="$(pwd)/example"
 OUT_DIR="$(mktemp -d)"
 
 teardown() {
@@ -18,7 +19,7 @@ teardown() {
 }
 
 @test "CLI should output kustomization" {
-	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" -v "$(pwd)/example/namespace:/chart" "$IMAGE" template /chart \
+	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" -v "$EXAMPLE_DIR/namespace:/chart" "$IMAGE" template /chart \
 		--output /out/kdir/ \
 		--debug
 	ls -la "$OUT_DIR" "$OUT_DIR/kdir" >&2
