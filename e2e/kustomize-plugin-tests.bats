@@ -12,5 +12,5 @@ teardown() {
 	cp build/bin/khelm $PLUGIN_DIR/ChartRenderer
 	chmod +x $PLUGIN_DIR/ChartRenderer
 	export XDG_CONFIG_HOME=$TMP_DIR
-	kustomize build --enable_alpha_plugins example/namespace | grep -q ' myconfiga'
+	kustomize build --enable-alpha-plugins example/namespace | grep -q ' myconfiga'
 }

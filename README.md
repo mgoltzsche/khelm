@@ -96,7 +96,7 @@ _Therefore, to be independent of existing Helm 2 installations, a host's `~/.hel
 
 ### kustomize exec plugin
 
-khelm can be used as [kustomize](https://github.com/kubernetes-sigs/kustomize) 3 [exec plugin](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/execpluginguidedexample/).
+khelm can be used as [kustomize](https://github.com/kubernetes-sigs/kustomize) [exec plugin](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/execpluginguidedexample/).
 Though plugin support in kustomize is still an alpha feature and may be removed in a future version.
 
 #### Plugin installation
@@ -135,8 +135,9 @@ _For all available fields see the [table](#configuration-options) below._
 More complete examples can be found within the [example](example) directory.
 For instance `cert-manager` can be rendered like this:
 ```sh
-kustomize build --enable_alpha_plugins github.com/mgoltzsche/khelm/example/cert-manager
+kustomize build --enable-alpha-plugins github.com/mgoltzsche/khelm/example/cert-manager
 ```
+_When using kustomize 3 the option is called `--enable_alpha_plugins`._
 
 ### CLI
 
