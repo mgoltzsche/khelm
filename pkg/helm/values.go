@@ -28,7 +28,7 @@ func loadValues(cfg *config.ChartConfig, getters getter.Providers) (map[string]i
 	}
 	vals, err := valueOpts.MergeValues(valueGetters)
 	if err != nil {
-		return nil, errors.Wrap(err, "load values: %w")
+		return nil, errors.Wrap(err, "load values")
 	}
 	return vals, nil
 }

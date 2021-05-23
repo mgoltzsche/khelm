@@ -104,7 +104,12 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 	chartHookMatcher := matcher.NewChartHookMatcher(transformer.Excludes, !req.ExcludeHooks)
 	transformer.Excludes = chartHookMatcher
 
-	transformed, err := transformer.TransformManifest(bytes.NewReader([]byte((release.Manifest))))
+	manifest := release.Manifest
+	for _, hook := range release.Hooks {
+		manifest += fmt.Sprintf("\n---\n%s", hook.Manifest)
+	}
+
+	transformed, err := transformer.TransformManifest(bytes.NewReader([]byte((manifest))))
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +124,7 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 		return nil, errors.Errorf("chart %s output is empty", chartRequested.Metadata.Name)
 	}
 	if hooks := chartHookMatcher.FoundHooks(); !req.ExcludeHooks && len(hooks) > 0 {
-		log.Printf("WARNING: The chart output contains the following hooks: %s", strings.Join(hooks, ", "))
+		log.Printf("WARNING: Chart output contains the following hooks: %s", strings.Join(hooks, ", "))
 	}
 	return transformed, nil
 }
