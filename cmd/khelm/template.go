@@ -69,6 +69,9 @@ func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 	f.StringSliceVar(&req.APIVersions, "api-versions", nil, "Kubernetes api versions used for Capabilities.APIVersions")
 	f.StringVar(&req.KubeVersion, "kube-version", req.KubeVersion, "Kubernetes version used as Capabilities.KubeVersion.Major/Minor")
 	f.BoolVar(&req.ExcludeCRDs, "skip-crds", false, "excludes CRDs from the chart output if enabled")
+	f.BoolVar(&req.ExcludeHooks, "no-hooks", req.ExcludeHooks, "If enabled hooks are omitted from the output")
+	f.BoolVar(&req.ExcludeHooks, "exclude-hooks", req.ExcludeHooks, "If enabled hooks are omitted from the output")
+	f.Lookup("exclude-hooks").Hidden = true
 	f.StringVarP(&outOpts.FileOrDir, "output", "o", "-", "Write rendered output to given file or directory (as kustomization)")
 	f.BoolVar(&outOpts.Replace, "output-replace", false, "Delete and recreate the whole output directory or file")
 	return cmd

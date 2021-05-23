@@ -1,0 +1,6 @@
+apiVersion: khelm.mgoltzsche.github.com/v2
+kind: ChartRenderer
+metadata:
+  name: chart-hooks-disabled
+chart: ../chart-hooks
+excludeHooks: true

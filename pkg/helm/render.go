@@ -38,7 +38,7 @@ func (h *Helm) Render(ctx context.Context, req *config.ChartConfig) (r []*yaml.R
 
 	chartRequested, err := h.loadChart(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "load chart %s", req.Chart)
 	}
 
 	ch := make(chan struct{}, 1)
@@ -54,7 +54,8 @@ func (h *Helm) Render(ctx context.Context, req *config.ChartConfig) (r []*yaml.R
 	}
 }
 
-// renderChart renders a manifest from the given chart and values
+// renderChart renders a manifest from the given chart and values.
+// Derived from https://github.com/helm/helm/blob/v3.5.4/cmd/helm/template.go
 func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters getter.Providers) ([]*yaml.RNode, error) {
 	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
 
@@ -86,7 +87,7 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 
 	release, err := client.Run(chartRequested, vals)
 	if err != nil {
-		return nil, errors.Wrap(err, "render chart")
+		return nil, errors.Wrapf(err, "render chart %s", chartRequested.Metadata.Name)
 	}
 
 	inclusions := matcher.Any()
@@ -99,10 +100,11 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 		Includes:       inclusions,
 		Excludes:       matcher.FromResourceSelectors(req.Exclude),
 		NamespacedOnly: req.NamespacedOnly,
-		OutputPath:     "khelm-output",
 	}
+	chartHookMatcher := matcher.NewChartHookMatcher(transformer.Excludes, !req.ExcludeHooks)
+	transformer.Excludes = chartHookMatcher
 
-	transformed, err := transformer.TransformManifest(bytes.NewReader([]byte(release.Manifest)))
+	transformed, err := transformer.TransformManifest(bytes.NewReader([]byte((release.Manifest))))
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +117,9 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 	}
 	if len(transformed) == 0 {
 		return nil, errors.Errorf("chart %s output is empty", chartRequested.Metadata.Name)
+	}
+	if hooks := chartHookMatcher.FoundHooks(); !req.ExcludeHooks && len(hooks) > 0 {
+		log.Printf("WARNING: The chart output contains the following hooks: %s", strings.Join(hooks, ", "))
 	}
 	return transformed, nil
 }

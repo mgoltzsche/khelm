@@ -1,0 +1,4 @@
+apiVersion: v2
+description: example chart with helm hooks
+name: hooks
+version: 0.1.0

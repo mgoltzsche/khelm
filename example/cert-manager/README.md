@@ -2,5 +2,6 @@ This example kustomization renders the [cert-manager](https://github.com/jetstac
 
 It can be rendered and deployed as follows:
 ```
-kustomize build --enable_alpha_plugins github.com/mgoltzsche/khelm/example/cert-manager | kubectl apply -f -
+kustomize build --enable-alpha-plugins github.com/mgoltzsche/khelm/example/cert-manager | kubectl apply -f -
 ```
+_When using kustomize 3 the option is called `--enable_alpha_plugins`._
