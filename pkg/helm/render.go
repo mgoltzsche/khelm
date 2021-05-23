@@ -39,7 +39,7 @@ func (h *Helm) Render(ctx context.Context, req *config.ChartConfig) (r []*yaml.R
 
 	chartRequested, err := h.loadChart(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "load chart %s", req.Chart)
 	}
 
 	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
@@ -65,6 +65,7 @@ func renderChart(chrt *chart.Chart, req *config.ChartConfig, getters getter.Prov
 		ReleaseOptions: chartutil.ReleaseOptions{
 			Name:      req.Name,
 			Namespace: namespace,
+			IsInstall: true,
 		},
 		KubeVersion: req.KubeVersion,
 	}
@@ -79,7 +80,7 @@ func renderChart(chrt *chart.Chart, req *config.ChartConfig, getters getter.Prov
 
 	renderedTemplates, err := renderutil.Render(chrt, config, renderOpts)
 	if err != nil {
-		return nil, errors.Wrap(err, "render chart")
+		return nil, errors.Wrapf(err, "render chart %s", chrt.Metadata.Name)
 	}
 
 	manifests := manifest.SplitManifests(renderedTemplates)
@@ -98,8 +99,9 @@ func renderChart(chrt *chart.Chart, req *config.ChartConfig, getters getter.Prov
 		Includes:       inclusions,
 		Excludes:       matcher.FromResourceSelectors(req.Exclude),
 		NamespacedOnly: req.NamespacedOnly,
-		OutputPath:     "khelm-output",
 	}
+	chartHookMatcher := matcher.NewChartHookMatcher(transformer.Excludes, !req.ExcludeHooks)
+	transformer.Excludes = chartHookMatcher
 
 	r = make([]*yaml.RNode, 0, len(manifests))
 	for _, m := range sortByKind(manifests) {
@@ -120,6 +122,14 @@ func renderChart(chrt *chart.Chart, req *config.ChartConfig, getters getter.Prov
 
 	if err = transformer.Excludes.RequireAllMatched(); err != nil {
 		return nil, errors.Wrap(err, "resource exclusion")
+	}
+
+	if len(r) == 0 {
+		return nil, errors.Errorf("no output since all resources were excluded")
+	}
+
+	if hooks := chartHookMatcher.FoundHooks(); !req.ExcludeHooks && len(hooks) > 0 {
+		log.Printf("WARNING: The chart output contains the following hooks: %s", strings.Join(hooks, ", "))
 	}
 
 	return

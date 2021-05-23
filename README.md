@@ -191,6 +191,7 @@ It exposes a `Helm` struct that provides a `Render()` function that returns the 
 | `exclude[].kind` |  | Excludes resources by kind. |
 | `exclude[].namespace` |  | Excludes resources by namespace. |
 | `exclude[].name` |  | Excludes resources by name. |
+| `excludeHooks` | `--no-hooks` | If enabled excludes chart hooks from the output. |
 | `namespace` | `--namespace` | Set the namespace used by Helm templates. |
 | `namespacedOnly` | `--namespaced-only` | If enabled fail on known cluster-scoped resources and those of unknown kinds. |
 | `forceNamespace` | `--force-namespace` | Set namespace on all namespaced resources (and those of unknown kinds). |

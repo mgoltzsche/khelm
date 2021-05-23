@@ -151,10 +151,9 @@ func mapOutputPaths(resources []*yaml.RNode, outputMappings []kptFnOutputMapping
 			continue
 		}
 
-		resID := meta.GetIdentifier()
 		outPath := defaultOutputPath
 		for i, m := range matchers {
-			if m.Match(&resID) {
+			if m.Match(&meta) {
 				outPath = outputMappings[i].OutputPath
 				break
 			}
