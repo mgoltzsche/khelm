@@ -29,6 +29,7 @@ dockers:
 - id: khelm-amd64-image
   image_templates:
   - mgoltzsche/khelm:{{.Version}}-amd64
+  use: buildx
   dockerfile: Dockerfile
   skip_push: true
   build_flag_templates:
@@ -43,8 +44,9 @@ dockers:
 - id: khelm-arm64-image
   image_templates:
   - mgoltzsche/khelm:{{.Version}}-arm64v8
-  dockerfile: Dockerfile
+  use: buildx
   goarch: arm64
+  dockerfile: Dockerfile
   skip_push: true
   build_flag_templates:
   - "--pull"
