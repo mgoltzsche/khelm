@@ -101,7 +101,7 @@ func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (r *re
 		cacheDir:   settings.RepositoryCache,
 		indexFiles: map[string]*repo.IndexFile{},
 	}
-	if !filepath.IsAbs(string(settings.RepositoryConfig)) {
+	if !filepath.IsAbs(settings.RepositoryConfig) {
 		return nil, errors.Errorf("path to repositories.yaml must be absolute but was %q", settings.RepositoryConfig)
 	}
 	r.repos, err = repo.LoadFile(settings.RepositoryConfig)
@@ -353,8 +353,8 @@ func newTempRepositories(r *repositories) (*tempRepositories, error) {
 		return nil, errors.WithStack(err)
 	}
 	_ = tmpFile.Close()
-	err = r.repos.WriteFile(tmpFile.Name(), 640)
-	return &tempRepositories{r, tmpFile.Name()}, nil
+	err = r.repos.WriteFile(tmpFile.Name(), 0640)
+	return &tempRepositories{r, tmpFile.Name()}, err
 }
 
 func (f *tempRepositories) FilePath() string {

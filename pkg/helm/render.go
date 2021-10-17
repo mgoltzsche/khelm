@@ -129,17 +129,6 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 	return transformed, nil
 }
 
-// checkIfInstallable validates if a chart can be installed
-//
-// Application chart type is only installable
-func checkIfInstallable(ch *chart.Chart) error {
-	switch ch.Metadata.Type {
-	case "", "application":
-		return nil
-	}
-	return errors.Errorf("cannot install chart %q since it is of type %q", ch.Name(), ch.Metadata.Type)
-}
-
 func parseKubeVersion(version string) (kv chartutil.KubeVersion, err error) {
 	v, err := semver.NewVersion(version)
 	if err != nil {
