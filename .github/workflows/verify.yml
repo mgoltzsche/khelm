@@ -14,13 +14,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Set up Go 1.14
+    - name: Set up Go
       uses: actions/setup-go@v1
       with:
-        go-version: 1.14
+        go-version: 1.17
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Set up qemu
+      uses: docker/setup-qemu-action@v1
+      with:
+        platforms: all
 
     - name: Build
       run: make khelm
@@ -36,3 +43,14 @@ jobs:
 
     - name: e2e test
       run: make e2e-test
+
+    - name: Extract Helm version
+      id: extract_helm_version
+      run: |
+        printf '::set-output name=helm_version::' &&
+        grep k8s\.io/helm go.mod | sed -E -e 's!k8s\.io/helm|\s+|\+.*!!g; s!^v!!' | cut -d " " -f2 | grep -E .+
+
+    - name: Dry-run release
+      run: make snapshot
+      env:
+        HELM_VERSION: ${{ steps.extract_helm_version.outputs.helm_version }}
