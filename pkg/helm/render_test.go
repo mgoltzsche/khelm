@@ -178,7 +178,7 @@ func TestRenderRebuildsLocalDependencies(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tplDir)
 	data := []byte("apiVersion: fancyapi/v1\nkind: FancyKind\nmetadata:\n  name: sth\nchangedField: changed-value")
-	err = ioutil.WriteFile(tplFile, data, 0644)
+	err = ioutil.WriteFile(tplFile, data, 0600)
 	require.NoError(t, err)
 
 	// Render again and verify that the dependency is rebuilt
@@ -190,6 +190,7 @@ func TestRenderRebuildsLocalDependencies(t *testing.T) {
 
 func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "khelm-test-")
+	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
 	repoURL := "https://charts.rook.io/stable"
@@ -214,6 +215,7 @@ func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
 
 func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "khelm-test-")
+	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
 	repoURL := "https://kubernetes-charts.storage.googleapis.com"
@@ -273,7 +275,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	require.NoError(t, err)
 	err = os.Mkdir(filepath.Join(tmpHelmHome, "repository"), 0755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tmpHelmHome, "repository", "repositories.yaml"), b, 0644)
+	err = ioutil.WriteFile(filepath.Join(tmpHelmHome, "repository", "repositories.yaml"), b, 0600) // #nosec
 	require.NoError(t, err)
 
 	for _, c := range []struct {
@@ -328,7 +330,7 @@ func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, re
 			return
 		}
 		writer.WriteHeader(200)
-		writer.Write(b)
+		_, _ = writer.Write(b)
 		return
 	case chartFilePath:
 		writer.WriteHeader(200)
@@ -367,7 +369,10 @@ func render(t *testing.T, req config.ChartConfig, trustAnyRepo bool, writer io.W
 	enc := yaml.NewEncoder(writer)
 	enc.SetIndent(2)
 	for _, r := range resources {
-		enc.Encode(r.Document())
+		err = enc.Encode(r.Document())
+		if err != nil {
+			return err
+		}
 	}
 	return enc.Close()
 }
