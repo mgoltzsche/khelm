@@ -28,10 +28,9 @@ changelog:
 dockers:
 - id: khelm-amd64-image
   image_templates:
-  - localhost/mgoltzsche/khelm:{{.Version}}-amd64
+  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
   use: buildx
   dockerfile: Dockerfile
-  skip_push: true
   build_flag_templates:
   - "--pull"
   - "--label=org.opencontainers.image.created={{.Date}}"
@@ -43,11 +42,10 @@ dockers:
   - "--platform=linux/amd64"
 - id: khelm-arm64-image
   image_templates:
-  - localhost/mgoltzsche/khelm:{{.Version}}-arm64v8
+  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
   use: buildx
   goarch: arm64
   dockerfile: Dockerfile
-  skip_push: true
   build_flag_templates:
   - "--pull"
   - "--label=org.opencontainers.image.created={{.Date}}"
@@ -61,30 +59,30 @@ docker_manifests:
 - id: khelm-multiarch-latest-dockerhub-image
   name_template: docker.io/mgoltzsche/khelm:latest
   image_templates:
-  - localhost/mgoltzsche/khelm:{{.Version}}-amd64
-  - localhost/mgoltzsche/khelm:{{.Version}}-arm64v8
+  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
+  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
 - id: khelm-multiarch-latest-ghcr-image
   name_template: ghcr.io/mgoltzsche/khelm:latest
   image_templates:
-  - localhost/mgoltzsche/khelm:{{.Version}}-amd64
-  - localhost/mgoltzsche/khelm:{{.Version}}-arm64v8
+  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
+  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
 - id: khelm-multiarch-major-dockerhub-image
   name_template: docker.io/mgoltzsche/khelm:{{.Major}}
   image_templates:
-  - localhost/mgoltzsche/khelm:{{.Version}}-amd64
-  - localhost/mgoltzsche/khelm:{{.Version}}-arm64v8
+  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
+  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
 - id: khelm-multiarch-major-ghcr-image
   name_template: ghcr.io/mgoltzsche/khelm:{{.Major}}
   image_templates:
-  - localhost/mgoltzsche/khelm:{{.Version}}-amd64
-  - localhost/mgoltzsche/khelm:{{.Version}}-arm64v8
+  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
+  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
 - id: khelm-multiarch-dockerhub-image
   name_template: docker.io/mgoltzsche/khelm:{{.Version}}
   image_templates:
-  - localhost/mgoltzsche/khelm:{{.Version}}-amd64
-  - localhost/mgoltzsche/khelm:{{.Version}}-arm64v8
+  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
+  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
 - id: khelm-multiarch-ghcr-image
   name_template: ghcr.io/mgoltzsche/khelm:{{.Version}}
   image_templates:
-  - localhost/mgoltzsche/khelm:{{.Version}}-amd64
-  - localhost/mgoltzsche/khelm:{{.Version}}-arm64v8
+  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
+  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
