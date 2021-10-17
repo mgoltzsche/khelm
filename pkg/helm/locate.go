@@ -93,7 +93,8 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 
 	interrupt := ctx.Done()
 	done := make(chan error, 1)
-	go func() (err error) {
+	go func() {
+		var err error
 		defer func() {
 			done <- err
 			close(done)
@@ -101,16 +102,13 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 				_ = os.RemoveAll(tmpDestDir)
 			}
 		}()
-		var chartFile string
-		chartFile, _, err = dl.DownloadTo(chartURL, cv.Version, tmpDestDir)
+		_, _, err = dl.DownloadTo(chartURL, cv.Version, tmpDestDir)
 		if err != nil {
-			return errors.Wrapf(err, "failed to download chart %q with version %q", cfg.Chart, cv.Version)
+			err = errors.Wrapf(err, "failed to download chart %q with version %q", cfg.Chart, cv.Version)
+			return
 		}
-		chartFile, err = filepath.Abs(chartFile)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		return os.Rename(tmpDestDir, destDir)
+		err = os.Rename(tmpDestDir, destDir)
+		err = errors.WithStack(err)
 	}()
 	select {
 	case err = <-done:

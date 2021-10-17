@@ -27,7 +27,7 @@
 	grep -Eq '^kind: CustomResourceDefinition$' ./cert-manager/static/generated-manifest.yaml || (echo 'FAIL: does not contain CustomResourceDefinition' >&2; false)
 }
 
-@test "kpt fn should template linkerd example" {
+@test "kpt fn should template linkerd experiment" {
 	EXAMPLE_DIR="example"
 	GENERATED_MANIFEST="$EXAMPLE_DIR/kpt/linkerd/manifests/static/linkerd/generated-manifest.yaml"
 	rm -f "$GENERATED_MANIFEST"

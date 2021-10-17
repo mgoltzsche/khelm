@@ -428,7 +428,8 @@ func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, 
 
 	interrupt := ctx.Done()
 	done := make(chan error, 1)
-	go func() (err error) {
+	go func() {
+		var err error
 		defer func() {
 			done <- err
 			close(done)
@@ -440,13 +441,16 @@ func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, 
 		tmpEntry.Cache = tmpIdxFileName
 		r, err := repo.NewChartRepository(&tmpEntry, getters)
 		if err != nil {
-			return errors.WithStack(err)
+			err = errors.WithStack(err)
+			return
 		}
 		err = r.DownloadIndexFile(cacheDir)
 		if err != nil {
-			return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", entry.URL)
+			err = errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", entry.URL)
+			return
 		}
-		return os.Rename(tmpIdxFileName, idxFile)
+		err = os.Rename(tmpIdxFileName, idxFile)
+		err = errors.WithStack(err)
 	}()
 	select {
 	case err := <-done:
