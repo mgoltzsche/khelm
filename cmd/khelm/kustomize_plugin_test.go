@@ -34,7 +34,7 @@ func runKustomizePlugin(t *testing.T, wd string, args ...string) (out []byte) {
 	defer os.Unsetenv(envKustomizePluginConfigRoot)
 	err = os.Chdir(wd)
 	require.NoError(t, err)
-	defer os.Chdir(wdOrig)
+	defer func() { _ = os.Chdir(wdOrig) }()
 	os.Args = append([]string{"testee"}, args...)
 	var buf bytes.Buffer
 	err = Execute(nil, &buf)
