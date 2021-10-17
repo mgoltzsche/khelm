@@ -1,0 +1,21 @@
+linters:
+  enable:
+    - gofmt
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - structcheck
+    - varcheck
+    - ineffassign
+    - deadcode
+    - typecheck
+    - rowserrcheck
+    - gosec
+    - unconvert
+
+skip-dirs:
+  - build
+  - vendor
+

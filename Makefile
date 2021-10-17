@@ -4,13 +4,13 @@ BUILD_DIR := $(CURDIR)/build
 BIN_DIR := $(BUILD_DIR)/bin
 KHELM := $(BIN_DIR)/khelm
 KHELM_STATIC := $(BIN_DIR)/khelm-static
-GOSEC := $(BIN_DIR)/go-sec
-GOLINT := $(BIN_DIR)/golint
+GOLANGCI_LINT = $(BIN_DIR)/golangci-lint
 KPT := $(BIN_DIR)/kpt
 KUSTOMIZE := $(BIN_DIR)/kustomize
 
-KPT_VERSION ?= 0.39.2
-KUSTOMIZE_VERSION ?= 4.1.3
+GOLANGCI_LINT_VERSION ?= v1.42.1
+KPT_VERSION ?= v0.39.2
+KUSTOMIZE_VERSION ?= v4.1.3
 BATS_VERSION = v1.3.0
 
 BATS_DIR = $(BUILD_DIR)/tools/bats
@@ -65,14 +65,6 @@ e2e-test: image khelm-static kpt kustomize | $(BATS)
 	$(BATS) -T ./e2e; \
 	}
 
-#	./e2e/kustomize-plugin-test.sh; \
-#	IMAGE=$(IMAGE) ./e2e/image-cli-test.sh; \
-#	./e2e/kpt-function-test.sh; \
-#	./e2e/kpt-cache-test.sh; \
-#	./e2e/kpt-cert-manager-test.sh; \
-#	./e2e/kpt-linkerd-test.sh; \
-#	}
-
 fmt:
 	go fmt ./...
 
@@ -86,69 +78,23 @@ clean-all: clean
 	rm -rf $(BUILD_DIR)
 	find . -name charts -type d -exec rm -rf {} \;
 
-check: gofmt vet golint gosec ## Runs all linters
-
-gofmt:
-	MSGS="$$(gofmt -s -d .)" && [ ! "$$MSGS" ] || (echo "$$MSGS" >&2; echo 'Please run `make fmt` to fix it' >&2; false)
-
-vet:
-	go vet ./...
-
-gosec: $(GOSEC)
-	$(GOSEC) --quiet -exclude=G302,G304,G306 ./...
-
-golint: $(GOLINT)
-	$(GOLINT) -set_exit_status ./...
+check: $(GOLANGCI_LINT) ## Runs linters
+	$(GOLANGCI_LINT) run ./...
 
 kpt: $(KPT)
 
 kustomize: $(KUSTOMIZE)
 
-$(GOSEC): $(BUILD_DIR)
-	@echo Building gosec
-	@{ \
-	set -e; \
-	TMP_DIR=$$(mktemp -d); \
-	(cd $$TMP_DIR && \
-	GOPATH=$$TMP_DIR GO111MODULE=on go get github.com/securego/gosec/v2/cmd/gosec@v2.4.0); \
-	cp $$TMP_DIR/bin/gosec $(GOSEC); \
-	chmod -R u+w $$TMP_DIR; \
-	rm -rf $$TMP_DIR; \
-	}
+golangci-lint: $(GOLANGCI_LINT)
 
-$(GOLINT): $(BUILD_DIR)
-	@echo Building golint
-	@{ \
-	set -e; \
-	TMP_DIR=$$(mktemp -d); \
-	(cd $$TMP_DIR && \
-	GOPATH=$$TMP_DIR GO111MODULE=on go get golang.org/x/lint/golint); \
-	cp $$TMP_DIR/bin/golint $(GOLINT); \
-	chmod -R u+w $$TMP_DIR; \
-	rm -rf $$TMP_DIR; \
-	}
+$(GOLANGCI_LINT):
+	$(call go-get-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION))
 
-$(KPT): $(BUILD_DIR)
-	@echo Downloading kpt
-	@{ \
-	set -e; \
-	TMP_DIR=$$(mktemp -d); \
-	curl -fsSL https://github.com/GoogleContainerTools/kpt/releases/download/v$(KPT_VERSION)/kpt_linux_amd64-$(KPT_VERSION).tar.gz | tar -xzf - -C $$TMP_DIR; \
-	cp -f $$TMP_DIR/kpt $(KPT); \
-	chmod -R +x $(KPT); \
-	rm -rf $$TMP_DIR; \
-	}
+$(KPT):
+	$(call download-bin,$(KPT),"https://github.com/GoogleContainerTools/kpt/releases/download/$(KPT_VERSION)/kpt_$$(uname | tr '[:upper:]' '[:lower:]')_amd64")
 
-$(KUSTOMIZE): $(BUILD_DIR)
-	@echo Downloading kustomize
-	@{ \
-	set -e; \
-	TMP_DIR=$$(mktemp -d); \
-	curl -fsSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_linux_amd64.tar.gz | tar -xzf - -C $$TMP_DIR; \
-	cp -f $$TMP_DIR/kustomize $(KUSTOMIZE); \
-	chmod -R +x $(KUSTOMIZE); \
-	rm -rf $$TMP_DIR; \
-	}
+$(KUSTOMIZE):
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@$(KUSTOMIZE_VERSION))
 
 $(BATS):
 	@echo Downloading bats
@@ -164,3 +110,30 @@ $(BATS):
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)/bin
+
+# go-get-tool will 'go get' any package $2 and install it to $1.
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+define go-get-tool
+@[ -f $(1) ] || { \
+set -e ;\
+TMP_DIR=$$(mktemp -d) ;\
+cd $$TMP_DIR ;\
+go mod init tmp ;\
+echo "Downloading $(2)" ;\
+GOBIN=$(PROJECT_DIR)/build/bin go get $(2) ;\
+rm -rf $$TMP_DIR ;\
+}
+endef
+
+# download-bin downloads a binary into the location given as first argument
+define download-bin
+@[ -f $(1) ] || { \
+set -e ;\
+mkdir -p `dirname $(1)` ;\
+TMP_FILE=$$(mktemp) ;\
+echo "Downloading $(2)" ;\
+curl -fsSLo $$TMP_FILE $(2) ;\
+chmod +x $$TMP_FILE ;\
+mv $$TMP_FILE $(1) ;\
+}
+endef
