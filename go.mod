@@ -20,5 +20,5 @@ require (
 	k8s.io/apimachinery v0.20.4 // indirect
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/helm v2.17.0+incompatible
-	sigs.k8s.io/kustomize/kyaml v0.10.13
+	sigs.k8s.io/kustomize/kyaml v0.12.0
 )

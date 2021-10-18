@@ -18,12 +18,12 @@ import (
 	helmyaml "github.com/ghodss/yaml"
 	"github.com/mgoltzsche/khelm/pkg/config"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 	"k8s.io/helm/pkg/getter"
 	cli "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/repo"
+	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
 var rootDir = func() string {
@@ -85,7 +85,8 @@ func TestRender(t *testing.T) {
 				require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
 				foundResourceNames := []string{}
 				foundNamespaces := map[string]struct{}{}
-				for _, o := range l {
+				for i, o := range l {
+					require.NotNilf(t, o["metadata"], "%s object %d metadata", cached, i)
 					ns := ""
 					meta := o["metadata"].(map[string]interface{})
 					foundResourceNames = append(foundResourceNames, meta["name"].(string))
