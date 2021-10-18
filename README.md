@@ -225,12 +225,7 @@ Build and test the khelm binary (requires Go 1.13) as well as the container imag
 ```sh
 make clean khelm test check image e2e-test
 ```
-_The dynamic binary is written to `build/bin/khelm` and the static binary to `build/bin/khelm-static`_.
-
-Alternatively a static binary can be built using `docker`:
-```sh
-make khelm-static
-```
+_The binary is written to `build/bin/khelm`_.
 
 Install the binary on your host at `/usr/local/bin/khelm`:
 ```sh

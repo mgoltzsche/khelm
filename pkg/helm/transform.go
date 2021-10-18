@@ -11,10 +11,6 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
-const (
-	annotationManagedBy = "app.kubernetes.io/managed-by"
-)
-
 type manifestTransformer struct {
 	ForceNamespace string
 	Includes       matcher.ResourceMatchers

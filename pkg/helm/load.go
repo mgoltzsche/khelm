@@ -218,11 +218,6 @@ func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *config
 	return needsReload, nil
 }
 
-func dependencyFilePath(chartPath string, d *chart.Dependency) string {
-	name := fmt.Sprintf("%s-%s.tgz", d.Name, d.Version)
-	return filepath.Join(chartPath, "charts", name)
-}
-
 func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, chartPath string, cfg *config.LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) error {
 	man := &downloader.Manager{
 		Out:              log.Writer(),

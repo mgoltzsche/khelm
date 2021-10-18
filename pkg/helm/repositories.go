@@ -101,7 +101,7 @@ func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (r *re
 		cacheDir:   settings.RepositoryCache,
 		indexFiles: map[string]*repo.IndexFile{},
 	}
-	if !filepath.IsAbs(string(settings.RepositoryConfig)) {
+	if !filepath.IsAbs(settings.RepositoryConfig) {
 		return nil, errors.Errorf("path to repositories.yaml must be absolute but was %q", settings.RepositoryConfig)
 	}
 	r.repos, err = repo.LoadFile(settings.RepositoryConfig)
@@ -353,8 +353,8 @@ func newTempRepositories(r *repositories) (*tempRepositories, error) {
 		return nil, errors.WithStack(err)
 	}
 	_ = tmpFile.Close()
-	err = r.repos.WriteFile(tmpFile.Name(), 640)
-	return &tempRepositories{r, tmpFile.Name()}, nil
+	err = r.repos.WriteFile(tmpFile.Name(), 0640)
+	return &tempRepositories{r, tmpFile.Name()}, err
 }
 
 func (f *tempRepositories) FilePath() string {
@@ -381,7 +381,8 @@ func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, 
 
 	interrupt := ctx.Done()
 	done := make(chan error, 1)
-	go func() (err error) {
+	go func() {
+		var err error
 		defer func() {
 			done <- err
 			close(done)
@@ -393,14 +394,17 @@ func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, 
 		tmpEntry.Name = filepath.Base(tmpIdxFileName)
 		r, err := repo.NewChartRepository(&tmpEntry, getters)
 		if err != nil {
-			return errors.WithStack(err)
+			err = errors.WithStack(err)
+			return
 		}
 		r.CachePath = filepath.Dir(tmpIdxFileName)
 		tmpIdxFileName, err = r.DownloadIndexFile()
 		if err != nil {
-			return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", entry.URL)
+			err = errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", entry.URL)
+			return
 		}
-		return os.Rename(tmpIdxFileName, idxFile)
+		err = os.Rename(tmpIdxFileName, idxFile)
+		err = errors.WithStack(err)
 	}()
 	select {
 	case err := <-done:
