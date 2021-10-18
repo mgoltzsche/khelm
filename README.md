@@ -101,11 +101,13 @@ Though plugin support in kustomize is still an alpha feature and may be removed 
 
 #### Plugin installation
 
-Install using curl (linux amd64):
+Install using curl (on OSX or Linux):
 ```sh
+OS=$(uname | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
 mkdir -p $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer
-curl -fsSL https://github.com/mgoltzsche/khelm/releases/latest/download/khelm-linux-amd64 > $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer/ChartRenderer
-chmod u+x $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer/ChartRenderer
+curl -fsSL https://github.com/mgoltzsche/khelm/releases/latest/download/khelm-${OS}-${ARCH} > $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer/ChartRenderer
+chmod +x $HOME/.config/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer/ChartRenderer
 ```
 or using `go`:
 ```sh
@@ -145,7 +147,9 @@ khelm also supports a helm-like `template` CLI.
 
 #### Binary installation
 ```sh
-curl -fsSL https://github.com/mgoltzsche/khelm/releases/latest/download/khelm-linux-amd64 > khelm
+OS=$(uname | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+curl -fsSL https://github.com/mgoltzsche/khelm/releases/latest/download/khelm-${OS}-${ARCH} > khelm
 chmod +x khelm
 sudo mv khelm /usr/local/bin/khelm
 ```
