@@ -84,7 +84,8 @@ func TestRender(t *testing.T) {
 				require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
 				foundResourceNames := []string{}
 				foundNamespaces := map[string]struct{}{}
-				for _, o := range l {
+				for i, o := range l {
+					require.NotNilf(t, o["metadata"], "%s object %d metadata", cached, i)
 					ns := ""
 					meta := o["metadata"].(map[string]interface{})
 					foundResourceNames = append(foundResourceNames, meta["name"].(string))

@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/kustomize/kyaml/fn/framework"
+	"sigs.k8s.io/kustomize/kyaml/fn/framework/command"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
@@ -26,10 +27,13 @@ const (
 )
 
 func kptFnCommand(h *helm.Helm) *cobra.Command {
-	req := config.NewChartConfig()
-	fnCfg := kptFnConfigMap{Data: kptFnConfig{ChartConfig: req}}
-	resourceList := &framework.ResourceList{FunctionConfig: &fnCfg}
-	cmd := framework.Command(resourceList, func() (err error) {
+	processor := framework.ResourceListProcessorFunc(func(resourceList *framework.ResourceList) (err error) {
+		req := config.NewChartConfig()
+		fnCfg := kptFnConfigMap{Data: kptFnConfig{ChartConfig: req}}
+		err = framework.LoadFunctionConfig(resourceList.FunctionConfig, &fnCfg)
+		if err != nil {
+			return errors.Wrap(err, "load khelm function config")
+		}
 		outputPath := fnCfg.Data.OutputPath
 		if outputPath == "" {
 			outputPath = defaultOutputPath
@@ -86,7 +90,7 @@ func kptFnCommand(h *helm.Helm) *cobra.Command {
 		resourceList.Items = append(resourceList.Items, rendered...)
 		return nil
 	})
-	return cmd
+	return command.Build(processor, command.StandaloneEnabled, false)
 }
 
 func generateKustomization(resources []*yaml.RNode) (*yaml.RNode, error) {

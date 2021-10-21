@@ -259,7 +259,7 @@ func TestKptFnCommand(t *testing.T) {
 				},
 				OutputPath: "my/output/path/",
 			},
-			4, []string{"resources:\n  - configmap_myconfiga.yaml\n  - configmap_myconfigb.yaml\n"},
+			4, []string{"resources:\n- configmap_myconfiga.yaml\n- configmap_myconfigb.yaml\n"},
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
