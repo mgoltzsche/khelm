@@ -241,11 +241,12 @@ func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
 	require.NoError(t, err, "render %s with outdated index", file)
 }
 
-func TestRenderRepositoryCredentials(t *testing.T) {
+func TestRenderNoDigest(t *testing.T) {
 	// Make sure a fake chart exists that the fake server can serve
 	err := renderFile(t, filepath.Join(rootDir, "example/localrefref/generator.yaml"), true, rootDir, &bytes.Buffer{})
 	require.NoError(t, err)
 	fakeChartTgz := filepath.Join(rootDir, "example/localrefref/charts/intermediate-chart-0.1.1.tgz")
+	digest := ""
 
 	// Create input chart config and fake private chart server
 	cfg := config.NewChartConfig()
@@ -258,7 +259,51 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 		Username: "fakeuser",
 		Password: "fakepassword",
 	}
-	srv := httptest.NewServer(&fakePrivateChartServerHandler{repoEntry, &cfg.LoaderConfig, fakeChartTgz})
+	srv := httptest.NewServer(&fakePrivateChartServerHandler{repoEntry, &cfg.LoaderConfig, fakeChartTgz, digest})
+	defer srv.Close()
+	repoEntry.URL = srv.URL
+
+	// Generate temp repository configuration pointing to fake private server
+	tmpHelmHome, err := ioutil.TempDir("", "khelm-test-home-")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpHelmHome)
+	origHelmHome := os.Getenv("HELM_HOME")
+	err = os.Setenv("HELM_HOME", tmpHelmHome)
+	require.NoError(t, err)
+	defer os.Setenv("HELM_HOME", origHelmHome)
+	repos := repo.NewRepoFile()
+	repos.Add(repoEntry)
+	b, err := yaml.Marshal(repos)
+	require.NoError(t, err)
+	err = os.Mkdir(filepath.Join(tmpHelmHome, "repository"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tmpHelmHome, "repository", "repositories.yaml"), b, 0600) // #nosec
+	require.NoError(t, err)
+
+	cfg.Repository = repoEntry.URL
+	err = render(t, *cfg, false, &bytes.Buffer{})
+	require.NoError(t, err, "render chart with no digest")
+}
+
+func TestRenderRepositoryCredentials(t *testing.T) {
+	// Make sure a fake chart exists that the fake server can serve
+	err := renderFile(t, filepath.Join(rootDir, "example/localrefref/generator.yaml"), true, rootDir, &bytes.Buffer{})
+	require.NoError(t, err)
+	fakeChartTgz := filepath.Join(rootDir, "example/localrefref/charts/intermediate-chart-0.1.1.tgz")
+	digest := "0000000000000000"
+
+	// Create input chart config and fake private chart server
+	cfg := config.NewChartConfig()
+	cfg.Chart = "private-chart"
+	cfg.Name = "myrelease"
+	cfg.Version = fmt.Sprintf("0.0.%d", time.Now().Unix())
+	cfg.BaseDir = rootDir
+	repoEntry := &repo.Entry{
+		Name:     "myprivaterepo",
+		Username: "fakeuser",
+		Password: "fakepassword",
+	}
+	srv := httptest.NewServer(&fakePrivateChartServerHandler{repoEntry, &cfg.LoaderConfig, fakeChartTgz, digest})
 	defer srv.Close()
 	repoEntry.URL = srv.URL
 
@@ -299,6 +344,7 @@ type fakePrivateChartServerHandler struct {
 	repo         *repo.Entry
 	config       *config.LoaderConfig
 	fakeChartTgz string
+	digest       string
 }
 
 func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
@@ -320,7 +366,7 @@ func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, re
 					Version:    f.config.Version,
 					Name:       f.config.Chart,
 				},
-				Digest: "0000000000000000",
+				Digest: f.digest,
 				URLs:   []string{f.repo.URL + chartFilePath},
 			}},
 		}
