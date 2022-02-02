@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	helmyaml "github.com/ghodss/yaml"
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart"
@@ -23,6 +22,7 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
+	helmyaml "sigs.k8s.io/yaml"
 )
 
 var rootDir = func() string {
