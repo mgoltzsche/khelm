@@ -136,7 +136,7 @@ func cacheFilePath(chartURL string, cv *repo.ChartVersion, cacheDir string) (str
 	digest := "none"
 	if len(cv.Digest) < 16 {
 		// not all the helm repository implementations populate the digest field (e.g. Nexus 3)
-		log.Printf("repo index entry for chart %q does not specify a digest", cv.Name)
+		log.Printf("WARNING: repo index entry for chart %q does not specify a digest", cv.Name)
 	} else {
 		digest = cv.Digest[:16]
 	}
