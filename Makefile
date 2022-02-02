@@ -62,6 +62,8 @@ clean:
 	rm -f $(BUILD_DIR)/bin/khelm-static
 	rm -rf example/localrefref/charts
 	rm -rf example/kpt/linkerd/dep
+	# TODO: fix "invalid trailing UTF-8 octet" yaml parser error
+	rm -f example/kpt/test-cases/output-remote.yaml
 
 clean-all: clean
 	rm -rf $(BUILD_DIR)
