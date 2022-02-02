@@ -13,15 +13,16 @@ import (
 
 func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 	req := config.NewChartConfig()
-	req.Name = "release-name"
+	defaultReleaseName := "release-name"
+	req.Name = defaultReleaseName
 	outOpts := output.Options{Writer: writer}
 	trustAnyRepo := false
 	cmd := &cobra.Command{
 		Use: "template",
 		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
+			if len(args) != 1 && len(args) != 2 {
 				_ = cmd.Help()
-				return fmt.Errorf("accepts single CHART argument but received %d arguments", len(args))
+				return fmt.Errorf("accepts [NAME] CHART arguments but received %d arguments", len(args))
 			}
 			return nil
 		},
@@ -36,7 +37,15 @@ func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			req.Chart = args[0]
+			if len(args) > 1 {
+				if req.Name != defaultReleaseName {
+					return fmt.Errorf("cannot provide both the --name option and the argument")
+				}
+				req.Name = args[0]
+				req.Chart = args[1]
+			} else {
+				req.Chart = args[0]
+			}
 			resources, err := render(h, req)
 			if err != nil {
 				return err
