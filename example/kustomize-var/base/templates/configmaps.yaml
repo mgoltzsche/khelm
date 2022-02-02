@@ -1,0 +1,26 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myconfig
+  namespace: myns
+data:
+  mykey: {{ .Values.somekey | quote }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: mydaemonset
+spec:
+  template:
+    spec:
+      initContainers:
+      - name: myinitcontainer
+        env:
+        - name: COMMON_ENV_VAR
+          value: {{ .Values.somekey | quote }}
+      containers:
+      - name: mycontainer
+        env:
+        - name: COMMON_ENV_VAR
+          value: {{ .Values.somekey | quote }}

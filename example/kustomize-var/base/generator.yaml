@@ -1,0 +1,8 @@
+apiVersion: khelm.mgoltzsche.github.com/v2
+kind: ChartRenderer
+metadata:
+  name: kustomize-var-example
+  namespace: testns
+chart: .
+values:
+  somekey: $(VALUE_FROM_CONFIGMAP)
