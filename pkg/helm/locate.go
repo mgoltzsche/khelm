@@ -137,10 +137,14 @@ func cacheFilePath(chartURL string, cv *repo.ChartVersion, cacheDir string) (str
 	if strings.Contains(path, "..") {
 		return "", errors.Errorf("get %s: path %q points outside the cache dir", chartURL, path)
 	}
+	digest := "none"
 	if len(cv.Digest) < 16 {
-		return "", errors.Errorf("repo index entry for chart %q does not specify a digest", cv.Name)
+		// not all the helm repository implementations populate the digest field (e.g. Nexus 3)
+		log.Printf("WARNING: repo index entry for chart %q does not specify a digest", cv.Name)
+	} else {
+		digest = cv.Digest[:16]
 	}
 	hostSegment := strings.ReplaceAll(u.Host, ":", "_")
-	digestSegment := fmt.Sprintf("%s-%s-%s", cv.Name, cv.Version, cv.Digest[:16])
+	digestSegment := fmt.Sprintf("%s-%s-%s", cv.Name, cv.Version, digest)
 	return filepath.Join(cacheDir, hostSegment, filepath.Dir(path), digestSegment, filepath.Base(path)), nil
 }
