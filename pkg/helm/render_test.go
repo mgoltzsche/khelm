@@ -260,7 +260,7 @@ func TestRenderNoDigest(t *testing.T) {
 	err = os.Setenv("HELM_HOME", tmpHelmHome)
 	require.NoError(t, err)
 	defer os.Setenv("HELM_HOME", origHelmHome)
-	repos := repo.NewRepoFile()
+	repos := repo.NewFile()
 	repos.Add(repoEntry)
 	b, err := yaml.Marshal(repos)
 	require.NoError(t, err)
