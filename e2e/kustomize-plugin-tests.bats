@@ -8,7 +8,7 @@ teardown() {
 
 # ARGS: KUSTOMIZATION_DIR EXPECT_OUTPUT_CONTAINS
 kustomizeBuild() {
-	PLUGIN_DIR=$TMP_DIR/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
+	PLUGIN_DIR=$TMP_DIR/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer
 	mkdir -p $PLUGIN_DIR
 	cp build/bin/khelm $PLUGIN_DIR/ChartRenderer
 	chmod +x $PLUGIN_DIR/ChartRenderer

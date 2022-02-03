@@ -5,8 +5,6 @@ on:
     # Publish `master` as Docker `latest` image.
     branches:
     - master
-    - v2
-    - v1
 
     # Publish `v1.2.3` tags as releases.
     tags:
@@ -37,7 +35,7 @@ jobs:
       id: extract_helm_version
       run: |
         printf '::set-output name=helm_version::' &&
-        grep k8s\.io/helm go.mod | sed -E -e 's!k8s\.io/helm|\s+|\+.*!!g; s!^v!!' | cut -d " " -f2 | grep -E .+
+        grep helm\.sh/helm/ go.mod | sed -E -e 's!helm\.sh/helm/v3|\s+|\+.*!!g; s!^v!!' | cut -d " " -f2 | grep -E .+
 
     - name: Build & Test
       run: make test check image e2e-test

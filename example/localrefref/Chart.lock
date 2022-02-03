@@ -1,0 +1,6 @@
+dependencies:
+- name: intermediate-chart
+  repository: file://../localref/intermediate-chart
+  version: 0.1.1
+digest: sha256:857a80e0f94f83342b1788c2ae59776afb699bd77aa646d9c23e904fb24c0b90
+generated: "2021-02-07T19:00:31.762074191Z"

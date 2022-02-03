@@ -1,4 +1,4 @@
-kind: ConfigMap
+kind: ConfigMap # Source: linkerd2/templates/config.yaml
 apiVersion: v1
 metadata:
   name: linkerd-config

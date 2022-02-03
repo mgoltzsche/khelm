@@ -4,24 +4,25 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/mgoltzsche/khelm/internal/output"
-	"github.com/mgoltzsche/khelm/pkg/config"
-	"github.com/mgoltzsche/khelm/pkg/helm"
+	"github.com/mgoltzsche/khelm/v2/internal/output"
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
+	"github.com/mgoltzsche/khelm/v2/pkg/helm"
 	"github.com/spf13/cobra"
-	"k8s.io/helm/pkg/strvals"
+	"helm.sh/helm/v3/pkg/strvals"
 )
 
 func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 	req := config.NewChartConfig()
-	req.Name = "release-name"
+	defaultReleaseName := "release-name"
+	req.Name = defaultReleaseName
 	outOpts := output.Options{Writer: writer}
 	trustAnyRepo := false
 	cmd := &cobra.Command{
 		Use: "template",
 		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
+			if len(args) != 1 && len(args) != 2 {
 				_ = cmd.Help()
-				return fmt.Errorf("accepts single CHART argument but received %d arguments", len(args))
+				return fmt.Errorf("accepts [NAME] CHART arguments but received %d arguments", len(args))
 			}
 			return nil
 		},
@@ -36,7 +37,15 @@ func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			req.Chart = args[0]
+			if len(args) > 1 {
+				if req.Name != defaultReleaseName {
+					return fmt.Errorf("cannot provide both the --name option and the argument")
+				}
+				req.Name = args[0]
+				req.Chart = args[1]
+			} else {
+				req.Chart = args[0]
+			}
 			resources, err := render(h, req)
 			if err != nil {
 				return err
@@ -68,6 +77,7 @@ func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {
 	f.StringSliceVarP(&req.ValueFiles, "values", "f", nil, "Specify values in a YAML file or a URL (can specify multiple)")
 	f.StringSliceVar(&req.APIVersions, "api-versions", nil, "Kubernetes api versions used for Capabilities.APIVersions")
 	f.StringVar(&req.KubeVersion, "kube-version", req.KubeVersion, "Kubernetes version used as Capabilities.KubeVersion.Major/Minor")
+	f.BoolVar(&req.ExcludeCRDs, "skip-crds", false, "excludes CRDs from the chart output if enabled")
 	f.BoolVar(&req.ExcludeHooks, "no-hooks", req.ExcludeHooks, "If enabled hooks are omitted from the output")
 	f.BoolVar(&req.ExcludeHooks, "exclude-hooks", req.ExcludeHooks, "If enabled hooks are omitted from the output")
 	f.Lookup("exclude-hooks").Hidden = true

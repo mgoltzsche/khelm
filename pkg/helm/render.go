@@ -3,24 +3,23 @@ package helm
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
+	"strconv"
 	"strings"
 
-	"github.com/mgoltzsche/khelm/internal/matcher"
-	"github.com/mgoltzsche/khelm/pkg/config"
+	"github.com/Masterminds/semver/v3"
+	"github.com/mgoltzsche/khelm/v2/internal/matcher"
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/pkg/errors"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/manifest"
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/renderutil"
+	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/getter"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
-
-var whitespaceRegex = regexp.MustCompile(`^\s*$`)
 
 // Render manifest from helm chart configuration (shorthand)
 func (h *Helm) Render(ctx context.Context, req *config.ChartConfig) (r []*yaml.RNode, err error) {
@@ -42,8 +41,6 @@ func (h *Helm) Render(ctx context.Context, req *config.ChartConfig) (r []*yaml.R
 		return nil, errors.Wrapf(err, "load chart %s", req.Chart)
 	}
 
-	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
-
 	ch := make(chan struct{}, 1)
 	go func() {
 		r, err = renderChart(chartRequested, req, h.Getters)
@@ -57,36 +54,40 @@ func (h *Helm) Render(ctx context.Context, req *config.ChartConfig) (r []*yaml.R
 	}
 }
 
-// renderChart renders a manifest from the given chart and values
-// Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/template.go
-func renderChart(chrt *chart.Chart, req *config.ChartConfig, getters getter.Providers) (r []*yaml.RNode, err error) {
-	namespace := req.Namespace
-	renderOpts := renderutil.Options{
-		ReleaseOptions: chartutil.ReleaseOptions{
-			Name:      req.Name,
-			Namespace: namespace,
-			IsInstall: true,
-		},
-		KubeVersion: req.KubeVersion,
-	}
-	if len(req.APIVersions) > 0 {
-		renderOpts.APIVersions = append(req.APIVersions, "v1")
-	}
-	rawVals, err := vals(chrt, req.ValueFiles, req.Values, req.BaseDir, getters, "", "", "")
+// renderChart renders a manifest from the given chart and values.
+// Derived from https://github.com/helm/helm/blob/v3.5.4/cmd/helm/template.go
+func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters getter.Providers) ([]*yaml.RNode, error) {
+	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
+
+	// Load values
+	vals, err := loadValues(req, getters)
 	if err != nil {
-		return nil, errors.Wrapf(err, "load values for chart %s", chrt.Metadata.Name)
+		return nil, err
 	}
-	config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
 
-	renderedTemplates, err := renderutil.Render(chrt, config, renderOpts)
+	// Run helm install client
+	actionCfg := &action.Configuration{Capabilities: chartutil.DefaultCapabilities}
+	actionCfg.Capabilities.APIVersions = append(actionCfg.Capabilities.APIVersions, req.APIVersions...)
+	if req.KubeVersion != "" {
+		actionCfg.Capabilities.KubeVersion, err = parseKubeVersion(req.KubeVersion)
+		if err != nil {
+			return nil, err
+		}
+	}
+	client := action.NewInstall(actionCfg)
+	client.DryRun = true
+	client.Replace = true // Skip the name check
+	client.ClientOnly = true
+	client.DependencyUpdate = true
+	client.Verify = req.Verify
+	client.Keyring = req.Keyring
+	client.ReleaseName = req.Name
+	client.Namespace = req.Namespace
+	client.IncludeCRDs = !req.ExcludeCRDs
+
+	release, err := client.Run(chartRequested, vals)
 	if err != nil {
-		return nil, errors.Wrapf(err, "render chart %s", chrt.Metadata.Name)
-	}
-
-	manifests := manifest.SplitManifests(renderedTemplates)
-
-	if len(manifests) == 0 {
-		return nil, errors.Errorf("chart %s does not contain any manifests", chrt.Metadata.Name)
+		return nil, errors.Wrapf(err, "render chart %s", chartRequested.Metadata.Name)
 	}
 
 	inclusions := matcher.Any()
@@ -103,34 +104,42 @@ func renderChart(chrt *chart.Chart, req *config.ChartConfig, getters getter.Prov
 	chartHookMatcher := matcher.NewChartHookMatcher(transformer.Excludes, !req.ExcludeHooks)
 	transformer.Excludes = chartHookMatcher
 
-	r = make([]*yaml.RNode, 0, len(manifests))
-	for _, m := range sortByKind(manifests) {
-		b := filepath.Base(m.Name)
-		if b == "NOTES.txt" || strings.HasPrefix(b, "_") || whitespaceRegex.MatchString(m.Content) {
-			continue
-		}
-		transformed, err := transformer.TransformManifest(bytes.NewReader([]byte(m.Content)))
-		if err != nil {
-			return nil, errors.WithMessage(err, filepath.Base(m.Name))
-		}
-		r = append(r, transformed...)
+	manifest := release.Manifest
+	for _, hook := range release.Hooks {
+		manifest += fmt.Sprintf("\n---\n%s", hook.Manifest)
+	}
+
+	transformed, err := transformer.TransformManifest(bytes.NewReader([]byte((manifest))))
+	if err != nil {
+		return nil, err
 	}
 
 	if err = transformer.Includes.RequireAllMatched(); err != nil {
 		return nil, errors.Wrap(err, "resource inclusion")
 	}
-
 	if err = transformer.Excludes.RequireAllMatched(); err != nil {
 		return nil, errors.Wrap(err, "resource exclusion")
 	}
-
-	if len(r) == 0 {
-		return nil, errors.Errorf("no output since all resources were excluded")
+	if len(transformed) == 0 {
+		return nil, errors.Errorf("chart %s output is empty", chartRequested.Metadata.Name)
 	}
-
 	if hooks := chartHookMatcher.FoundHooks(); !req.ExcludeHooks && len(hooks) > 0 {
-		log.Printf("WARNING: The chart output contains the following hooks: %s", strings.Join(hooks, ", "))
+		log.Printf("WARNING: Chart output contains the following hooks: %s", strings.Join(hooks, ", "))
 	}
+	return transformed, nil
+}
 
-	return
+func parseKubeVersion(version string) (kv chartutil.KubeVersion, err error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return kv, errors.Wrapf(err, "invalid kubeVersion %q provided", version)
+	}
+	if v.Prerelease() != "" || v.Metadata() != "" {
+		return kv, errors.Errorf("invalid kubeVersion %q provided: unexpected version suffix", version)
+	}
+	return chartutil.KubeVersion{
+		Version: fmt.Sprintf("v%d.%d.%d", v.Major(), v.Minor(), v.Patch()),
+		Major:   strconv.FormatInt(int64(v.Major()), 10),
+		Minor:   strconv.FormatInt(int64(v.Minor()), 10),
+	}, nil
 }

@@ -1,5 +1,6 @@
-apiVersion: khelm.mgoltzsche.github.com/v1
+apiVersion: khelm.mgoltzsche.github.com/v2
 kind: ChartRenderer
 metadata:
   name: my-release-name
 chart: .
+kubeVersion: 1.17

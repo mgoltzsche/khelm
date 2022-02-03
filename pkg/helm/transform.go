@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/mgoltzsche/khelm/internal/matcher"
+	"github.com/mgoltzsche/khelm/v2/internal/matcher"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/kustomize/kyaml/openapi"
 	"sigs.k8s.io/kustomize/kyaml/yaml"

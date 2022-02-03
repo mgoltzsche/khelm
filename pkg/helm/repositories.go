@@ -15,11 +15,11 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/getter"
-	cli "k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
-	"k8s.io/helm/pkg/repo"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 type untrustedRepoError struct {
@@ -45,7 +45,7 @@ func IsUntrustedRepository(err error) bool {
 
 type repositoryConfig interface {
 	Close() error
-	HelmHome() helmpath.Home
+	FilePath() string
 	ResolveChartVersion(ctx context.Context, name, version, repo string) (*repo.ChartVersion, error)
 	Get(repo string) (*repo.Entry, error)
 	UpdateIndex(context.Context) error
@@ -67,7 +67,7 @@ func reposForURLs(repoURLs map[string]struct{}, trustAnyRepo *bool, settings *cl
 }
 
 // reposForDependencies create temporary repositories.yaml and configure settings with it.
-func reposForDependencies(deps []*chartutil.Dependency, trustAnyRepo *bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
+func reposForDependencies(deps []*chart.Dependency, trustAnyRepo *bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
 	repoURLs := map[string]struct{}{}
 	for _, d := range deps {
 		repoURLs[d.Repository] = struct{}{}
@@ -80,8 +80,8 @@ func reposForDependencies(deps []*chartutil.Dependency, trustAnyRepo *bool, sett
 }
 
 type repositories struct {
-	dir          helmpath.Home
-	repos        *repo.RepoFile
+	filePath     string
+	repos        *repo.File
 	repoURLMap   map[string]*repo.Entry
 	getters      getter.Providers
 	cacheDir     string
@@ -95,50 +95,30 @@ func (f *repositories) RequireTempHelmHome(createTemp bool) {
 
 func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (r *repositories, err error) {
 	r = &repositories{
-		dir:        settings.Home,
+		filePath:   settings.RepositoryConfig,
 		repoURLMap: map[string]*repo.Entry{},
 		getters:    getters,
-		cacheDir:   settings.Home.Cache(),
+		cacheDir:   settings.RepositoryCache,
 		indexFiles: map[string]*repo.IndexFile{},
 	}
-	if !filepath.IsAbs(string(settings.Home)) {
-		return nil, errors.Errorf("helm home must specify absolute file path but was %q", settings.Home)
+	if !filepath.IsAbs(settings.RepositoryConfig) {
+		return nil, errors.Errorf("path to repositories.yaml must be absolute but was %q", settings.RepositoryConfig)
 	}
-	repoFile := settings.Home.RepositoryFile()
-	r.repos, err = repo.LoadRepositoriesFile(repoFile)
+	r.repos, err = repo.LoadFile(settings.RepositoryConfig)
 	if err != nil {
-		if _, e := os.Stat(repoFile); e != nil && !os.IsNotExist(e) {
-			return nil, errors.Wrapf(err, "load %s", repoFile)
+		if !os.IsNotExist(errors.Cause(err)) {
+			return nil, errors.Wrapf(err, "load %s", settings.RepositoryConfig)
 		}
+		r.repos = nil
 	} else {
 		for _, e := range r.repos.Repositories {
 			r.repoURLMap[e.URL] = e
 		}
 	}
-	if err = initializeHelmHome(settings.Home); err != nil {
-		return nil, errors.Wrap(err, "initialize helm home")
+	if err = os.MkdirAll(settings.RepositoryCache, 0750); err != nil {
+		return nil, errors.Wrap(err, "create repo cache dir")
 	}
 	return r, nil
-}
-
-// initializeHelmHome initialize the helm home directory without repositories.yaml.
-// Derived from https://github.com/helm/helm/blob/v2.14.3/cmd/helm/installer/init.go
-func initializeHelmHome(home helmpath.Home) (err error) {
-	// Create directories
-	for _, dir := range []string{
-		home.String(),
-		home.Repository(),
-		home.Cache(),
-		home.LocalRepository(),
-		home.Plugins(),
-		home.Starters(),
-		home.Archive(),
-	} {
-		if err = os.MkdirAll(dir, 0750); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	return nil
 }
 
 func (f *repositories) repoIndex(ctx context.Context, entry *repo.Entry) (*repo.IndexFile, error) {
@@ -221,8 +201,8 @@ func (f *repositories) ResolveChartVersion(ctx context.Context, name, version, r
 	return cv, nil
 }
 
-func (f *repositories) HelmHome() helmpath.Home {
-	return f.dir
+func (f *repositories) FilePath() string {
+	return f.filePath
 }
 
 func (f *repositories) Apply() (repositoryConfig, error) {
@@ -247,7 +227,7 @@ func (f *repositories) Get(repo string) (*repo.Entry, error) {
 		isName = true
 	}
 	if isName && f.repos != nil {
-		if entry, _ := f.repos.Get(repo); entry != nil {
+		if entry := f.repos.Get(repo); entry != nil {
 			return entry, nil
 		}
 		return nil, errors.Errorf("repo name %q is not registered in repositories.yaml", repo)
@@ -289,9 +269,9 @@ func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, tru
 		} else if strings.HasPrefix(u, "alias:") || strings.HasPrefix(u, "@") {
 			return errors.Errorf("repository %q not found in repositories.yaml", u)
 		} else if trustAnyRepo != nil && !*trustAnyRepo || trustAnyRepo == nil && f.repos != nil {
-			err := errors.Errorf("repository %q not found in %s and usage of untrusted repositories is disabled", u, f.dir.RepositoryFile())
+			err := errors.Errorf("repository %q not found in %s and usage of untrusted repositories is disabled", u, f.filePath)
 			if f.repos == nil {
-				err = errors.Errorf("request repository %q: %s does not exist and usage of untrusted repositories is disabled", u, f.dir.RepositoryFile())
+				err = errors.Errorf("request repository %q: %s does not exist and usage of untrusted repositories is disabled", u, f.filePath)
 			}
 			return &untrustedRepoError{err}
 		}
@@ -304,7 +284,7 @@ func (f *repositories) setRepositoriesFromURLs(repoURLs map[string]struct{}, tru
 			}
 		}
 	}
-	f.repos = repo.NewRepoFile()
+	f.repos = repo.NewFile()
 	f.repos.Repositories = requiredRepos
 	newURLs := make([]string, 0, len(repoURLMap))
 	for u, knownRepo := range repoURLMap {
@@ -356,7 +336,6 @@ func (f *repositories) addRepositoryURL(repoURL string) (*repo.Entry, error) {
 		Name: name,
 		URL:  repoURL,
 	}
-	entry.Cache = indexFile(entry, f.cacheDir)
 	f.repos.Add(entry)
 	f.repoURLMap[entry.URL] = entry
 	f.entriesAdded = true
@@ -365,55 +344,29 @@ func (f *repositories) addRepositoryURL(repoURL string) (*repo.Entry, error) {
 
 type tempRepositories struct {
 	*repositories
-	tmpDir helmpath.Home
+	tmpFile string
 }
 
-func newTempRepositories(r *repositories) (tmp *tempRepositories, err error) {
-	tmpDir, err := ioutil.TempDir("", "helm-home-")
+func newTempRepositories(r *repositories) (*tempRepositories, error) {
+	tmpFile, err := ioutil.TempFile("", "helm-repositories-")
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	defer func() {
-		if err != nil {
-			_ = os.RemoveAll(tmpDir)
-		}
-	}()
-	for _, dir := range []string{filepath.Join("repository", "cache"), filepath.Join("cache", "archive")} {
-		cacheDir := filepath.Join(string(r.dir), dir)
-		err = os.MkdirAll(filepath.Dir(cacheDir), 0750)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		tmpCacheLink := filepath.Join(tmpDir, dir)
-		err = os.MkdirAll(filepath.Dir(tmpCacheLink), 0750)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		err = os.Symlink(cacheDir, tmpCacheLink)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-	}
-	tmpHome := helmpath.Home(tmpDir)
-	reposFile := tmpHome.RepositoryFile()
-	err = r.repos.WriteFile(reposFile, 0640)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return &tempRepositories{r, tmpHome}, nil
+	_ = tmpFile.Close()
+	err = r.repos.WriteFile(tmpFile.Name(), 0640)
+	return &tempRepositories{r, tmpFile.Name()}, err
 }
 
-func (f *tempRepositories) HelmHome() helmpath.Home {
-	return f.tmpDir
+func (f *tempRepositories) FilePath() string {
+	return f.tmpFile
 }
 
 func (f *tempRepositories) Close() error {
-	return os.Remove(string(f.tmpDir))
+	return os.Remove(f.tmpFile)
 }
 
 func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, getters getter.Providers) error {
 	log.Printf("Downloading repository index of %s", entry.URL)
-
 	idxFile := indexFile(entry, cacheDir)
 	err := os.MkdirAll(filepath.Dir(idxFile), 0750)
 	if err != nil {
@@ -438,13 +391,14 @@ func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, 
 			}
 		}()
 		tmpEntry := *entry
-		tmpEntry.Cache = tmpIdxFileName
+		tmpEntry.Name = filepath.Base(tmpIdxFileName)
 		r, err := repo.NewChartRepository(&tmpEntry, getters)
 		if err != nil {
 			err = errors.WithStack(err)
 			return
 		}
-		err = r.DownloadIndexFile(cacheDir)
+		r.CachePath = filepath.Dir(tmpIdxFileName)
+		tmpIdxFileName, err = r.DownloadIndexFile()
 		if err != nil {
 			err = errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", entry.URL)
 			return
@@ -462,13 +416,7 @@ func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, 
 }
 
 func indexFile(entry *repo.Entry, cacheDir string) string {
-	if entry.Cache != "" {
-		if !filepath.IsAbs(entry.Cache) {
-			return filepath.Join(cacheDir, entry.Cache)
-		}
-		return entry.Cache
-	}
-	return filepath.Join(cacheDir, fmt.Sprintf("%s-index.yaml", entry.Name))
+	return filepath.Join(cacheDir, helmpath.CacheIndexFile(entry.Name))
 }
 
 func urlToHash(str string) (string, error) {

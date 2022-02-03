@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: v2
 description: example chart with resource with empty annotations field. This is to verify that the kpt function maps paths reliably
 name: empty-annotations
 version: 0.1.0

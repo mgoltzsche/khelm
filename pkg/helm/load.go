@@ -9,15 +9,14 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/mgoltzsche/khelm/pkg/config"
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/pkg/errors"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/getter"
-	cli "k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/renderutil"
-	"k8s.io/helm/pkg/resolver"
+	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/downloader"
+	"helm.sh/helm/v3/pkg/getter"
 )
 
 // loadChart loads chart from local or remote location
@@ -46,15 +45,6 @@ func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*c
 	if err != nil {
 		return nil, err
 	}
-	// TODO: remove this in helm 3
-	repos, err = repos.Apply()
-	if err != nil {
-		return nil, err
-	}
-	defer repos.Close()
-	settings := h.Settings
-	settings.Home = repos.HelmHome()
-
 	isRange, err := isVersionRange(cfg.Version)
 	if err != nil {
 		return nil, err
@@ -64,22 +54,22 @@ func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*c
 			return nil, err
 		}
 	}
-	chartPath, err := locateChart(ctx, &cfg.LoaderConfig, repos, &settings, h.Getters)
+	chartPath, err := locateChart(ctx, &cfg.LoaderConfig, repos, &h.Settings, h.Getters)
 	if err != nil {
 		return nil, err
 	}
-	return chartutil.Load(chartPath)
+	return loader.Load(chartPath)
 }
 
 func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
 	chartPath := absPath(cfg.Chart, cfg.BaseDir)
-	chartRequested, err := chartutil.Load(chartPath)
+	chartRequested, err := loader.Load(chartPath)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	localCharts := make([]localChart, 0, 1)
-	dependencies := make([]*chartutil.Dependency, 0)
+	dependencies := make([]*chart.Dependency, 0)
 	needsRepoIndexUpdate, err := collectCharts(chartRequested, chartPath, cfg, &localCharts, &dependencies, 0)
 	if err != nil {
 		return nil, err
@@ -97,7 +87,7 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConf
 	}
 	defer repos.Close()
 	settings := h.Settings
-	settings.Home = repos.HelmHome()
+	settings.RepositoryConfig = repos.FilePath()
 
 	// Download/update repo indices
 	if needsRepoIndexUpdate {
@@ -116,7 +106,7 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConf
 	}
 	// Reload the chart with the updated Chart.lock file
 	if needsReload {
-		chartRequested, err = chartutil.Load(chartPath)
+		chartRequested, err = loader.Load(chartPath)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed reloading chart %s after dependency download", cfg.Chart)
 		}
@@ -143,11 +133,9 @@ type localChart struct {
 	Chart             *chart.Chart
 	Path              string
 	LocalDependencies bool
-	Requirements      *chartutil.Requirements
-	RequirementsLock  *chartutil.RequirementsLock
 }
 
-func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *config.ChartConfig, localCharts *[]localChart, deps *[]*chartutil.Dependency, depth int) (needsRepoIndexUpdate bool, err error) {
+func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *config.ChartConfig, localCharts *[]localChart, deps *[]*chart.Dependency, depth int) (needsRepoIndexUpdate bool, err error) {
 	if depth > 20 {
 		return false, errors.New("collect local charts recursively: max depth of 20 reached - cyclic dependency?")
 	}
@@ -156,25 +144,14 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *config.Ch
 		return false, errors.Errorf("chart %s has no metadata", chartPath)
 	}
 	name := fmt.Sprintf("%s %s", meta.Name, meta.Version)
-	lock, err := chartutil.LoadRequirementsLock(chartRequested)
-	if err != nil && err != chartutil.ErrLockfileNotFound {
-		return false, errors.WithStack(err)
-	}
-	req, err := chartutil.LoadRequirements(chartRequested)
-	if err != nil && err != chartutil.ErrRequirementsNotFound {
-		return false, errors.WithStack(err)
-	}
-	var reqDeps []*chartutil.Dependency
-	if req != nil && req.Dependencies != nil {
-		reqDeps = req.Dependencies
-	}
+	reqDeps := chartRequested.Metadata.Dependencies
 	hasLocalDependencies := false
 	for _, dep := range reqDeps {
 		if strings.HasPrefix(dep.Repository, "file://") {
 			hasLocalDependencies = true
 			depChartPath := strings.TrimPrefix(dep.Repository, "file://")
 			depChartPath = absPath(depChartPath, chartPath)
-			depChart, err := chartutil.LoadDir(depChartPath)
+			depChart, err := loader.LoadDir(depChartPath)
 			if err != nil {
 				return false, errors.Wrapf(err, "load chart %s dependency %s from dir %s", name, dep.Name, depChartPath)
 			}
@@ -187,7 +164,7 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *config.Ch
 			}
 		} else if strings.HasPrefix(dep.Repository, "https://") || strings.HasPrefix(dep.Repository, "http://") {
 			*deps = append(*deps, dep)
-			if lock == nil {
+			if chartRequested.Lock == nil {
 				// Update repo index when remote dependencies present but no lock file
 				needsRepoIndexUpdate = true
 			}
@@ -197,18 +174,13 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *config.Ch
 		Chart:             chartRequested,
 		Path:              chartPath,
 		LocalDependencies: hasLocalDependencies,
-		Requirements:      req,
-		RequirementsLock:  lock,
 	})
 	return needsRepoIndexUpdate, nil
 }
 
 func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *config.LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (needsReload bool, err error) {
 	for _, ch := range localCharts {
-		if ch.Requirements == nil {
-			continue
-		}
-		if err = renderutil.CheckDependencies(ch.Chart, ch.Requirements); err != nil || ch.LocalDependencies {
+		if err = action.CheckDependencies(ch.Chart, ch.Chart.Metadata.Dependencies); err != nil || ch.LocalDependencies {
 			needsReload = true
 			meta := ch.Chart.Metadata
 			if meta == nil {
@@ -216,26 +188,29 @@ func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *config
 			}
 			name := fmt.Sprintf("%s %s", meta.Name, meta.Version)
 			log.Printf("Building/fetching chart %s dependencies", name)
-			if lock := ch.RequirementsLock; lock != nil {
-				if sum, err := resolver.HashReq(ch.Requirements); err != nil || sum != lock.Digest {
-					errMsg := fmt.Sprintf("chart %s requirements.lock is out of sync with requirements.yaml", meta.Name)
-					if !cfg.ReplaceLockFile {
-						return false, errors.Errorf("%s (enable replaceLockFile to ignore this error)", errMsg)
-					}
-					log.Printf("WARNING: %s - removing it and reloading dependencies", errMsg)
-					ch.RequirementsLock = nil
-					if err = os.RemoveAll(filepath.Join(ch.Path, "charts")); err != nil {
-						return false, errors.WithStack(err)
-					}
-					if err = os.RemoveAll(filepath.Join(ch.Path, "tmpcharts")); err != nil {
-						return false, errors.WithStack(err)
-					}
-					if err = os.Remove(filepath.Join(ch.Path, "requirements.lock")); err != nil {
-						return false, errors.WithStack(err)
-					}
-				}
-			}
+
 			if err = buildChartDependencies(ctx, ch.Chart, ch.Path, cfg, repos, settings, getters); err != nil {
+				depErrSuffix := ". Please update the dependencies"
+				if strings.HasSuffix(err.Error(), depErrSuffix) {
+					err = errors.Wrapf(err, "build chart %s", name)
+					if !cfg.ReplaceLockFile {
+						return false, errors.Errorf("%s (enable replaceLockFile for auto-update)", err)
+					}
+					errMsg := err.Error()
+					errMsg = errMsg[:len(errMsg)-len(depErrSuffix)]
+					log.Printf("WARNING: %s - removing it and reloading dependencies", errMsg)
+					ch.Chart.Lock = nil
+					for _, f := range []string{"Chart.lock", "requirements.lock", "charts", "tmpcharts"} {
+						if err = os.RemoveAll(filepath.Join(ch.Path, f)); err != nil {
+							return false, errors.WithStack(err)
+						}
+					}
+					err = buildChartDependencies(ctx, ch.Chart, ch.Path, cfg, repos, settings, getters)
+					if err != nil {
+						return false, errors.Wrapf(err, "build chart %s", name)
+					}
+					continue
+				}
 				return false, errors.Wrapf(err, "build chart %s", name)
 			}
 		}
@@ -245,13 +220,14 @@ func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *config
 
 func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, chartPath string, cfg *config.LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) error {
 	man := &downloader.Manager{
-		Out:        log.Writer(),
-		ChartPath:  chartPath,
-		Keyring:    cfg.Keyring,
-		SkipUpdate: true,
-		Getters:    getters,
-		HelmHome:   settings.Home,
-		Debug:      settings.Debug,
+		Out:              log.Writer(),
+		ChartPath:        chartPath,
+		Keyring:          cfg.Keyring,
+		SkipUpdate:       true,
+		Getters:          getters,
+		RepositoryConfig: settings.RepositoryConfig,
+		RepositoryCache:  settings.RepositoryCache,
+		Debug:            settings.Debug,
 	}
 	if cfg.Verify {
 		man.Verify = downloader.VerifyAlways
@@ -261,7 +237,6 @@ func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, ch
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
 	// Downloads dependencies - respecting requirements.lock if present
 	err = man.Build()
 	if err != nil && errors.Cause(err).Error() == "entry not found" {

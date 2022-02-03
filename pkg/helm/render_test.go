@@ -15,15 +15,14 @@ import (
 	"testing"
 	"time"
 
-	helmyaml "github.com/ghodss/yaml"
-	"github.com/mgoltzsche/khelm/pkg/config"
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/stretchr/testify/require"
-	"k8s.io/helm/pkg/getter"
-	cli "k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/repo"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
+	helmyaml "sigs.k8s.io/yaml"
 )
 
 var rootDir = func() string {
@@ -190,21 +189,16 @@ func TestRenderRebuildsLocalDependencies(t *testing.T) {
 }
 
 func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "khelm-test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
+	settings := cli.New()
 	repoURL := "https://charts.rook.io/stable"
 	trust := true
-	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &trust, &settings, getter.All(settings))
+	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &trust, settings, getter.All(settings))
 	require.NoError(t, err, "use repo")
 	entry, err := repos.Get(repoURL)
 	require.NoError(t, err, "repos.EntryByURL()")
 	err = repos.Close()
 	require.NoError(t, err, "repos.Close()")
-	err = os.MkdirAll(settings.Home.Cache(), 0755)
-	require.NoError(t, err)
-	idxFile := indexFile(entry, settings.Home.Cache())
+	idxFile := indexFile(entry, settings.RepositoryCache)
 	idx := repo.NewIndexFile() // write empty index file to cause not found error
 	err = idx.WriteFile(idxFile, 0644)
 	require.NoError(t, err, "write empty index file")
@@ -215,21 +209,16 @@ func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
 }
 
 func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "khelm-test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-	settings := cli.EnvSettings{Home: helmpath.Home(tmpDir)}
+	settings := cli.New()
 	repoURL := "https://kubernetes-charts.storage.googleapis.com"
 	trust := true
-	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &trust, &settings, getter.All(settings))
+	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &trust, settings, getter.All(settings))
 	require.NoError(t, err, "use repo")
 	entry, err := repos.Get(repoURL)
 	require.NoError(t, err, "repos.Get()")
 	err = repos.Close()
 	require.NoError(t, err, "repos.Close()")
-	err = os.MkdirAll(settings.Home.Cache(), 0755)
-	require.NoError(t, err)
-	idxFile := indexFile(entry, settings.Home.Cache())
+	idxFile := indexFile(entry, settings.RepositoryCache)
 	idx := repo.NewIndexFile() // write empty index file to cause not found error
 	err = idx.WriteFile(idxFile, 0644)
 	require.NoError(t, err, "write empty index file")
@@ -271,7 +260,7 @@ func TestRenderNoDigest(t *testing.T) {
 	err = os.Setenv("HELM_HOME", tmpHelmHome)
 	require.NoError(t, err)
 	defer os.Setenv("HELM_HOME", origHelmHome)
-	repos := repo.NewRepoFile()
+	repos := repo.NewFile()
 	repos.Add(repoEntry)
 	b, err := yaml.Marshal(repos)
 	require.NoError(t, err)
@@ -315,7 +304,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	err = os.Setenv("HELM_HOME", tmpHelmHome)
 	require.NoError(t, err)
 	defer os.Setenv("HELM_HOME", origHelmHome)
-	repos := repo.NewRepoFile()
+	repos := repo.NewFile()
 	repos.Add(repoEntry)
 	b, err := yaml.Marshal(repos)
 	require.NoError(t, err)
@@ -357,11 +346,10 @@ func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, re
 	switch req.RequestURI {
 	case "/index.yaml":
 		idx := repo.NewIndexFile()
-		idx.APIVersion = "v1"
+		idx.APIVersion = "v2"
 		idx.Entries = map[string]repo.ChartVersions{
 			f.config.Chart: {{
 				Metadata: &chart.Metadata{
-					ApiVersion: "v1",
 					AppVersion: f.config.Version,
 					Version:    f.config.Version,
 					Name:       f.config.Chart,

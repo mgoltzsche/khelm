@@ -48,7 +48,7 @@ jobs:
       id: extract_helm_version
       run: |
         printf '::set-output name=helm_version::' &&
-        grep k8s\.io/helm go.mod | sed -E -e 's!k8s\.io/helm|\s+|\+.*!!g; s!^v!!' | cut -d " " -f2 | grep -E .+
+        grep helm\.sh/helm/ go.mod | sed -E -e 's!helm\.sh/helm/v3|\s+|\+.*!!g; s!^v!!' | cut -d " " -f2 | grep -E .+
 
     - name: Dry-run release
       run: make snapshot

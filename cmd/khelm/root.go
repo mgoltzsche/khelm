@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mgoltzsche/khelm/pkg/helm"
+	"github.com/mgoltzsche/khelm/v2/pkg/helm"
 	"github.com/spf13/cobra"
 )
 

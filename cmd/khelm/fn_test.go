@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mgoltzsche/khelm/internal/output"
-	"github.com/mgoltzsche/khelm/pkg/config"
+	"github.com/mgoltzsche/khelm/v2/internal/output"
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/kustomize/kyaml/yaml"

@@ -1,6 +1,7 @@
 apiVersion: v1
+### Linkerd Namespace
 ###
-kind: Namespace ###
+kind: Namespace # Source: linkerd2/templates/namespace.yaml
 metadata:
   annotations:
     linkerd.io/inject: disabled
@@ -147,8 +148,9 @@ spec:
     subresources:
       status: {}
 ---
+### Service Profile CRD
 ###
-apiVersion: apiextensions.k8s.io/v1 ###
+apiVersion: apiextensions.k8s.io/v1 # Source: linkerd2/templates/serviceprofile-crd.yaml
 kind: CustomResourceDefinition
 metadata:
   annotations:
@@ -432,9 +434,8 @@ spec:
     served: true
     storage: true
 ---
-### Copied from github.com/servicemeshinterface/smi-sdk-go/blob/d4e76b1cd7a33ead5f38d1262dd838a31c80f4e5/crds/split.yaml
 ###
-apiVersion: apiextensions.k8s.io/v1 ###
+apiVersion: apiextensions.k8s.io/v1 # Source: linkerd2/templates/trafficsplit-crd.yaml
 kind: CustomResourceDefinition
 metadata:
   annotations:
@@ -510,9 +511,10 @@ spec:
     storage: true
 ---
 apiVersion: v1
+###
 ### Grafana RBAC
 ###
-kind: ServiceAccount ###
+kind: ServiceAccount # Source: linkerd-viz/templates/grafana-rbac.yaml
 metadata:
   labels:
     component: grafana
@@ -528,7 +530,7 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd2/templates/controller-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: controller
@@ -537,7 +539,7 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd2/templates/destination-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: destination
@@ -546,7 +548,7 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd2/templates/heartbeat-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: heartbeat
@@ -555,7 +557,7 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd2/templates/identity-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: identity
@@ -564,7 +566,7 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd2/templates/proxy-injector-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: proxy-injector
@@ -573,7 +575,7 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd2/templates/sp-validator-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: sp-validator
@@ -582,7 +584,7 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd-viz/templates/metrics-api-rbac.yaml
 metadata:
   labels:
     component: metrics-api
@@ -591,7 +593,7 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd-viz/templates/prometheus-rbac.yaml
 metadata:
   labels:
     component: prometheus
@@ -601,7 +603,7 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd-viz/templates/tap-rbac.yaml
 metadata:
   labels:
     component: tap
@@ -611,13 +613,13 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd-viz/templates/tap-injector-rbac.yaml
 metadata:
   name: tap-injector
   namespace: linkerd
 ---
 apiVersion: v1
-kind: ServiceAccount
+kind: ServiceAccount # Source: linkerd-viz/templates/web-rbac.yaml
 metadata:
   labels:
     component: web
@@ -626,8 +628,9 @@ metadata:
   name: web
   namespace: linkerd
 ---
+### Control Plane PSP
 ###
-apiVersion: policy/v1beta1 ###
+apiVersion: policy/v1beta1 # Source: linkerd2/templates/psp.yaml
 kind: PodSecurityPolicy
 metadata:
   labels:
@@ -750,8 +753,9 @@ rules:
   - update
   - watch
 ---
+### Heartbeat RBAC
 ###
-apiVersion: rbac.authorization.k8s.io/v1 ###
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd2/templates/heartbeat-rbac.yaml
 kind: Role
 metadata:
   labels:
@@ -768,7 +772,7 @@ rules:
   verbs:
   - get
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd2/templates/psp.yaml
 kind: Role
 metadata:
   labels:
@@ -786,9 +790,8 @@ rules:
   verbs:
   - use
 ---
-### Web RBAC
 ###
-apiVersion: rbac.authorization.k8s.io/v1 ###
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd-viz/templates/web-rbac.yaml
 kind: Role
 metadata:
   labels:
@@ -827,7 +830,7 @@ rules:
   verbs:
   - list
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd2/templates/heartbeat-rbac.yaml
 kind: ClusterRole
 metadata:
   labels:
@@ -848,8 +851,9 @@ rules:
   - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+### Controller RBAC
 ###
-kind: ClusterRole ###
+kind: ClusterRole # Source: linkerd2/templates/controller-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: controller
@@ -908,8 +912,9 @@ rules:
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+### Destination Controller Service
 ###
-kind: ClusterRole ###
+kind: ClusterRole # Source: linkerd2/templates/destination-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: destination
@@ -962,8 +967,9 @@ rules:
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+### Identity Controller Service RBAC
 ###
-kind: ClusterRole ###
+kind: ClusterRole # Source: linkerd2/templates/identity-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: identity
@@ -991,9 +997,10 @@ rules:
   - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+###
 ### Metrics API RBAC
 ###
-kind: ClusterRole ###
+kind: ClusterRole # Source: linkerd-viz/templates/metrics-api-rbac.yaml
 metadata:
   labels:
     component: metrics-api
@@ -1052,9 +1059,10 @@ rules:
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+###
 ### Prometheus RBAC
 ###
-kind: ClusterRole ###
+kind: ClusterRole # Source: linkerd-viz/templates/prometheus-rbac.yaml
 metadata:
   labels:
     component: prometheus
@@ -1073,8 +1081,9 @@ rules:
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+### Proxy Injector RBAC
 ###
-kind: ClusterRole ###
+kind: ClusterRole # Source: linkerd2/templates/proxy-injector-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: proxy-injector
@@ -1128,8 +1137,9 @@ rules:
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+### Service Profile Validator RBAC
 ###
-kind: ClusterRole ###
+kind: ClusterRole # Source: linkerd2/templates/sp-validator-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: sp-validator
@@ -1144,9 +1154,10 @@ rules:
   - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+###
 ### Tap RBAC
 ###
-kind: ClusterRole ###
+kind: ClusterRole # Source: linkerd-viz/templates/tap-rbac.yaml
 metadata:
   labels:
     component: tap
@@ -1189,7 +1200,7 @@ rules:
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: ClusterRole # Source: linkerd-viz/templates/tap-rbac.yaml
 metadata:
   labels:
     component: tap
@@ -1203,7 +1214,7 @@ rules:
   verbs:
   - watch
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd-viz/templates/web-rbac.yaml
 kind: ClusterRole
 metadata:
   labels:
@@ -1218,7 +1229,7 @@ rules:
   verbs:
   - list
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd-viz/templates/web-rbac.yaml
 kind: ClusterRole
 metadata:
   labels:
@@ -1266,9 +1277,10 @@ rules:
   - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+###
 ### Tap Injector RBAC
 ###
-kind: ClusterRole ###
+kind: ClusterRole # Source: linkerd-viz/templates/tap-injector-rbac.yaml
 metadata:
   labels:
     linkerd.io/extension: viz
@@ -1283,7 +1295,7 @@ rules:
   - list
   - watch
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd-viz/templates/tap-rbac.yaml
 kind: RoleBinding
 metadata:
   labels:
@@ -1315,7 +1327,7 @@ subjects:
   name: ktransform
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd2/templates/heartbeat-rbac.yaml
 kind: RoleBinding
 metadata:
   labels:
@@ -1331,7 +1343,7 @@ subjects:
   name: linkerd-heartbeat
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd2/templates/psp.yaml
 kind: RoleBinding
 metadata:
   labels:
@@ -1362,7 +1374,7 @@ subjects:
   name: linkerd-sp-validator
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd-viz/templates/psp.yaml
 kind: RoleBinding
 metadata:
   labels:
@@ -1388,7 +1400,7 @@ subjects:
   name: prometheus
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd-viz/templates/web-rbac.yaml
 kind: RoleBinding
 metadata:
   labels:
@@ -1406,7 +1418,7 @@ subjects:
   name: web
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd2/templates/heartbeat-rbac.yaml
 kind: ClusterRoleBinding
 metadata:
   labels:
@@ -1422,7 +1434,7 @@ subjects:
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRoleBinding # Source: linkerd2/templates/controller-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: controller
@@ -1438,7 +1450,7 @@ subjects:
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRoleBinding # Source: linkerd2/templates/destination-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: destination
@@ -1454,7 +1466,7 @@ subjects:
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRoleBinding # Source: linkerd2/templates/identity-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: identity
@@ -1470,7 +1482,7 @@ subjects:
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRoleBinding # Source: linkerd-viz/templates/metrics-api-rbac.yaml
 metadata:
   labels:
     component: metrics-api
@@ -1486,7 +1498,7 @@ subjects:
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRoleBinding # Source: linkerd-viz/templates/prometheus-rbac.yaml
 metadata:
   labels:
     component: prometheus
@@ -1502,7 +1514,7 @@ subjects:
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRoleBinding # Source: linkerd2/templates/proxy-injector-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: proxy-injector
@@ -1519,7 +1531,7 @@ subjects:
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRoleBinding # Source: linkerd2/templates/sp-validator-rbac.yaml
 metadata:
   labels:
     linkerd.io/control-plane-component: sp-validator
@@ -1536,7 +1548,7 @@ subjects:
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRoleBinding # Source: linkerd-viz/templates/tap-rbac.yaml
 metadata:
   labels:
     component: tap
@@ -1551,7 +1563,7 @@ subjects:
   name: tap
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd-viz/templates/tap-rbac.yaml
 kind: ClusterRoleBinding
 metadata:
   labels:
@@ -1568,7 +1580,7 @@ subjects:
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRoleBinding # Source: linkerd-viz/templates/web-rbac.yaml
 metadata:
   labels:
     component: web
@@ -1583,7 +1595,7 @@ subjects:
   name: web
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd-viz/templates/web-rbac.yaml
 kind: ClusterRoleBinding
 metadata:
   labels:
@@ -1599,7 +1611,7 @@ subjects:
   name: web
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1 # Source: linkerd-viz/templates/web-rbac.yaml
 kind: ClusterRoleBinding
 metadata:
   labels:
@@ -1616,7 +1628,7 @@ subjects:
   namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRoleBinding # Source: linkerd-viz/templates/tap-injector-rbac.yaml
 metadata:
   labels:
     linkerd.io/extension: viz
@@ -1672,9 +1684,10 @@ data:
     check_for_updates = false
     [panels]
     disable_sanitize_html = true
+###
 ### Grafana
 ###
-kind: ConfigMap ###
+kind: ConfigMap # Source: linkerd-viz/templates/grafana.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -1841,7 +1854,7 @@ data:
         limit: 250Mi
         request: 50Mi
     webhookFailurePolicy: Fail
-kind: ConfigMap
+kind: ConfigMap # Source: linkerd2/templates/config.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -1985,9 +1998,10 @@ data:
       # Copy tmp labels into real labels
       - action: labelmap
         regex: __tmp_pod_label_(.+)
+###
 ### Prometheus
 ###
-kind: ConfigMap ###
+kind: ConfigMap # Source: linkerd-viz/templates/prometheus.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -1999,7 +2013,7 @@ metadata:
   namespace: linkerd
 ---
 apiVersion: v1
-kind: Service
+kind: Service # Source: linkerd-viz/templates/grafana.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2020,8 +2034,9 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
+### Controller
 ###
-kind: Service ###
+kind: Service # Source: linkerd2/templates/controller.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2040,8 +2055,9 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
+### Destination Controller Service
 ###
-kind: Service ###
+kind: Service # Source: linkerd2/templates/destination.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2060,7 +2076,7 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
-kind: Service
+kind: Service # Source: linkerd2/templates/destination.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2079,7 +2095,7 @@ spec:
     linkerd.io/control-plane-component: destination
 ---
 apiVersion: v1
-kind: Service
+kind: Service # Source: linkerd2/templates/identity.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2098,7 +2114,7 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
-kind: Service
+kind: Service # Source: linkerd2/templates/identity.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2117,7 +2133,7 @@ spec:
     linkerd.io/control-plane-component: identity
 ---
 apiVersion: v1
-kind: Service
+kind: Service # Source: linkerd2/templates/proxy-injector.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2136,8 +2152,9 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
+### Service Profile Validator
 ###
-kind: Service ###
+kind: Service # Source: linkerd2/templates/sp-validator.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2156,9 +2173,10 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
+###
 ### Metrics API
 ###
-kind: Service ###
+kind: Service # Source: linkerd-viz/templates/metrics-api.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2178,7 +2196,7 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
-kind: Service
+kind: Service # Source: linkerd-viz/templates/prometheus.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2199,9 +2217,10 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
+###
 ### Tap
 ###
-kind: Service ###
+kind: Service # Source: linkerd-viz/templates/tap.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2225,9 +2244,10 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
+###
 ### Tap Injector
 ###
-kind: Service ###
+kind: Service # Source: linkerd-viz/templates/tap-injector.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2247,9 +2267,10 @@ spec:
   type: ClusterIP
 ---
 apiVersion: v1
+###
 ### Web
 ###
-kind: Service ###
+kind: Service # Source: linkerd-viz/templates/web.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -2272,7 +2293,7 @@ spec:
     linkerd.io/extension: viz
   type: ClusterIP
 ---
-apiVersion: apps/v1
+apiVersion: apps/v1 # Source: linkerd-viz/templates/grafana.yaml
 kind: Deployment
 metadata:
   annotations:
@@ -3619,7 +3640,7 @@ spec:
           medium: Memory
         name: linkerd-identity-end-entity
 ---
-apiVersion: apps/v1
+apiVersion: apps/v1 # Source: linkerd-viz/templates/metrics-api.yaml
 kind: Deployment
 metadata:
   annotations:
@@ -3698,7 +3719,7 @@ spec:
         beta.kubernetes.io/os: linux
       serviceAccountName: metrics-api
 ---
-apiVersion: apps/v1
+apiVersion: apps/v1 # Source: linkerd-viz/templates/prometheus.yaml
 kind: Deployment
 metadata:
   annotations:
@@ -3966,7 +3987,7 @@ spec:
         secret:
           secretName: linkerd-apiservice-tls
 ---
-apiVersion: apps/v1
+apiVersion: apps/v1 # Source: linkerd-viz/templates/web.yaml
 kind: Deployment
 metadata:
   annotations:
@@ -4036,8 +4057,9 @@ spec:
         beta.kubernetes.io/os: linux
       serviceAccountName: web
 ---
+### Heartbeat
 ###
-apiVersion: batch/v1beta1 ###
+apiVersion: batch/v1beta1 # Source: linkerd2/templates/heartbeat.yaml
 kind: CronJob
 metadata:
   annotations:
@@ -4090,7 +4112,7 @@ spec:
   successfulJobsHistoryLimit: 0
 ---
 apiVersion: policy/v1beta1
-kind: PodDisruptionBudget
+kind: PodDisruptionBudget # Source: linkerd2/templates/controller.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -4106,7 +4128,7 @@ spec:
       linkerd.io/control-plane-component: controller
 ---
 apiVersion: policy/v1beta1
-kind: PodDisruptionBudget
+kind: PodDisruptionBudget # Source: linkerd2/templates/destination.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -4122,7 +4144,7 @@ spec:
       linkerd.io/control-plane-component: destination
 ---
 apiVersion: policy/v1beta1
-kind: PodDisruptionBudget
+kind: PodDisruptionBudget # Source: linkerd2/templates/identity.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -4138,7 +4160,7 @@ spec:
       linkerd.io/control-plane-component: identity
 ---
 apiVersion: policy/v1beta1
-kind: PodDisruptionBudget
+kind: PodDisruptionBudget # Source: linkerd2/templates/proxy-injector.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -4154,7 +4176,7 @@ spec:
       linkerd.io/control-plane-component: proxy-injector
 ---
 apiVersion: policy/v1beta1
-kind: PodDisruptionBudget
+kind: PodDisruptionBudget # Source: linkerd2/templates/sp-validator.yaml
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm edge-21.3.1
@@ -4169,7 +4191,7 @@ spec:
     matchLabels:
       linkerd.io/control-plane-component: sp-validator
 ---
-apiVersion: apiregistration.k8s.io/v1
+apiVersion: apiregistration.k8s.io/v1 # Source: linkerd-viz/templates/tap-rbac.yaml
 kind: APIService
 metadata:
   labels:

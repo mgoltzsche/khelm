@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/mgoltzsche/khelm/pkg/config"
-	"github.com/mgoltzsche/khelm/pkg/helm"
+	"github.com/mgoltzsche/khelm/v2/pkg/config"
+	"github.com/mgoltzsche/khelm/v2/pkg/helm"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 

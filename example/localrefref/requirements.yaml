@@ -1,4 +1,0 @@
-dependencies:
-- name: intermediate-chart
-  version: "~0.1.0"
-  repository: "file://../localref/intermediate-chart"

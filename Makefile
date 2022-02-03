@@ -19,7 +19,7 @@ BATS = $(BIN_DIR)/bats
 
 REV := $(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
 VERSION ?= $(shell echo "$$(git describe --exact-match --tags $(git log -n1 --pretty='%h') 2> /dev/null || echo dev)-$(REV)" | sed 's/^v//')
-HELM_VERSION := $(shell grep k8s\.io/helm go.mod | sed -E -e 's!k8s\.io/helm|\s+|\+.*!!g; s!^v!!' | cut -d " " -f2 | grep -E .+)
+HELM_VERSION := $(shell grep helm\.sh/helm/ go.mod | sed -E -e 's!helm\.sh/helm/v3|\s+|\+.*!!g; s!^v!!' | cut -d " " -f2 | grep -E .+)
 GO_LDFLAGS := -X main.khelmVersion=$(VERSION) -X main.helmVersion=$(HELM_VERSION) -s -w -extldflags '-static'
 BUILDTAGS ?= 
 CGO_ENABLED ?= 0
@@ -62,6 +62,8 @@ clean:
 	rm -f $(BUILD_DIR)/bin/khelm-static
 	rm -rf example/localrefref/charts
 	rm -rf example/kpt/linkerd/dep
+	# TODO: fix "invalid trailing UTF-8 octet" yaml parser error
+	rm -f example/kpt/test-cases/output-remote.yaml
 
 clean-all: clean
 	rm -rf $(BUILD_DIR)
