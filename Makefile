@@ -12,10 +12,10 @@ export HELM_SECRETS_SOPS_BIN := $(SOPS)
 export HELM_PLUGINS := $(BUILD_DIR)/helm-plugins
 
 GORELEASER_VERSION ?= v0.182.1
-GOLANGCI_LINT_VERSION ?= v1.42.1
+GOLANGCI_LINT_VERSION ?= v1.45.2
 KPT_VERSION ?= v0.39.2
-KUSTOMIZE_VERSION ?= v4.1.3
-BATS_VERSION = v1.3.0
+KUSTOMIZE_VERSION ?= v4.5.4
+BATS_VERSION = v1.6.0
 SOPS_VERSION = v3.7.2
 HELM_SECRETS_VERSION = v3.13.0
 
@@ -137,7 +137,7 @@ TMP_DIR=$$(mktemp -d) ;\
 cd $$TMP_DIR ;\
 go mod init tmp ;\
 echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/build/bin go get $(2) ;\
+GOBIN=$(PROJECT_DIR)/build/bin go install $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
