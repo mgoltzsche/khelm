@@ -431,3 +431,12 @@ func readYaml(y []byte) (l []map[string]interface{}, err error) {
 	}
 	return
 }
+
+func TestRenderValueFilesProtocol(t *testing.T) {
+	file := filepath.Join(rootDir, "example/helm-secrets/generator.yaml")
+	os.Setenv("SOPS_AGE_KEY_FILE", filepath.Join(rootDir, "example/helm-secrets/age.txt"))
+	origHelmConfigHome := os.Getenv("HELM_CONFIG_HOME")
+	defer os.Setenv("HELM_CONFIG_HOME", origHelmConfigHome)
+	err := renderFile(t, file, true, rootDir, &bytes.Buffer{})
+	require.NoError(t, err, "render chart with valueFile protocol")
+}

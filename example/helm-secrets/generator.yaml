@@ -1,0 +1,10 @@
+apiVersion: khelm.mgoltzsche.github.com/v2
+kind: ChartRenderer
+metadata:
+  name: helm-secrets
+  namespace: helm-secrets
+repository: https://charts.helm.sh/stable
+chart: jenkins
+version: 0.32.4
+valueFiles:
+  - secrets://secrets.yaml

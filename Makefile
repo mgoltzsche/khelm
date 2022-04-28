@@ -7,12 +7,17 @@ GOLANGCI_LINT = $(BIN_DIR)/golangci-lint
 GORELEASER = $(BIN_DIR)/goreleaser
 KPT := $(BIN_DIR)/kpt
 KUSTOMIZE := $(BIN_DIR)/kustomize
+SOPS := $(BIN_DIR)/sops
+export HELM_SECRETS_SOPS_BIN := $(SOPS)
+export HELM_PLUGINS := $(BUILD_DIR)/helm-plugins
 
 GORELEASER_VERSION ?= v0.182.1
 GOLANGCI_LINT_VERSION ?= v1.42.1
 KPT_VERSION ?= v0.39.2
 KUSTOMIZE_VERSION ?= v4.1.3
 BATS_VERSION = v1.3.0
+SOPS_VERSION = v3.7.2
+HELM_SECRETS_VERSION = v3.13.0
 
 BATS_DIR = $(BUILD_DIR)/tools/bats
 BATS = $(BIN_DIR)/bats
@@ -41,7 +46,7 @@ install-kustomize-plugin:
 image: khelm
 	$(DOCKER) build --force-rm -t $(IMAGE) -f ./Dockerfile $(BIN_DIR)
 
-test: $(BUILD_DIR)
+test: $(BUILD_DIR) sops helm-plugins
 	go test -coverprofile $(BUILD_DIR)/coverage.out -cover ./...
 
 coverage: test
@@ -80,6 +85,10 @@ register-qemu-binfmt: ## Enable multiarch support on the host
 
 kpt: $(KPT)
 
+sops: $(SOPS)
+
+helm-plugins: $(HELM_PLUGINS)
+
 kustomize: $(KUSTOMIZE)
 
 golangci-lint: $(GOLANGCI_LINT)
@@ -97,6 +106,12 @@ $(KUSTOMIZE):
 
 $(GORELEASER):
 	$(call go-get-tool,$(GORELEASER),github.com/goreleaser/goreleaser@$(GORELEASER_VERSION))
+
+$(SOPS):
+	$(call download-bin,$(SOPS),"https://github.com/mozilla/sops/releases/download/$(SOPS_VERSION)/sops-$(SOPS_VERSION).$$(uname | tr '[:upper:]' '[:lower:]').amd64")
+
+$(HELM_PLUGINS):
+	$(call download-tar-gz,$(HELM_PLUGINS),"https://github.com/jkroepke/helm-secrets/releases/download/$(HELM_SECRETS_VERSION)/helm-secrets.tar.gz")
 
 $(BATS):
 	@echo Downloading bats
@@ -137,5 +152,19 @@ echo "Downloading $(2)" ;\
 curl -fsSLo $$TMP_FILE $(2) ;\
 chmod +x $$TMP_FILE ;\
 mv $$TMP_FILE $(1) ;\
+}
+endef
+
+# download-tar-gz downloads a tar.gz or .tgz file and extracts it into the location given as first argument
+define download-tar-gz
+@[ -d $(1) ] || { \
+set -e ;\
+echo $(1) ;\
+mkdir -p $(1) ;\
+cd $(1) ;\
+echo "Downloading $(2)" ;\
+curl -fsSLo downloaded.tar.gz $(2) ;\
+tar -xzf downloaded.tar.gz ;\
+rm downloaded.tar.gz ;\
 }
 endef
