@@ -32,7 +32,7 @@ Since [kpt](https://github.com/GoogleContainerTools/kpt) is [published](https://
 ## Supported interfaces
 
 khelm can be used as:
-* [kpt function](#kpt-function) (recommended)
+* [kpt function](#kpt-function)
 * [kustomize exec plugin](#kustomize-exec-plugin)
 * [CLI](#cli)
 * [Go API](#go-api)
@@ -46,6 +46,8 @@ The khelm kpt function templates a chart and returns the output as single manife
 In opposite to the kustomize plugin approach kpt function outputs can be audited reliably when committed to a git repository, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to rendering technologies and chart servers since they just apply static mainfests (and eventually change values using `kpt cfg set`) to a cluster using `kpt live apply`.
 
 #### kpt function usage example
+
+**NOTE:** Newer kpt versions don't support fully declarative khelm functions anymore since kpt doesn't allow network and file system access for them. See https://github.com/GoogleContainerTools/kpt/issues/2450  
 
 A kpt function can be declared as annotated _ConfigMap_ within a kpt project.
 A kpt project can be initialized and used with such a function as follows:
