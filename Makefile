@@ -11,13 +11,14 @@ SOPS := $(BIN_DIR)/sops
 export HELM_SECRETS_SOPS_BIN := $(SOPS)
 export HELM_PLUGINS := $(BUILD_DIR)/helm-plugins
 
-GORELEASER_VERSION ?= v0.182.1
-GOLANGCI_LINT_VERSION ?= v1.45.2
+GORELEASER_VERSION ?= v1.9.2
+GOLANGCI_LINT_VERSION ?= v1.46.2
+# TODO: fix e2e tests and docu to make newer kpt versions work
 KPT_VERSION ?= v0.39.2
-KUSTOMIZE_VERSION ?= v4.5.4
-BATS_VERSION = v1.6.0
-SOPS_VERSION = v3.7.2
-HELM_SECRETS_VERSION = v3.13.0
+KUSTOMIZE_VERSION ?= v4.5.5
+BATS_VERSION = v1.7.0
+SOPS_VERSION = v3.7.3
+HELM_SECRETS_VERSION = v3.14.0
 
 BATS_DIR = $(BUILD_DIR)/tools/bats
 BATS = $(BIN_DIR)/bats
@@ -81,7 +82,7 @@ snapshot: $(GORELEASER) ## Builds a snapshot release but does not publish it
 	HELM_VERSION="$(HELM_VERSION)" $(GORELEASER) release --snapshot --rm-dist
 
 register-qemu-binfmt: ## Enable multiarch support on the host
-	$(DOCKER) run --rm --privileged multiarch/qemu-user-static:5.2.0-2 --reset -p yes
+	$(DOCKER) run --rm --privileged multiarch/qemu-user-static:7.0.0-7 --reset -p yes
 
 kpt: $(KPT)
 
