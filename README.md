@@ -98,8 +98,9 @@ _Therefore, to be independent of existing Helm 2 installations, a host's `~/.hel
 
 ### kustomize exec plugin
 
-khelm can be used as [kustomize](https://github.com/kubernetes-sigs/kustomize) [exec plugin](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/execpluginguidedexample/).
-Though plugin support in kustomize is still an alpha feature and may be removed in a future version.
+khelm can be used as [kustomize](https://github.com/kubernetes-sigs/kustomize) [exec plugin](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/exec_plugins/).
+Though plugin support in kustomize is still an alpha feature and may be slated
+to be deprecated in a future version (see [KEP 2953](https://github.com/kubernetes/enhancements/tree/master/keps/sig-cli/2953-kustomize-plugin-graduation)).
 
 #### Plugin installation
 
@@ -140,6 +141,61 @@ More complete examples can be found within the [example](example) directory.
 For instance `cert-manager` can be rendered like this:
 ```sh
 kustomize build --enable-alpha-plugins github.com/mgoltzsche/khelm/example/cert-manager
+```
+_When using kustomize 3 the option is called `--enable_alpha_plugins`._
+
+### kustomize containerized KRM function
+
+khelm can be used as a [kustomize](https://github.com/kubernetes-sigs/kustomize) [exec plugin](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/containerized_krm_functions/).
+Though plugin support in kustomize is still an alpha feature, this form of
+extension seems destined to be graduated out of alpha (see [KEP
+2953](https://github.com/kubernetes/enhancements/tree/master/keps/sig-cli/2953-kustomize-plugin-graduation)).
+
+This approach only works with kustomize>=v4.1.0.
+
+Unlike the [exec plugin strategy](#kustomize-exec-plugin), this method does not require installation.
+
+#### kustomize containerized KRM function usage example
+
+A _plugin descriptor_ specifies the helm repository, chart, version and values
+that should be used in a kubernetes-style resource can be referenced in the
+`generators` section of a `kustomization.yaml` and can look as follows. We use
+the generator from the [exec plugin approach](#plugin-usage-example) and add the
+annotations from the [kpt function usage example](#kpt-function-usage-example).
+
+```yaml
+apiVersion: khelm.mgoltzsche.github.com/v2
+kind: ChartRenderer
+metadata:
+  name: cert-manager # fallback for `name`
+  namespace: cert-manager # fallback for `namespace`
+  annotations:
+    config.kubernetes.io/function: |
+      container:
+        image: mgoltzsche/khelm:latest
+        network: true
+    config.kubernetes.io/local-config: "true"
+data:
+  repository: https://charts.jetstack.io
+  chart: cert-manager
+  name: my-cert-manager-release
+  namespace: cert-manager
+  version: 0.9.x
+  values:
+    webhook:
+      enabled: false
+```
+Two notes for the current version of khelm (that may change in the future).
+- Because the kpt style function expects the parameters to be provided in `data`
+  we must accommodate it.
+- Moreover this method of invocation does not see the metadata of the
+  `ChartRenderer` yaml, so we must specify them as the kpt function expects.
+_For all available fields see the [table](#configuration-options) below._
+
+More complete examples can be found within the [example](example/kustomize-krm/) directory.
+For instance `cert-manager` can be rendered like this:
+```sh
+kustomize build --enable-alpha-plugins --network github.com/mgoltzsche/khelm/example/kustomize-krm/cert-manager
 ```
 _When using kustomize 3 the option is called `--enable_alpha_plugins`._
 
