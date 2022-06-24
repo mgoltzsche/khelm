@@ -1,0 +1,16 @@
+apiVersion: khelm.mgoltzsche.github.com/v2
+kind: ChartRenderer
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+  annotations:
+    config.kubernetes.io/function: |
+        container:
+          image: mgoltzsche/khelm:latest
+          network: true
+    config.kubernetes.io/local-config: "true"
+data:
+  repository: https://charts.jetstack.io
+  chart: cert-manager
+  name: cert-manager
+  version: 1.1.0
