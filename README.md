@@ -186,6 +186,11 @@ _For all available fields see the [table](#configuration-options) below._
 
 More complete examples can be found within the [`example/kustomize-krm`](example/kustomize-krm/) directory.
 
+For instance `cert-manager` can be rendered like this:
+```sh
+kustomize build --enable-alpha-plugins --network github.com/mgoltzsche/khelm/example/kustomize-krm/cert-manager
+```
+
 ### CLI
 
 khelm also supports a helm-like `template` CLI.
