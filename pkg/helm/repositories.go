@@ -450,6 +450,11 @@ func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, 
 			return
 		}
 		err = os.Rename(tmpIdxFileName, idxFile)
+		if os.IsExist(err) {
+			// Ignore error if file was downloaded by another process concurrently.
+			// This fixes a race condition, see https://github.com/mgoltzsche/khelm/issues/36
+			err = os.Remove(tmpIdxFileName)
+		}
 		err = errors.WithStack(err)
 	}()
 	select {
