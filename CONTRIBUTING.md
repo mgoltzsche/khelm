@@ -35,12 +35,13 @@ While there is no need to create an issue before creating a PR please consider d
 
 When creating a PR please follow these rules:
 * Create one PR per feature.
-* Provide one commit per PR.
+* Provide one commit per PR ideally.
 * Provide a description with each PR and commit that links an issue (if any), describes the problem, how it was solved and how the solution changes the user-facing behaviour.
 * All submissions require a review.
 * All commits should be signed using PGP and a [DCO](https://en.wikipedia.org/wiki/Developer_Certificate_of_Origin). This can be done using `git commit -s -S`.
-* When submitting a bug fix or feature PR please also provide tests.
-* When submitting a new feature please document it.
+* When submitting a bug fix or feature PR, please also provide tests.
+* When submitting a new feature, please document it.
+* When writing markdown, asciidoc or code comments, please use one sentence per line, see [here](https://mattwidmann.net/notes/using-markdown-effectively/).
 
 ## Building and testing the source
 
