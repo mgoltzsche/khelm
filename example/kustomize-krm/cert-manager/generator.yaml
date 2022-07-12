@@ -8,7 +8,6 @@ metadata:
         container:
           image: mgoltzsche/khelm:latest
           network: true
-    config.kubernetes.io/local-config: "true"
 data:
   repository: https://charts.jetstack.io
   chart: cert-manager
