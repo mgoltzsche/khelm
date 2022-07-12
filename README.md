@@ -34,6 +34,7 @@ Since [kpt](https://github.com/GoogleContainerTools/kpt) is [published](https://
 khelm can be used as:
 * [kpt function](#kpt-function)
 * [kustomize exec plugin](#kustomize-exec-plugin)
+* [kustomize Containerized KRM Function](#kustomize-containerized-krm-function)
 * [CLI](#cli)
 * [Go API](#go-api)
 
@@ -143,7 +144,7 @@ kustomize build --enable-alpha-plugins github.com/mgoltzsche/khelm/example/cert-
 ```
 _When using kustomize 3 the option is called `--enable_alpha_plugins`._
 
-### kustomize Containerized KRM Function plugin
+### kustomize Containerized KRM Function
 
 khelm can be used as [Containerized KRM Function](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/containerized_krm_functions/) [kustomize](https://github.com/kubernetes-sigs/kustomize) plugin.
 Though plugin support in kustomize is still an alpha feature, this form of extension seems destined to be graduated out of alpha (see [KEP 2953](https://github.com/kubernetes/enhancements/tree/master/keps/sig-cli/2953-kustomize-plugin-graduation)).
