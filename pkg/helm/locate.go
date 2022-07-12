@@ -108,6 +108,11 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 			return
 		}
 		err = os.Rename(tmpDestDir, destDir)
+		if os.IsExist(err) {
+			// Ignore error if file was downloaded by another process concurrently.
+			// This fixes a race condition, see https://github.com/mgoltzsche/khelm/issues/36
+			err = os.RemoveAll(tmpDestDir)
+		}
 		err = errors.WithStack(err)
 	}()
 	select {
