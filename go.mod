@@ -15,6 +15,7 @@ require (
 )
 
 replace (
+	// This is pinned to an older version due to https://github.com/mgoltzsche/khelm/pull/33#issuecomment-1182614524
 	sigs.k8s.io/kustomize/api => sigs.k8s.io/kustomize/api v0.11.0
 	sigs.k8s.io/kustomize/kyaml => sigs.k8s.io/kustomize/kyaml v0.13.2
 )
@@ -82,7 +83,6 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
-	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
