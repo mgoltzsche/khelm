@@ -12,6 +12,7 @@ import (
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
@@ -36,6 +37,11 @@ func TestKptFnCommand(t *testing.T) {
 			"metadata":   map[string]interface{}{"annotations": inputAnnotations},
 		},
 	}
+
+	origK8sVersion := chartutil.DefaultCapabilities.KubeVersion.Version
+	defer func() {
+		chartutil.DefaultCapabilities.KubeVersion.Version = origK8sVersion
+	}()
 
 	for _, c := range []struct {
 		name           string
