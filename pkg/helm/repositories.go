@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -348,7 +347,7 @@ type tempRepositories struct {
 }
 
 func newTempRepositories(r *repositories) (*tempRepositories, error) {
-	tmpFile, err := ioutil.TempFile("", "helm-repositories-")
+	tmpFile, err := os.CreateTemp("", "helm-repositories-")
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -372,7 +371,7 @@ func downloadIndexFile(ctx context.Context, entry *repo.Entry, cacheDir string, 
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tmpIdxFile, err := ioutil.TempFile(filepath.Dir(idxFile), fmt.Sprintf(".tmp-%s-index", entry.Name))
+	tmpIdxFile, err := os.CreateTemp(filepath.Dir(idxFile), fmt.Sprintf(".tmp-%s-index", entry.Name))
 	if err != nil {
 		return errors.WithStack(err)
 	}

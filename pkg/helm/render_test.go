@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -124,7 +123,7 @@ func TestRender(t *testing.T) {
 }
 
 func TestRenderUntrustedRepositoryError(t *testing.T) {
-	dir, err := ioutil.TempDir("", "khelm-test-untrusted-repo-")
+	dir, err := os.MkdirTemp("", "khelm-test-untrusted-repo-")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 	os.Setenv("HELM_HOME", dir)
@@ -178,7 +177,7 @@ func TestRenderRebuildsLocalDependencies(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tplDir)
 	data := []byte("apiVersion: fancyapi/v1\nkind: FancyKind\nmetadata:\n  name: sth\nchangedField: changed-value")
-	err = ioutil.WriteFile(tplFile, data, 0600)
+	err = os.WriteFile(tplFile, data, 0600)
 	require.NoError(t, err)
 
 	// Render again and verify that the dependency is rebuilt
@@ -253,7 +252,7 @@ func TestRenderNoDigest(t *testing.T) {
 	repoEntry.URL = srv.URL
 
 	// Generate temp repository configuration pointing to fake private server
-	tmpHelmHome, err := ioutil.TempDir("", "khelm-test-home-")
+	tmpHelmHome, err := os.MkdirTemp("", "khelm-test-home-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpHelmHome)
 	origHelmHome := os.Getenv("HELM_HOME")
@@ -266,7 +265,7 @@ func TestRenderNoDigest(t *testing.T) {
 	require.NoError(t, err)
 	err = os.Mkdir(filepath.Join(tmpHelmHome, "repository"), 0755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tmpHelmHome, "repository", "repositories.yaml"), b, 0600) // #nosec
+	err = os.WriteFile(filepath.Join(tmpHelmHome, "repository", "repositories.yaml"), b, 0600) // #nosec
 	require.NoError(t, err)
 
 	cfg.Repository = repoEntry.URL
@@ -297,7 +296,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	repoEntry.URL = srv.URL
 
 	// Generate temp repository configuration pointing to fake private server
-	tmpHelmHome, err := ioutil.TempDir("", "khelm-test-home-")
+	tmpHelmHome, err := os.MkdirTemp("", "khelm-test-home-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpHelmHome)
 	origHelmHome := os.Getenv("HELM_HOME")
@@ -310,7 +309,7 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 	require.NoError(t, err)
 	err = os.Mkdir(filepath.Join(tmpHelmHome, "repository"), 0755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(tmpHelmHome, "repository", "repositories.yaml"), b, 0600) // #nosec
+	err = os.WriteFile(filepath.Join(tmpHelmHome, "repository", "repositories.yaml"), b, 0600) // #nosec
 	require.NoError(t, err)
 
 	for _, c := range []struct {

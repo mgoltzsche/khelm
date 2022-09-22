@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -117,7 +116,7 @@ func (cfg *ChartConfig) Validate() (errs []string) {
 // ReadGeneratorConfig read the generator configuration
 func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 	cfg = &GeneratorConfig{}
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, errors.Wrap(err, "read chart renderer config")
 	}

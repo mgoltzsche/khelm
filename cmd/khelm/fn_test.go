@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -17,7 +16,7 @@ import (
 )
 
 func TestKptFnCommand(t *testing.T) {
-	dir, err := ioutil.TempDir("", "khelm-fn-test-")
+	dir, err := os.MkdirTemp("", "khelm-fn-test-")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 	os.Setenv("HELM_HOME", dir)
