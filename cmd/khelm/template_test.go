@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -107,7 +106,7 @@ func TestTemplateCommand(t *testing.T) {
 }
 
 func TestTemplateCommandError(t *testing.T) {
-	dir, err := ioutil.TempDir("", "khelm-tpl-test-")
+	dir, err := os.MkdirTemp("", "khelm-tpl-test-")
 	require.NoError(t, err)
 	repoDir := filepath.Join(dir, "repository")
 	defer os.RemoveAll(dir)

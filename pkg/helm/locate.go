@@ -3,7 +3,6 @@ package helm
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -90,7 +89,7 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 	if err = os.MkdirAll(destParentDir, 0750); err != nil {
 		return "", errors.WithStack(err)
 	}
-	tmpDestDir, err := ioutil.TempDir(destParentDir, fmt.Sprintf(".tmp-%s-", filepath.Base(destDir)))
+	tmpDestDir, err := os.MkdirTemp(destParentDir, fmt.Sprintf(".tmp-%s-", filepath.Base(destDir)))
 	if err != nil {
 		return "", errors.WithStack(err)
 	}

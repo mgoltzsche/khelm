@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,7 +13,7 @@ import (
 
 func TestKustomizePlugin(t *testing.T) {
 	file := filepath.Join("..", "..", "example", "include", "generator.yaml")
-	kustomizeGenCfg, err := ioutil.ReadFile(file)
+	kustomizeGenCfg, err := os.ReadFile(file)
 	require.NoError(t, err)
 	os.Setenv(envKustomizePluginConfig, string(kustomizeGenCfg))
 	os.Setenv(envTrustAnyRepo, "true")
