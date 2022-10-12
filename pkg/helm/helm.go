@@ -23,5 +23,7 @@ func NewHelm() *Helm {
 		// Fallback for old helm env var
 		settings.RepositoryConfig = filepath.Join(helmHome, "repository", "repositories.yaml")
 	}
-	return &Helm{Settings: *settings, Getters: getter.All(settings)}
+	h := &Helm{Settings: *settings}
+	h.Getters = getters(settings, &h.TrustAnyRepository)
+	return h
 }

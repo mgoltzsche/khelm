@@ -28,7 +28,7 @@ func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.C
 	fileExists := err == nil
 	if cfg.Repository == "" {
 		if fileExists {
-			return h.buildAndLoadLocalChart(ctx, cfg)
+			return buildAndLoadLocalChart(ctx, cfg, h.TrustAnyRepository, h.Settings, h.Getters)
 		} else if l := strings.Split(cfg.Chart, "/"); len(l) == 2 && l[0] != "" && l[1] != "" && l[0] != ".." && l[0] != "." {
 			cfg.Repository = "@" + l[0]
 			cfg.Chart = l[1]
@@ -61,7 +61,7 @@ func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*c
 	return loader.Load(chartPath)
 }
 
-func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
+func buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConfig, trustAnyRepo *bool, settings cli.EnvSettings, getters getter.Providers) (*chart.Chart, error) {
 	chartPath := absPath(cfg.Chart, cfg.BaseDir)
 	chartRequested, err := loader.Load(chartPath)
 	if err != nil {
@@ -76,7 +76,7 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConf
 	}
 
 	// Create (temporary) repository configuration that includes all dependencies
-	repos, err := reposForDependencies(dependencies, h.TrustAnyRepository, &h.Settings, h.Getters)
+	repos, err := reposForDependencies(dependencies, trustAnyRepo, &settings, getters)
 	if err != nil {
 		return nil, errors.Wrap(err, "init temp repositories.yaml")
 	}
@@ -86,8 +86,8 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConf
 		return nil, err
 	}
 	defer repos.Close()
-	settings := h.Settings
-	settings.RepositoryConfig = repos.FilePath()
+	tmpSettings := settings
+	tmpSettings.RepositoryConfig = repos.FilePath()
 
 	// Download/update repo indices
 	if needsRepoIndexUpdate {
@@ -100,7 +100,7 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConf
 	}
 
 	// Build local charts recursively
-	needsReload, err := buildLocalCharts(ctx, localCharts, &cfg.LoaderConfig, repos, &settings, h.Getters)
+	needsReload, err := buildLocalCharts(ctx, localCharts, &cfg.LoaderConfig, repos, &tmpSettings, getters)
 	if err != nil {
 		return nil, errors.Wrap(err, "build/fetch dependencies")
 	}
@@ -162,7 +162,7 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *config.Ch
 			if needsUpdate {
 				needsRepoIndexUpdate = true
 			}
-		} else if strings.HasPrefix(dep.Repository, "https://") || strings.HasPrefix(dep.Repository, "http://") {
+		} else {
 			*deps = append(*deps, dep)
 			if chartRequested.Lock == nil {
 				// Update repo index when remote dependencies present but no lock file

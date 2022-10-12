@@ -1,0 +1,8 @@
+apiVersion: v2
+description: example chart using a git url as dependency
+name: git-https-dependency
+version: 0.1.0
+dependencies:
+- name: cert-manager
+  version: "x.x.x"
+  repository: "git+https://github.com/cert-manager/cert-manager@deploy/charts?ref=v0.6.2"

@@ -24,6 +24,7 @@ Since [kpt](https://github.com/GoogleContainerTools/kpt) is [published](https://
 * Automatically fetches and updates required repository index files when needed
 * Allows to automatically reload dependencies when lock file is out of sync
 * Allows to use any repository without registering it in repositories.yaml
+* Allows to use a Helm chart from a remote git repository
 * Allows to exclude certain resources from the Helm chart output
 * Allows to enforce namespace-scoped resources within the template output
 * Allows to enforce a namespace on all resources
@@ -200,8 +201,15 @@ khelm template cert-manager --version=0.9.x --repo=https://charts.jetstack.io
 _For all available options see the [table](#configuration-options) below._
 
 #### Docker usage example
+
+Generate a manifest from a chart:
 ```sh
 docker run mgoltzsche/khelm:latest template cert-manager --version=0.9.x --repo=https://charts.jetstack.io
+```
+
+Generate a manifest from a chart within a git repository:
+```sh
+docker run mgoltzsche/khelm:latest template cert-manager --repo=git+https://github.com/cert-manager/cert-manager@deploy/charts?ref=v0.6.2
 ```
 
 ### Go API
@@ -256,6 +264,20 @@ Repository credentials can be configured using Helm's `repositories.yaml` which 
 When running khelm as kpt function or within a container the `repositories.yaml` should be mounted to `/helm/repository/repositories.yaml`.  
 
 Unlike Helm khelm allows usage of any repository when `repositories.yaml` is not present or `--trust-any-repo` (env var `KHELM_TRUST_ANY_REPO`) is enabled.
+
+#### Git URLs as Helm repositories
+
+Helm charts can be fetched from git repositories by letting the Helm repository URL point to the chart's parent directory using the URL scheme `git+https` or `git+ssh`.
+The path within the git repository URL and the repository part of the URL must be separated by `@`.
+The `ref` parameter can be used to specify the git tag.  
+
+The following example points to an old version of cert-manager using a git URL:
+```
+git+https://github.com/cert-manager/cert-manager@deploy/charts?ref=v0.6.2
+```
+
+This feature is meant to be compatible with Helm's [helm-git](https://github.com/aslafy-z/helm-git#usage) plugin (but is reimplemented in Go).
+However currently khelm does not support `sparse` git checkouts (due to [lack of support in go-git](https://github.com/go-git/go-git/issues/90)).
 
 ## Helm support
 

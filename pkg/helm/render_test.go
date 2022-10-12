@@ -69,6 +69,7 @@ func TestRender(t *testing.T) {
 			"chart-hooks-test",
 		}},
 		{"chart-hooks-disabled", "example/chart-hooks-disabled/generator.yaml", []string{"default"}, "  key: myvalue", []string{"chart-hooks-disabled-myconfig"}},
+		{"git-https-dependency", "example/git-https-dependency/generator.yaml", []string{"cert-manager", "kube-system"}, "ca-sync", nil},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			for _, cached := range []string{"", "cached "} {
