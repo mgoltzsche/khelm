@@ -27,7 +27,7 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 		return name, errors.Errorf("path %q not found", name)
 	}
 
-	repoEntry, err := repos.Get(cfg.Repository)
+	repoEntry, _, err := repos.Get(cfg.Repository)
 	if err != nil {
 		return "", err
 	}

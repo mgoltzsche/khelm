@@ -7,9 +7,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mgoltzsche/khelm/v2/pkg/repositories"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 	"sigs.k8s.io/yaml"
 )
@@ -18,10 +20,10 @@ func TestGitGetter(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "khelm-git-getter-test-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
-	gitCheckout = func(_ context.Context, repoURL, ref, destDir string) error {
-		err := os.MkdirAll(filepath.Join(destDir, "mypath", "fakechart"), 0755)
+	gitCheckout = func(_ context.Context, repoURL, ref string, auth *repo.Entry, destDir string) error {
+		err := os.MkdirAll(filepath.Join(destDir, "mypath", "fakechartdir"), 0755)
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(destDir, "mypath", "fakechart", "Chart.yaml"), []byte(`
+		err = os.WriteFile(filepath.Join(destDir, "mypath", "fakechartdir", "Chart.yaml"), []byte(`
 apiVersion: v2
 name: fake-chart
 version: 0.1.0`), 0600)
@@ -38,7 +40,11 @@ version: 0.1.0`), 0600)
 		require.NoError(t, err)
 		return file, nil
 	}
-	testee := New(settings, fakePackageFn)
+	reposFn := func() (repositories.Interface, error) {
+		trust := true
+		return repositories.New(*settings, getter.All(settings), &trust)
+	}
+	testee := New(settings, reposFn, fakePackageFn)
 	getter, err := testee()
 	require.NoError(t, err)
 
@@ -49,9 +55,9 @@ version: 0.1.0`), 0600)
 	require.NoErrorf(t, err, "unmarshal Get() result: %s", b.String())
 	expect := repo.NewIndexFile()
 	expect.APIVersion = "v2"
-	fakeChartURL := "git+https://git.example.org/org/repo@mypath/fakechart.tgz?ref=v0.6.2"
+	fakeChartURL := "git+https://git.example.org/org/repo@mypath/fakechartdir.tgz?ref=v0.6.2"
 	expect.Entries = map[string]repo.ChartVersions{
-		"fakechart": []*repo.ChartVersion{
+		"fakechartdir": []*repo.ChartVersion{
 			{
 				Metadata: &chart.Metadata{
 					APIVersion: "v2",
@@ -68,5 +74,5 @@ version: 0.1.0`), 0600)
 	b, err = getter.Get(fakeChartURL)
 	require.NoError(t, err)
 	require.Contains(t, b.String(), "fake-chart-tgz-contents /tmp/khelm-git-", "should return packaged chart")
-	require.Truef(t, strings.HasSuffix(b.String(), "/repo/mypath/fakechart"), "should end with path within repo but was: %s", b.String())
+	require.Truef(t, strings.HasSuffix(b.String(), "/repo/mypath/fakechartdir"), "should end with path within repo but was: %s", b.String())
 }

@@ -1,6 +1,6 @@
 apiVersion: v2
 description: example chart using a git url as dependency
-name: git-https-dependency
+name: git-dependency
 version: 0.1.0
 dependencies:
 - name: cert-manager

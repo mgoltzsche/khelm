@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mgoltzsche/khelm/v2/pkg/repositories"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	helmgetter "helm.sh/helm/v3/pkg/getter"
@@ -23,16 +24,24 @@ var gitCheckout = gitCheckoutImpl
 
 type HelmPackageFunc func(ctx context.Context, path, repoDir string) (string, error)
 
-func New(settings *cli.EnvSettings, packageFn HelmPackageFunc) helmgetter.Constructor {
+type RepositoriesFunc func() (repositories.Interface, error)
+
+func New(settings *cli.EnvSettings, reposFn RepositoriesFunc, packageFn HelmPackageFunc) helmgetter.Constructor {
 	return func(o ...helmgetter.Option) (helmgetter.Getter, error) {
+		repos, err := reposFn()
+		if err != nil {
+			return nil, err
+		}
 		return &gitIndexGetter{
 			settings:  settings,
+			repos:     repos,
 			packageFn: packageFn,
 		}, nil
 	}
 }
 
 type gitIndexGetter struct {
+	repos     repositories.Interface
 	settings  *cli.EnvSettings
 	Getters   helmgetter.Providers
 	packageFn HelmPackageFunc
@@ -52,7 +61,7 @@ func (g *gitIndexGetter) Get(location string, options ...helmgetter.Option) (*by
 	if isRepoIndex {
 		// Generate repo index from directory
 		ref = ref.Dir()
-		repoDir, err := download(ctx, ref, g.settings.RepositoryCache)
+		repoDir, err := download(ctx, ref, g.settings.RepositoryCache, g.repos)
 		if err != nil {
 			return nil, err
 		}
@@ -67,8 +76,9 @@ func (g *gitIndexGetter) Get(location string, options ...helmgetter.Option) (*by
 		}
 	} else {
 		// Build and package chart
-		chartPath := filepath.FromSlash(strings.TrimSuffix(ref.Path, ".tgz"))
-		repoDir, err := download(ctx, ref, g.settings.RepositoryCache)
+		ref.Path = strings.TrimSuffix(ref.Path, ".tgz")
+		chartPath := filepath.FromSlash(ref.Path)
+		repoDir, err := download(ctx, ref, g.settings.RepositoryCache, g.repos)
 		if err != nil {
 			return nil, err
 		}
@@ -136,7 +146,7 @@ func generateRepoIndex(dir, cacheDir string, u *gitURL) (*repo.IndexFile, error)
 	return idx, nil
 }
 
-func download(ctx context.Context, ref *gitURL, cacheDir string) (string, error) {
+func download(ctx context.Context, ref *gitURL, cacheDir string, repos repositories.Interface) (string, error) {
 	repoRef := *ref
 	repoRef.Path = ""
 	cacheKey := fmt.Sprintf("sha256-%x", sha256.Sum256([]byte(repoRef.String())))
@@ -144,7 +154,11 @@ func download(ctx context.Context, ref *gitURL, cacheDir string) (string, error)
 	destDir := filepath.Join(cacheDir, cacheKey)
 
 	if _, e := os.Stat(destDir); os.IsNotExist(e) {
-		err := os.MkdirAll(cacheDir, 0755)
+		auth, _, err := repos.Get("git+" + ref.String())
+		if err != nil {
+			return "", err
+		}
+		err = os.MkdirAll(cacheDir, 0755)
 		if err != nil {
 			return "", err
 		}
@@ -155,7 +169,7 @@ func download(ctx context.Context, ref *gitURL, cacheDir string) (string, error)
 		defer os.RemoveAll(tmpDir)
 
 		tmpRepoDir := tmpDir
-		err = gitCheckout(ctx, ref.Repo, ref.Ref, tmpRepoDir)
+		err = gitCheckout(ctx, ref.Repo, ref.Ref, auth, tmpRepoDir)
 		if err != nil {
 			return "", err
 		}

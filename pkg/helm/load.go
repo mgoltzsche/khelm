@@ -10,6 +10,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
+	"github.com/mgoltzsche/khelm/v2/pkg/repositories"
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -28,7 +29,11 @@ func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.C
 	fileExists := err == nil
 	if cfg.Repository == "" {
 		if fileExists {
-			return buildAndLoadLocalChart(ctx, cfg, h.TrustAnyRepository, h.Settings, h.Getters)
+			repos, err := h.repositories()
+			if err != nil {
+				return nil, err
+			}
+			return buildAndLoadLocalChart(ctx, cfg, repos, h.Settings, h.Getters)
 		} else if l := strings.Split(cfg.Chart, "/"); len(l) == 2 && l[0] != "" && l[1] != "" && l[0] != ".." && l[0] != "." {
 			cfg.Repository = "@" + l[0]
 			cfg.Chart = l[1]
@@ -41,7 +46,11 @@ func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.C
 
 func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
 	repoURLs := map[string]struct{}{cfg.Repository: {}}
-	repos, err := reposForURLs(repoURLs, h.TrustAnyRepository, &h.Settings, h.Getters)
+	repos, err := h.repositories()
+	if err != nil {
+		return nil, err
+	}
+	reqRepos, err := reposForURLs(repoURLs, repos)
 	if err != nil {
 		return nil, err
 	}
@@ -50,18 +59,19 @@ func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*c
 		return nil, err
 	}
 	if isRange {
-		if err = repos.UpdateIndex(ctx); err != nil {
+		// TODO: avoid updating the same repo index multiple times when using multiple charts from the same repo
+		if err = reqRepos.UpdateIndex(ctx); err != nil {
 			return nil, err
 		}
 	}
-	chartPath, err := locateChart(ctx, &cfg.LoaderConfig, repos, &h.Settings, h.Getters)
+	chartPath, err := locateChart(ctx, &cfg.LoaderConfig, reqRepos, &h.Settings, h.Getters)
 	if err != nil {
 		return nil, err
 	}
 	return loader.Load(chartPath)
 }
 
-func buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConfig, trustAnyRepo *bool, settings cli.EnvSettings, getters getter.Providers) (*chart.Chart, error) {
+func buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConfig, repos repositories.Interface, settings cli.EnvSettings, getters getter.Providers) (*chart.Chart, error) {
 	chartPath := absPath(cfg.Chart, cfg.BaseDir)
 	chartRequested, err := loader.Load(chartPath)
 	if err != nil {
@@ -76,31 +86,32 @@ func buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConfig, trustA
 	}
 
 	// Create (temporary) repository configuration that includes all dependencies
-	repos, err := reposForDependencies(dependencies, trustAnyRepo, &settings, getters)
+	depRepos, err := reposForDependencies(dependencies, repos)
 	if err != nil {
 		return nil, errors.Wrap(err, "init temp repositories.yaml")
 	}
-	repos.RequireTempHelmHome(len(localCharts) > 1)
-	repos, err = repos.Apply()
-	if err != nil {
-		return nil, err
+	if len(localCharts) > 1 {
+		depRepos, err = depRepos.TempRepositories()
+		if err != nil {
+			return nil, err
+		}
 	}
-	defer repos.Close()
+	defer depRepos.Close()
 	tmpSettings := settings
-	tmpSettings.RepositoryConfig = repos.FilePath()
+	tmpSettings.RepositoryConfig = depRepos.File()
 
 	// Download/update repo indices
 	if needsRepoIndexUpdate {
-		err = repos.UpdateIndex(ctx)
+		err = depRepos.UpdateIndex(ctx)
 	} else {
-		err = repos.DownloadIndexFilesIfNotExist(ctx)
+		err = depRepos.FetchMissingIndexFiles(ctx)
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	// Build local charts recursively
-	needsReload, err := buildLocalCharts(ctx, localCharts, &cfg.LoaderConfig, repos, &tmpSettings, getters)
+	needsReload, err := buildLocalCharts(ctx, localCharts, &cfg.LoaderConfig, depRepos, &tmpSettings, getters)
 	if err != nil {
 		return nil, errors.Wrap(err, "build/fetch dependencies")
 	}

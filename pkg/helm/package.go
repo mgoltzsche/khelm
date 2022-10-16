@@ -4,14 +4,15 @@ import (
 	"context"
 
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
+	"github.com/mgoltzsche/khelm/v2/pkg/repositories"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 )
 
-func packageHelmChart(ctx context.Context, cfg *config.ChartConfig, destDir string, trustAnyRepo *bool, settings cli.EnvSettings, getters getter.Providers) (string, error) {
+func packageHelmChart(ctx context.Context, cfg *config.ChartConfig, destDir string, repos repositories.Interface, settings cli.EnvSettings, getters getter.Providers) (string, error) {
 	// TODO: add unit test (there is an e2e/cli test for this though)
-	_, err := buildAndLoadLocalChart(ctx, cfg, trustAnyRepo, settings, getters)
+	_, err := buildAndLoadLocalChart(ctx, cfg, repos, settings, getters)
 	if err != nil {
 		return "", err
 	}
