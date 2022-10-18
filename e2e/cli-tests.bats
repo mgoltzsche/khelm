@@ -32,6 +32,15 @@ teardown() {
 		--debug
 }
 
+@test "CLI should build local chart" {
+	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" -v "$EXAMPLE_DIR/release-name:/chart" "$IMAGE" template /chart \
+		--version 1.2.3 \
+		--output /out/manifest.yaml \
+		--debug
+	ls -la "$OUT_DIR" "$OUT_DIR/manifest.yaml" >&2
+	cat "$OUT_DIR/manifest.yaml" | tee /dev/stdout /dev/stderr | grep -q 'chartVersion: 1.2.3'
+}
+
 @test "CLI should output kustomization" {
 	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" -v "$EXAMPLE_DIR/namespace:/chart" "$IMAGE" template /chart \
 		--output /out/kdir/ \

@@ -4,3 +4,4 @@ metadata:
   name: my-release-name
 chart: .
 kubeVersion: 1.17
+version: 1.9.3

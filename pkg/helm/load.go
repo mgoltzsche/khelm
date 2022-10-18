@@ -122,6 +122,9 @@ func buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConfig, repos 
 			return nil, errors.Wrapf(err, "failed reloading chart %s after dependency download", cfg.Chart)
 		}
 	}
+	if cfg.Version != "" {
+		chartRequested.Metadata.Version = cfg.Version
+	}
 	return chartRequested, nil
 }
 

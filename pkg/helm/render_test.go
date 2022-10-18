@@ -53,6 +53,7 @@ func TestRender(t *testing.T) {
 		{"force-namespace", "example/force-namespace/generator.yaml", []string{"forced-namespace"}, "  key: b", nil},
 		{"kubeVersion", "example/release-name/generator.yaml", []string{}, "  k8sVersion: v1.17.0", nil},
 		{"release-name", "example/release-name/generator.yaml", []string{}, "  name: my-release-name-config", nil},
+		{"chart-version", "example/release-name/generator.yaml", []string{}, "  chartVersion: 1.9.3", nil},
 		{"exclude", "example/exclude/generator.yaml", []string{"cluster-role-binding-ns"}, "  key: b", nil},
 		{"include", "example/include/generator.yaml", []string{}, "  key: b", nil},
 		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", []string{}, "rook-ceph-v0.9.3", nil},
