@@ -1,4 +1,0 @@
-namespace: reloader
-resources:
-- namespace.yaml
-- ../../dep/reloader

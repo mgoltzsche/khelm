@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+set -eu
+
 TMP_DIR="$(mktemp -d)"
 
 teardown() {

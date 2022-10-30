@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chart-to-kustomization
+  annotations:
+    config.kubernetes.io/function: |
+      container:
+        image: mgoltzsche/khelm:latest
+    config.kubernetes.io/local-config: "true"
+data:
+  chart: ./source # chart must be mounted here
+  name: myrelease
+  namespace: mynamespace
+  outputPath: output-kustomization/
+  debug: true

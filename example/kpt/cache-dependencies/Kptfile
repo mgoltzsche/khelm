@@ -1,6 +1,0 @@
-apiVersion: kpt.dev/v1alpha1
-kind: Kptfile
-metadata:
-  name: cache-dependencies
-packageMetadata:
-  shortDescription: An caching example

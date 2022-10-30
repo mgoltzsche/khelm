@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-IMAGE=${IMAGE:-mgoltzsche/khelm:latest}
+: ${IMAGE:=mgoltzsche/khelm:latest}
 EXAMPLE_DIR="$(pwd)/example"
 OUT_DIR="$(mktemp -d)"
 

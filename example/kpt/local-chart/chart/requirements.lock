@@ -1,0 +1,9 @@
+dependencies:
+- name: cert-manager
+  repository: https://charts.jetstack.io
+  version: v1.0.2
+- name: namespace-example
+  repository: file://../../../namespace
+  version: 0.1.0
+digest: sha256:7657949045d4fdfb17f2a2189c019672469febfdf81ee46e2a398fefff1a3fd9
+generated: "2022-10-30T04:28:41.091000328Z"

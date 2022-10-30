@@ -42,53 +42,41 @@ Usage examples can be found in the [example](example) and [e2e](e2e) directories
 
 ### kpt function
 
-The khelm kpt function templates a chart and returns the output as single manifest file or kustomization directory (when `outputPath` ends with `/`). The kustomization output can be used to apply further transformations by running a kustomize function afterwards.  
+The khelm kpt function templates a chart and returns the output as single manifest file or kustomization directory (when `outputPath` ends with `/`).
 
-In opposite to the kustomize plugin approach kpt function outputs can be audited reliably when committed to a git repository, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to rendering technologies and chart servers since they just apply static mainfests (and eventually change values using `kpt cfg set`) to a cluster using `kpt live apply`.
+In opposite to the kustomize plugin approach, kpt function outputs can be audited reliably when committed to a git repository, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to rendering technologies and chart servers since they just apply static mainfests to a cluster (e.g. using `kpt live apply`).
 
 #### kpt function usage example
 
-**NOTE:** Newer kpt versions don't support fully declarative khelm functions anymore since kpt doesn't allow network and file system access for them. See https://github.com/GoogleContainerTools/kpt/issues/2450  
-
-A kpt function can be declared as annotated _ConfigMap_ within a kpt project.
-A kpt project can be initialized and used with such a function as follows:
+Khelm can be used as an imperative kpt function only since it requires the chart to be mounted or network access to fetch a chart.
+The kpt function can be invoked as follows, using a local _ConfigMap_ to specify the parameters:
 ```sh
-mkdir example-project && cd example-project
-kpt pkg init . # Creates the Kptfile
-cat - > khelm-function.yaml <<-EOF
+cat - > fn-config.yaml <<-EOF
   apiVersion: v1
   kind: ConfigMap
   metadata:
-    name: cert-manager-manifest-generator
+    name: cert-manager-manifest-generator-config
     annotations:
-      config.kubernetes.io/function: |
-        container:
-          image: mgoltzsche/khelm:latest
-          network: true
       config.kubernetes.io/local-config: "true"
   data:
     repository: https://charts.jetstack.io
     chart: cert-manager
     version: 0.9.x
-    name: my-cert-manager-release
+    name: myrelease
     namespace: cert-manager
     values:
       webhook:
         enabled: false
     outputPath: output-manifest.yaml
 EOF
-kpt fn run --network . # Renders the chart into output-manifest.yaml
+kpt fn eval --image mgoltzsche/khelm:latest --fn-config fn-config.yaml --network .
 ```
 _For all available fields see the [table](#configuration-options) below._  
 
-Please note that, in case you need to refer to a local chart directory or values file, the source must be mounted to the function using e.g. `kpt fn run --mount="type=bind,src=$(pwd),dst=/source,rw=true" .`.  
-An [example kpt project](example/kpt/test-cases) and the corresponding [e2e test](e2e/kpt-function-test.sh) show how to do that.  
+Please note that, in case you need to refer to a local chart directory or values file, the source must be mounted to the function using e.g. `kpt fn eval --mount="type=bind,src=$(pwd),dst=/source,rw=true" --image mgoltzsche/khelm --fn-config fn-config.yaml .`.  
+The [kpt examples](example/kpt) and corresponding [e2e tests](e2e/kpt-function-test.sh) show how to do that.  
 
-Kpt can also be leveraged to pull charts from other git repositories into your own repository using the `kpt pkg sync .` [command](https://googlecontainertools.github.io/kpt/reference/pkg/) (with a corresponding dependency set up) before running the khelm function (for this reason the go-getter support has been removed from this project).  
-
-If necessary the chart output can be transformed using kustomize.
-This can be done by declaring the khelm and a kustomize function orderly within a file and specifying the chart output kustomization as input for the kustomize function as shown in the [cert-manager example](example/kpt/cert-manager).
-A more complex example that also manages a Helm chart from another git repository locally as kpt dependency can be found [here](example/kpt/linkerd).
+Kpt can also be leveraged to sync charts from other git repositories into your own repository using the `kpt pkg get` and `kpt pkg update` [commands](https://kpt.dev/reference/cli/pkg/) (with a corresponding dependency set up) before running the khelm function.  
 
 #### Caching Helm Charts and repository index files
 

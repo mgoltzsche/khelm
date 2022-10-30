@@ -5,11 +5,9 @@
 
 /example/**/charts
 /example/**/tmpcharts
-/example/kpt/*/output-*
+/example/kpt/*/output*
 /example/kpt/*/generated-*
 /example/kpt/**/requirements.lock
 /example/**/generated-manifest-without-secrets.yaml
-/example/kpt/linkerd/dep
-/example/kpt/cache-dependencies/chart/charts
 
 dist/

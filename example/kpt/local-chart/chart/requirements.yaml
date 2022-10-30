@@ -1,0 +1,7 @@
+dependencies:
+- name: cert-manager
+  version: 1.0.2
+  repository: https://charts.jetstack.io
+- name: namespace-example
+  version: 0.1.0
+  repository: file://../../../namespace
