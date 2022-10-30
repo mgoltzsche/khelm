@@ -10,6 +10,10 @@ import (
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
+func IsUntrustedRepository(err error) bool {
+	return repositories.IsUntrustedRepository(err)
+}
+
 // Helm maintains the helm environment state
 type Helm struct {
 	TrustAnyRepository *bool
@@ -25,12 +29,10 @@ func NewHelm() *Helm {
 		// Fallback for old helm env var
 		settings.RepositoryConfig = filepath.Join(helmHome, "repository", "repositories.yaml")
 	}
-	h := &Helm{Settings: *settings}
-	h.Getters = getters(settings, h.repositories)
-	return h
+	return &Helm{Settings: *settings, Getters: getter.All(settings)}
 }
 
-func (h *Helm) repositories() (repositories.Interface, error) {
+func (h *Helm) Repositories() (repositories.Interface, error) {
 	if h.repos != nil {
 		return h.repos, nil
 	}

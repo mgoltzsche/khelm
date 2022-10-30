@@ -20,7 +20,10 @@ import (
 	helmyaml "sigs.k8s.io/yaml"
 )
 
-var gitCheckout = gitCheckoutImpl
+var (
+	Schemes     = []string{"git+https", "git+ssh"}
+	gitCheckout = gitCheckoutImpl
+)
 
 type HelmPackageFunc func(ctx context.Context, path, repoDir string) (string, error)
 

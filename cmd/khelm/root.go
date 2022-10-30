@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -10,13 +11,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mgoltzsche/khelm/v2/pkg/getter/git"
 	"github.com/mgoltzsche/khelm/v2/pkg/helm"
 	"github.com/spf13/cobra"
+	helmgetter "helm.sh/helm/v3/pkg/getter"
 )
 
 const (
 	envKustomizePluginConfig     = "KUSTOMIZE_PLUGIN_CONFIG_STRING"
 	envKustomizePluginConfigRoot = "KUSTOMIZE_PLUGIN_CONFIG_ROOT"
+	envEnableGitGetter           = "KHELM_ENABLE_GIT_GETTER"
 	envTrustAnyRepo              = "KHELM_TRUST_ANY_REPO"
 	envDebug                     = "KHELM_DEBUG"
 	envHelmDebug                 = "HELM_DEBUG"
@@ -36,10 +40,14 @@ func Execute(reader io.Reader, writer io.Writer) error {
 	helmDebug, _ := strconv.ParseBool(os.Getenv(envHelmDebug))
 	h := helm.NewHelm()
 	debug = debug || helmDebug
+	enableGitGetter := false
 	h.Settings.Debug = debug
 	if trustAnyRepo, ok := os.LookupEnv(envTrustAnyRepo); ok {
 		trust, _ := strconv.ParseBool(trustAnyRepo)
 		h.TrustAnyRepository = &trust
+	}
+	if gitSupportStr, ok := os.LookupEnv(envEnableGitGetter); ok {
+		enableGitGetter, _ = strconv.ParseBool(gitSupportStr)
 	}
 
 	// Run as kustomize plugin (if kustomize-specific env var provided)
@@ -50,12 +58,16 @@ func Execute(reader io.Reader, writer io.Writer) error {
 		return err
 	}
 
-	logVersionPreRun := func(_ *cobra.Command, _ []string) {
+	preRun := func(_ *cobra.Command, _ []string) {
 		logVersion()
+		if enableGitGetter {
+			addGitGetterSupport(h)
+		}
 	}
 	rootCmd := &cobra.Command{
-		PreRun: logVersionPreRun,
+		PersistentPreRun: preRun,
 	}
+	rootCmd.PersistentFlags().BoolVar(&enableGitGetter, "enable-git-getter", enableGitGetter, fmt.Sprintf("enable git+https helm repository URL scheme support (%s)", envEnableGitGetter))
 	errBuf := bytes.Buffer{}
 
 	if filepath.Base(os.Args[0]) == "khelmfn" {
@@ -65,8 +77,7 @@ func Execute(reader io.Reader, writer io.Writer) error {
 		rootCmd.SetOut(writer)
 		rootCmd.SetErr(&errBuf)
 		rootCmd.PersistentFlags().BoolVar(&debug, "debug", debug, fmt.Sprintf("enable debug log (%s)", envDebug))
-		rootCmd.PreRun = func(_ *cobra.Command, _ []string) {
-			logVersion()
+		rootCmd.PreRun = func(cmd *cobra.Command, args []string) {
 			fmt.Printf("# Reading kpt function input from stdin (use `%s template` to run without kpt)\n", os.Args[0])
 		}
 	}
@@ -88,7 +99,7 @@ In addition to helm's templating capabilities khelm allows to:
 	templateCmd := templateCommand(h, writer)
 	templateCmd.SetOut(writer)
 	templateCmd.SetErr(&errBuf)
-	templateCmd.PreRun = logVersionPreRun
+	templateCmd.PreRun = preRun
 	rootCmd.AddCommand(templateCmd)
 
 	// Run command
@@ -109,4 +120,13 @@ func logVersion() {
 
 func versionInfo() string {
 	return fmt.Sprintf("%s (helm %s)", khelmVersion, helmVersion)
+}
+
+func addGitGetterSupport(h *helm.Helm) {
+	h.Getters = append(h.Getters, helmgetter.Provider{
+		Schemes: git.Schemes,
+		New: git.New(&h.Settings, h.Repositories, func(ctx context.Context, chartDir, repoDir string) (string, error) {
+			return h.Package(ctx, chartDir, repoDir, chartDir)
+		}),
+	})
 }

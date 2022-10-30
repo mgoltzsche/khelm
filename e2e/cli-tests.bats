@@ -61,7 +61,9 @@ teardown() {
 }
 
 @test "CLI should accept git url as helm repository" {
-	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" "$IMAGE" template cert-manager \
+	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" \
+		-e KHELM_ENABLE_GIT_GETTER=true \
+		"$IMAGE" template cert-manager \
 		--repo git+https://github.com/cert-manager/cert-manager@deploy/charts?ref=v0.6.2 \
 		--output /out/manifest.yaml \
 		--debug
@@ -71,14 +73,18 @@ teardown() {
 
 @test "CLI should cache git repository" {
 	mkdir $OUT_DIR/cache
-	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" -v "$OUT_DIR/cache:/helm/cache" "$IMAGE" template cert-manager \
+	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" -v "$OUT_DIR/cache:/helm/cache" \
+		-e KHELM_ENABLE_GIT_GETTER=true \
+		"$IMAGE" template cert-manager \
 		--repo git+https://github.com/cert-manager/cert-manager@deploy/charts?ref=v0.6.2 \
 		--output /out/manifest.yaml \
 		--debug
 	[ -f "$OUT_DIR/manifest.yaml" ]
 	grep -q ca-sync "$OUT_DIR/manifest.yaml"
 	rm -f "$OUT_DIR/manifest.yaml"
-	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" -v "$OUT_DIR/cache:/helm/cache" --network=none "$IMAGE" template cert-manager \
+	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" -v "$OUT_DIR/cache:/helm/cache" \
+		-e KHELM_ENABLE_GIT_GETTER=true \
+		--network=none "$IMAGE" template cert-manager \
 		--repo git+https://github.com/cert-manager/cert-manager@deploy/charts?ref=v0.6.2 \
 		--output /out/manifest.yaml \
 		--debug
@@ -87,7 +93,10 @@ teardown() {
 }
 
 @test "CLI should reject git repository when not in repositories.yaml and trust-any disabled" {
-	run -1 docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" -e KHELM_TRUST_ANY_REPO=false "$IMAGE" template cert-manager \
+	run -1 docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" \
+		-e KHELM_ENABLE_GIT_GETTER=true \
+		-e KHELM_TRUST_ANY_REPO=false \
+		"$IMAGE" template cert-manager \
 		--repo git+https://github.com/cert-manager/cert-manager@deploy/charts?ref=v0.6.2 \
 		--output /out/manifest.yaml \
 		--debug

@@ -72,8 +72,6 @@ func TestRender(t *testing.T) {
 			"chart-hooks-test",
 		}},
 		{"chart-hooks-disabled", "example/chart-hooks-disabled/generator.yaml", []string{"default"}, "  key: myvalue", []string{"chart-hooks-disabled-myconfig"}},
-		{"git-dependency", "example/git-dependency/generator.yaml", []string{"cert-manager", "kube-system"}, "ca-sync", nil},
-		{"local-chart-with-transitive-remote-and-git-dependencies", "example/localrefref-with-git/generator.yaml", []string{"kube-system", "myotherns"}, "admission.certmanager.k8s.io", nil},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			for _, cached := range []string{"", "cached "} {

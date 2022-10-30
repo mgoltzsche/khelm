@@ -29,7 +29,7 @@ func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.C
 	fileExists := err == nil
 	if cfg.Repository == "" {
 		if fileExists {
-			repos, err := h.repositories()
+			repos, err := h.Repositories()
 			if err != nil {
 				return nil, err
 			}
@@ -46,7 +46,7 @@ func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.C
 
 func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
 	repoURLs := map[string]struct{}{cfg.Repository: {}}
-	repos, err := h.repositories()
+	repos, err := h.Repositories()
 	if err != nil {
 		return nil, err
 	}

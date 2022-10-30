@@ -253,8 +253,9 @@ It exposes a `Helm` struct that provides a `Render()` function that returns the 
 | `outputPathMapping[].selectors[].kind` |  | Selects resources by kind. |
 | `outputPathMapping[].selectors[].namespace` |  | Selects resources by namespace. |
 | `outputPathMapping[].selectors[].name` |  | Selects resources by name. |
-|  | `--output-replace` | If enabled replace the output directory or file (CLI-only). |
-|  | `--trust-any-repo` | If enabled repositories that are not registered within `repositories.yaml` can be used as well (env var `KHELM_TRUST_ANY_REPO`). Within the kpt function this behaviour can be disabled by mounting `/helm/repository/repositories.yaml` or disabling network access. |
+|  | `--output-replace` | If enabled, replace the output directory or file (CLI-only). |
+|  | `--trust-any-repo` | If enabled, repositories that are not registered within `repositories.yaml` can be used as well (env var `KHELM_TRUST_ANY_REPO`). Within the kpt function this behaviour can be disabled by mounting `/helm/repository/repositories.yaml` or disabling network access. |
+|  | `--enable-git-getter` | If enabled, support helm repository URLs with the git+https scheme (env var `KHELM_ENABLE_GIT_GETTER`). |
 | `debug` | `--debug` | Enables debug log and provides a stack trace on error. |
 
 ### Repository configuration
@@ -275,6 +276,8 @@ The following example points to an old version of cert-manager using a git URL:
 ```
 git+https://github.com/cert-manager/cert-manager@deploy/charts?ref=v0.6.2
 ```
+
+To enable this feature, set the `--enable-git-getter` option or the corresponding environment variable: `KHELM_ENABLE_GIT_GETTER=true`.
 
 This feature is meant to be compatible with Helm's [helm-git](https://github.com/aslafy-z/helm-git#usage) plugin (but is reimplemented in Go).
 However currently khelm does not support `sparse` git checkouts (due to [lack of support in go-git](https://github.com/go-git/go-git/issues/90)).
