@@ -1,3 +1,4 @@
+# TODO: replace deprecated kpt fn config kind (and `data` field with `config`)
 apiVersion: khelm.mgoltzsche.github.com/v2
 kind: ChartRenderer
 metadata:

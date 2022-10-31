@@ -60,7 +60,7 @@ func Execute(reader io.Reader, writer io.Writer) error {
 
 	if filepath.Base(os.Args[0]) == "khelmfn" {
 		// Add kpt function command
-		rootCmd = kptFnCommand(h)
+		rootCmd = krmFnCommand(h)
 		rootCmd.SetIn(reader)
 		rootCmd.SetOut(writer)
 		rootCmd.SetErr(&errBuf)

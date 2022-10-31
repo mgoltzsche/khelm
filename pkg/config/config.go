@@ -20,7 +20,30 @@ const (
 	GeneratorKind = "ChartRenderer"
 )
 
-// TODO: move these changes into v1 version: rootdir, basedir, releaseName; GeneratorConfig just used for parsing but not passed through to Render()
+// KRMFuncConfig defines the KRM function input.
+type KRMFuncConfigFile struct {
+	APIVersion    string      `yaml:"apiVersion"`
+	Kind          string      `yaml:"kind"`
+	Metadata      K8sMetadata `yaml:"metadata"`
+	KRMFuncConfig `yaml:",inline"`
+	// Data is specified for backward-compatibility with an early kustomize krm function version.
+	// Deprecated.
+	Data *KRMFuncConfig `yaml:"data,omitempty"`
+}
+
+// KRMFuncConfig defines the KRM function input.
+type KRMFuncConfig struct {
+	ChartConfig       `yaml:",inline"`
+	OutputPath        string                 `yaml:"outputPath,omitempty"`
+	OutputPathMapping []KRMFuncOutputMapping `yaml:"outputPathMapping,omitempty"`
+	Debug             bool                   `yaml:"debug,omitempty"`
+}
+
+// KRMFuncOutputMapping maps resources that match the selector to the specified output path.
+type KRMFuncOutputMapping struct {
+	ResourceSelectors []ResourceSelector `yaml:"selectors,omitempty"`
+	OutputPath        string             `yaml:"outputPath"`
+}
 
 // GeneratorConfig define the kustomize plugin's input file content
 type GeneratorConfig struct {
@@ -46,11 +69,11 @@ type ChartConfig struct {
 // NewChartConfig creates a new empty chart config with default values
 func NewChartConfig() (cfg *ChartConfig) {
 	cfg = &ChartConfig{}
-	cfg.applyDefaults()
+	cfg.ApplyDefaults()
 	return
 }
 
-func (cfg *ChartConfig) applyDefaults() {
+func (cfg *ChartConfig) ApplyDefaults() {
 	if cfg.Namespace == "" {
 		cfg.Namespace = "default"
 	}
@@ -141,7 +164,7 @@ func ReadGeneratorConfig(reader io.Reader) (cfg *GeneratorConfig, err error) {
 		if cfg.Name == "" {
 			cfg.Name = cfg.Metadata.Name
 		}
-		cfg.applyDefaults()
+		cfg.ApplyDefaults()
 		errs := []string{}
 		if cfg.APIVersion != GeneratorAPIVersion {
 			errs = append(errs, fmt.Sprintf("expected apiVersion %s but was %s", GeneratorAPIVersion, cfg.APIVersion))

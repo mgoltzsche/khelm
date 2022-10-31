@@ -44,13 +44,13 @@ func TestKptFnCommand(t *testing.T) {
 
 	for _, c := range []struct {
 		name           string
-		input          kptFnConfig
+		input          config.KRMFuncConfig
 		mustContainObj int
 		mustContain    []string
 	}{
 		{
 			"chart path only",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "namespace"),
 				},
@@ -59,7 +59,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"latest cluster scoped remote chart",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Repository: "https://charts.jetstack.io",
 					Chart:      "cert-manager",
@@ -69,7 +69,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"remote chart with version",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Repository: "https://charts.jetstack.io",
 					Chart:      "cert-manager",
@@ -80,7 +80,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"release name",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "release-name"),
 				},
@@ -92,7 +92,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"valueFiles",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "values-inheritance", "chart"),
 				},
@@ -103,7 +103,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"values",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "values-inheritance", "chart"),
 				},
@@ -116,7 +116,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"values override",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "values-inheritance", "chart"),
 				},
@@ -130,7 +130,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"apiversions",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "apiversions-condition", "chart"),
 				},
@@ -141,7 +141,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"kubeversion",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "release-name"),
 				},
@@ -152,7 +152,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"expand-list",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "expand-list"),
 				},
@@ -161,7 +161,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"namespace",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "namespace"),
 				},
@@ -173,7 +173,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"force namespace",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "namespace"),
 				},
@@ -185,7 +185,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"exclude",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "namespace"),
 				},
@@ -203,7 +203,7 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"include",
-			kptFnConfig{ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{ChartConfig: config.ChartConfig{
 				LoaderConfig: config.LoaderConfig{
 					Chart: filepath.Join(exampleDir, "namespace"),
 				},
@@ -227,8 +227,8 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"annotate output path",
-			kptFnConfig{
-				ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{
+				ChartConfig: config.ChartConfig{
 					LoaderConfig: config.LoaderConfig{
 						Chart: filepath.Join(exampleDir, "namespace"),
 					},
@@ -239,8 +239,8 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"annotate output path when annotations empty",
-			kptFnConfig{
-				ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{
+				ChartConfig: config.ChartConfig{
 					LoaderConfig: config.LoaderConfig{
 						Chart: filepath.Join(exampleDir, "empty-annotations"),
 					},
@@ -256,8 +256,8 @@ func TestKptFnCommand(t *testing.T) {
 		},
 		{
 			"output kustomization",
-			kptFnConfig{
-				ChartConfig: &config.ChartConfig{
+			config.KRMFuncConfig{
+				ChartConfig: config.ChartConfig{
 					LoaderConfig: config.LoaderConfig{
 						Chart: filepath.Join(exampleDir, "namespace"),
 					},
@@ -282,10 +282,14 @@ func TestKptFnCommand(t *testing.T) {
 			}
 			inputAnnotations[annotationPath] = outPath
 			b, err := yaml.Marshal(map[string]interface{}{
-				"apiVersion":     "config.kubernetes.io/v1alpha1",
-				"kind":           "ResourceList",
-				"items":          inputItems,
-				"functionConfig": map[string]interface{}{"data": c.input},
+				"apiVersion": "config.kubernetes.io/v1alpha1",
+				"kind":       "ResourceList",
+				"items":      inputItems,
+				"functionConfig": config.KRMFuncConfigFile{
+					APIVersion:    "khelm.mgoltzsche.github.com/v2",
+					Kind:          "ChartRenderer",
+					KRMFuncConfig: c.input,
+				},
 			})
 			require.NoError(t, err)
 			var out bytes.Buffer
