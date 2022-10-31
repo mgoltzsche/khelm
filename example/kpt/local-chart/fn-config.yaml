@@ -1,20 +1,19 @@
-apiVersion: v1
-kind: ConfigMap
+apiVersion: khelm.mgoltzsche.github.com/v2
+kind: ChartRenderer
 metadata:
   name: render-local-chart
   annotations:
     config.kubernetes.io/local-config: "true"
-data:
-  # same structure as the generator.yaml within the other examples
-  chart: /examples/kpt/local-chart/chart # chart must be mounted here
-  name: myrelease
-  namespace: mynamespace
-  apiVersions:
-  - myfancyapi/v1
-  exclude:
-  - apiVersion: v1
-    kind: ConfigMap
-    name: myconfiga
-  # additional kpt function specific fields
-  outputPath: output.yaml
-  debug: true
+# same structure as the generator.yaml within the other examples
+chart: /examples/kpt/local-chart/chart # chart must be mounted here
+name: myrelease
+namespace: mynamespace
+apiVersions:
+- myfancyapi/v1
+exclude:
+- apiVersion: v1
+  kind: ConfigMap
+  name: myconfiga
+# additional kpt function specific fields
+outputPath: output.yaml
+debug: true

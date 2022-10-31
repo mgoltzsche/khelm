@@ -10,7 +10,7 @@ teardown() {
 	rm -rf $TMP_DIR
 }
 
-@test "kpt fn should run example/kpt/local-chart" {
+@test "kpt imperative fn should render local-chart" {
 	cd example/kpt/local-chart
 	rm -rf output
 	mkdir output
@@ -19,7 +19,7 @@ teardown() {
 	grep -q jenkins-role-binding ./output/output.yaml
 }
 
-@test "kpt fn should run cache chart dependency" {
+@test "kpt imperative fn should cache chart dependency" {
 	cd example/kpt/local-chart
 	rm -rf output
 	mkdir output
@@ -37,7 +37,7 @@ teardown() {
 	grep -qv myconfiga ./output/output.yaml
 }
 
-@test "kpt fn should run example/kpt/chart-to-kustomization" {
+@test "kpt imperative fn should convert parameterized chart into kustomization" {
 	cd example/kpt/chart-to-kustomization
 	rm -rf output-kustomization
 	make fn
@@ -48,7 +48,7 @@ teardown() {
 	kustomize build ./output-kustomization | grep -q ' myconfiga'
 }
 
-@test "kpt fn should run example/kpt/remote-chart" {
+@test "kpt imperative fn should render remote chart" {
 	cd example/kpt/remote-chart
 	rm -f output-remote.yaml
 	make fn
@@ -57,7 +57,7 @@ teardown() {
 	grep -q cainjector ./output-remote.yaml
 }
 
-@test "kpt fn should cache remote chart" {
+@test "kpt imperative fn should cache remote chart" {
 	cd example/kpt/remote-chart
 	rm -f output-remote.yaml
 	kpt fn eval --as-current-user --network \
@@ -76,4 +76,15 @@ teardown() {
 		--fn-config=./fn-config.yaml .
 	[ -f ./output-remote.yaml ]
 	grep -q cainjector ./output-remote.yaml
+}
+
+@test "kpt declarative fn should render built-in chart" {
+	cd example/kpt/declarative
+	rm -rf generated
+	make render
+
+	[ -f ./generated/kustomization.yaml ]
+	[ -f ./generated/deployment_myrelease-cert-manager.yaml ]
+	grep -q myrelease-cert-manager ./generated/deployment_myrelease-cert-manager.yaml
+	grep -q ' namespace: "mynamespace"' ./generated/deployment_myrelease-cert-manager.yaml
 }

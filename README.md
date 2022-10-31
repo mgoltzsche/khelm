@@ -42,48 +42,48 @@ Usage examples can be found in the [example](example) and [e2e](e2e) directories
 
 ### kpt function
 
-The khelm kpt function templates a chart and returns the output as single manifest file or kustomization directory (when `outputPath` ends with `/`).
+khelm can be used as a containerized KRM function with [kpt](https://github.com/GoogleContainerTools/kpt).
+The khelm function templates a chart and returns the output as single manifest file or kustomization directory (when `outputPath` ends with `/`) that kpt writes to disk.
 
 In opposite to the kustomize plugin approach, kpt function outputs can be audited reliably when committed to a git repository, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to rendering technologies and chart servers since they just apply static mainfests to a cluster (e.g. using `kpt live apply`).
 
 #### kpt function usage example
 
-Khelm can be used as an imperative kpt function only since it requires the chart to be mounted or network access to fetch a chart.
-The kpt function can be invoked as follows, using a local _ConfigMap_ to specify the parameters:
+When using the khelm image directly with [kpt](https://github.com/GoogleContainerTools/kpt), it must be invoked as an [imperative function](https://kpt.dev/book/04-using-functions/02-imperative-function-execution) since it requires a chart to be mounted or network access to fetch a chart.
+This is shown as follows:
 ```sh
 cat - > fn-config.yaml <<-EOF
-  apiVersion: v1
-  kind: ConfigMap
+  apiVersion: khelm.mgoltzsche.github.com/v2
+  kind: ChartRenderer
   metadata:
     name: cert-manager-manifest-generator-config
-    annotations:
-      config.kubernetes.io/local-config: "true"
-  data:
-    repository: https://charts.jetstack.io
-    chart: cert-manager
-    version: 0.9.x
-    name: myrelease
-    namespace: cert-manager
-    values:
-      webhook:
-        enabled: false
-    outputPath: output-manifest.yaml
+  repository: https://charts.jetstack.io
+  chart: cert-manager
+  version: 0.9.x
+  name: myrelease
+  namespace: cert-manager
+  values:
+    webhook:
+      enabled: false
+  outputPath: output-manifest.yaml
 EOF
 kpt fn eval --image mgoltzsche/khelm:latest --fn-config fn-config.yaml --network .
 ```
-_For all available fields see the [table](#configuration-options) below._  
+_For all available fields see the [table](#configuration-options) below._
 
-Please note that, in case you need to refer to a local chart directory or values file, the source must be mounted to the function using e.g. `kpt fn eval --mount="type=bind,src=$(pwd),dst=/source,rw=true" --image mgoltzsche/khelm --fn-config fn-config.yaml .`.  
-The [kpt examples](example/kpt) and corresponding [e2e tests](e2e/kpt-function-test.sh) show how to do that.  
+To use a local chart or values file, the source must be mounted to the function container using e.g. `kpt fn eval --mount="type=bind,src=$(pwd),dst=/source,rw=true" --image mgoltzsche/khelm --fn-config fn-config.yaml .`.  
+The [kpt examples](example/kpt) and corresponding [e2e tests](e2e/kpt-function-test.sh) show how to do that.
 
-Kpt can also be leveraged to sync charts from other git repositories into your own repository using the `kpt pkg get` and `kpt pkg update` [commands](https://kpt.dev/reference/cli/pkg/) (with a corresponding dependency set up) before running the khelm function.  
+To use khelm as a [declarative function](https://kpt.dev/book/04-using-functions/01-declarative-function-execution), you could distribute a container image that includes both khelm and your chart as shown in the [declarative example](example/kpt/declarative).
+
+kpt can also be leveraged to sync charts from other git repositories into your own repository using the `kpt pkg get` and `kpt pkg update` [commands](https://kpt.dev/reference/cli/pkg/) (with a corresponding dependency set up) before running the khelm function.
 
 #### Caching Helm Charts and repository index files
 
 When external Helm Charts are used the download of their repositories' index files and of the charts itself can take a significant amount of time that adds up when running multiple functions or calling a function frequently during development.  
-To speed this up caching can be enabled by mounting a host directory into the container at `/helm`, e.g. `kpt fn run --mount "type=bind,src=$HOME/.khelm,dst=/helm,rw=true" .` as also shown [here](example/kpt/cache-dependencies).  
+To speed this up caching can be enabled by mounting a host directory into the container at `/helm`, e.g. `kpt fn run --mount "type=bind,src=$HOME/.khelm,dst=/helm,rw=true" .`.
 _Please be aware that the presence of `/helm/repository/repositories.yaml` enables a strict repository policy by default (see [repository configuration](#repository-configuration))._
-_Therefore, to be independent of existing Helm 2 installations, a host's `~/.helm` directory should not be mounted to `/helm` in most cases._
+_Therefore, to be independent of existing Helm 2 installations, a host's `~/.helm` directory should not be mounted to `/helm` in most cases but the `~/.helm/cache` subdirectory into `/helm/cache`._
 
 ### kustomize exec plugin
 
@@ -134,7 +134,7 @@ _When using kustomize 3 the option is called `--enable_alpha_plugins`._
 
 ### kustomize Containerized KRM Function
 
-khelm can be used as [Containerized KRM Function](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/containerized_krm_functions/) [kustomize](https://github.com/kubernetes-sigs/kustomize) plugin.
+Similar to the kpt function approach, khelm can be used as [Containerized KRM Function](https://kubectl.docs.kubernetes.io/guides/extending_kustomize/containerized_krm_functions/) [kustomize](https://github.com/kubernetes-sigs/kustomize) plugin.
 Though plugin support in kustomize is still an alpha feature, this form of extension seems destined to be graduated out of alpha (see [KEP 2953](https://github.com/kubernetes/enhancements/tree/master/keps/sig-cli/2953-kustomize-plugin-graduation)).
 
 This approach only works with kustomize>=v4.1.0.
@@ -156,20 +156,15 @@ metadata:
       container:
         image: mgoltzsche/khelm:latest
         network: true
-data:
-  repository: https://charts.jetstack.io
-  chart: cert-manager
-  name: my-cert-manager-release
-  namespace: cert-manager
-  version: 0.9.x
-  values:
-    webhook:
-      enabled: false
+repository: https://charts.jetstack.io
+chart: cert-manager
+name: my-cert-manager-release
+namespace: cert-manager
+version: 0.9.x
+values:
+  webhook:
+    enabled: false
 ```
-
-Two notes for the current version of khelm (that may change in the future):
-* Because the kpt style function expects the parameters to be provided in `data` we must accommodate it.
-* Moreover this method of invocation does not see the metadata of the `ChartRenderer` yaml, so we must specify them as the kpt function expects.
 
 _For all available fields see the [table](#configuration-options) below._
 

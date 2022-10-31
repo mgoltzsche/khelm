@@ -1,13 +1,12 @@
-apiVersion: v1
-kind: ConfigMap
+apiVersion: khelm.mgoltzsche.github.com/v2
+kind: ChartRenderer
 metadata:
   name: remote-chart
   annotations:
     config.kubernetes.io/local-config: "true"
-data:
-  repository: https://charts.jetstack.io
-  chart: cert-manager
-  version: 0.9.1
-  name: myrelease
-  outputPath: output-remote.yaml
-  debug: true
+repository: https://charts.jetstack.io
+chart: cert-manager
+version: 0.9.1
+name: myrelease
+outputPath: output-remote.yaml
+debug: true

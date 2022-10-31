@@ -1,0 +1,10 @@
+apiVersion: kpt.dev/v1
+kind: Kptfile
+metadata:
+  name: webapp
+info:
+  description: webapp example
+pipeline:
+  mutators:
+  - image: local/declarative-khelm-fn-example:unstable
+    configPath: ./fn-config.yaml

@@ -1,0 +1,14 @@
+apiVersion: blueprints.example.org/v1alpha1
+kind: GenerateSampleApp
+metadata:
+  name: myrelease
+  namespace: mynamespace
+  annotations:
+    config.kubernetes.io/local-config: "true"
+# same structure as the generator.yaml within the other examples (except for chart and repository fields)
+values:
+  myproperty: myvalue
+  # defaults to:
+  #outputPath: generated/
+# default:
+#outputPath: generated/
