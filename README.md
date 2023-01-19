@@ -24,6 +24,7 @@ Since [kpt](https://github.com/GoogleContainerTools/kpt) is [published](https://
 * Automatically fetches and updates required repository index files when needed
 * Allows to automatically reload dependencies when lock file is out of sync
 * Allows to use any repository without registering it in repositories.yaml
+* Allows to use a Helm chart from a remote git repository
 * Allows to exclude certain resources from the Helm chart output
 * Allows to enforce namespace-scoped resources within the template output
 * Allows to enforce a namespace on all resources
@@ -195,8 +196,15 @@ khelm template cert-manager --version=0.9.x --repo=https://charts.jetstack.io
 _For all available options see the [table](#configuration-options) below._
 
 #### Docker usage example
+
+Generate a manifest from a chart:
 ```sh
 docker run mgoltzsche/khelm:latest template cert-manager --version=0.9.x --repo=https://charts.jetstack.io
+```
+
+Generate a manifest from a chart within a git repository:
+```sh
+docker run mgoltzsche/khelm:latest template cert-manager --repo=git+https://github.com/cert-manager/cert-manager@deploy/charts?ref=v0.6.2
 ```
 
 ### Go API
@@ -240,8 +248,9 @@ It exposes a `Helm` struct that provides a `Render()` function that returns the 
 | `outputPathMapping[].selectors[].kind` |  | Selects resources by kind. |
 | `outputPathMapping[].selectors[].namespace` |  | Selects resources by namespace. |
 | `outputPathMapping[].selectors[].name` |  | Selects resources by name. |
-|  | `--output-replace` | If enabled replace the output directory or file (CLI-only). |
-|  | `--trust-any-repo` | If enabled repositories that are not registered within `repositories.yaml` can be used as well (env var `KHELM_TRUST_ANY_REPO`). Within the kpt function this behaviour can be disabled by mounting `/helm/repository/repositories.yaml` or disabling network access. |
+|  | `--output-replace` | If enabled, replace the output directory or file (CLI-only). |
+|  | `--trust-any-repo` | If enabled, repositories that are not registered within `repositories.yaml` can be used as well (env var `KHELM_TRUST_ANY_REPO`). Within the kpt function this behaviour can be disabled by mounting `/helm/repository/repositories.yaml` or disabling network access. |
+|  | `--enable-git-getter` | If enabled, support helm repository URLs with the git+https scheme (env var `KHELM_ENABLE_GIT_GETTER`). |
 | `debug` | `--debug` | Enables debug log and provides a stack trace on error. |
 
 ### Repository configuration
@@ -251,6 +260,22 @@ Repository credentials can be configured using Helm's `repositories.yaml` which 
 When running khelm as kpt function or within a container the `repositories.yaml` should be mounted to `/helm/repository/repositories.yaml`.  
 
 Unlike Helm khelm allows usage of any repository when `repositories.yaml` is not present or `--trust-any-repo` (env var `KHELM_TRUST_ANY_REPO`) is enabled.
+
+#### Git URLs as Helm repositories
+
+Helm charts can be fetched from git repositories by letting the Helm repository URL point to the chart's parent directory using the URL scheme `git+https` or `git+ssh`.
+The path within the git repository URL and the repository part of the URL must be separated by `@`.
+The `ref` parameter can be used to specify the git tag.  
+
+The following example points to an old version of cert-manager using a git URL:
+```
+git+https://github.com/cert-manager/cert-manager@deploy/charts?ref=v0.6.2
+```
+
+To enable this feature, set the `--enable-git-getter` option or the corresponding environment variable: `KHELM_ENABLE_GIT_GETTER=true`.
+
+This feature is meant to be compatible with Helm's [helm-git](https://github.com/aslafy-z/helm-git#usage) plugin (but is reimplemented in Go).
+However currently khelm does not support `sparse` git checkouts (due to [lack of support in go-git](https://github.com/go-git/go-git/issues/90)).
 
 ## Helm support
 

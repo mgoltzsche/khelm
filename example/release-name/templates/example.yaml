@@ -5,3 +5,4 @@ metadata:
 data:
   key: b
   k8sVersion: {{ .Capabilities.KubeVersion }}
+  chartVersion: {{ .Chart.Version }}

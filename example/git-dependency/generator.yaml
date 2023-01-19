@@ -1,7 +1,6 @@
 apiVersion: khelm.mgoltzsche.github.com/v2
 kind: ChartRenderer
 metadata:
-  name: my-release-name
+  name: cert-manager
+  namespace: cert-manager
 chart: .
-kubeVersion: 1.17
-version: 1.9.3

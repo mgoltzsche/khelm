@@ -93,6 +93,16 @@ func TestTemplateCommand(t *testing.T) {
 			[]string{filepath.Join(exampleDir, "chart-hooks"), "--no-hooks"},
 			1, "myvalue",
 		},
+		{
+			"git-dependency",
+			[]string{filepath.Join(exampleDir, "git-dependency"), "--enable-git-getter", "--trust-any-repo"},
+			24, "ca-sync",
+		},
+		{
+			"local-chart-with-transitive-remote-and-git-dependencies",
+			[]string{filepath.Join(exampleDir, "localrefref-with-git"), "--enable-git-getter", "--trust-any-repo"},
+			33, "admission.certmanager.k8s.io",
+		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			var out bytes.Buffer
@@ -127,6 +137,10 @@ func TestTemplateCommandError(t *testing.T) {
 		{
 			"reject cluster scoped resources",
 			[]string{"cert-manager", "--repo=https://charts.jetstack.io", "--namespaced-only"},
+		},
+		{
+			"reject git urls by default",
+			[]string{"git-dependency", "--enable-git-getter=false"},
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {

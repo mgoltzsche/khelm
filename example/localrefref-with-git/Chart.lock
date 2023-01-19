@@ -1,0 +1,9 @@
+dependencies:
+- name: intermediate-chart
+  repository: file://../localref/intermediate-chart
+  version: 0.1.1
+- name: git-https-dependency
+  repository: git+https://github.com/mgoltzsche/khelm@example?ref=6d1374f17decb68f7876ae1f592d5bd04c74fee5
+  version: 0.1.0
+digest: sha256:020a51536f70f9fa7c29b0c1573ea40abbde749c89148a35720efddf7709a003
+generated: "2022-10-30T20:22:52.241871102+01:00"

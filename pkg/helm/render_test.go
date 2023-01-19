@@ -15,10 +15,12 @@ import (
 	"time"
 
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
+	"github.com/mgoltzsche/khelm/v2/pkg/repositories"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/repo"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 	helmyaml "sigs.k8s.io/yaml"
@@ -51,6 +53,7 @@ func TestRender(t *testing.T) {
 		{"force-namespace", "example/force-namespace/generator.yaml", []string{"forced-namespace"}, "  key: b", nil},
 		{"kubeVersion", "example/release-name/generator.yaml", []string{}, "  k8sVersion: v1.17.0", nil},
 		{"release-name", "example/release-name/generator.yaml", []string{}, "  name: my-release-name-config", nil},
+		{"chart-version", "example/release-name/generator.yaml", []string{}, "  chartVersion: 1.9.3", nil},
 		{"exclude", "example/exclude/generator.yaml", []string{"cluster-role-binding-ns"}, "  key: b", nil},
 		{"include", "example/include/generator.yaml", []string{}, "  key: b", nil},
 		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", []string{}, "rook-ceph-v0.9.3", nil},
@@ -75,10 +78,10 @@ func TestRender(t *testing.T) {
 				var rendered bytes.Buffer
 				absFile := filepath.Join(rootDir, c.file)
 				err := renderFile(t, absFile, true, rootDir, &rendered)
-				require.NoError(t, err, "render %s%s", cached, absFile)
+				require.NoErrorf(t, err, "render %s%s", cached, absFile)
 				b := rendered.Bytes()
 				l, err := readYaml(b)
-				require.NoError(t, err, "rendered %syaml:\n%s", cached, b)
+				require.NoErrorf(t, err, "rendered %syaml:\n%s", cached, b)
 				require.True(t, len(l) > 0, "%s: rendered result of %s is empty", cached, c.file)
 				require.Contains(t, rendered.String(), c.expectedContained, "%syaml", cached)
 				foundResourceNames := []string{}
@@ -188,16 +191,24 @@ func TestRenderRebuildsLocalDependencies(t *testing.T) {
 }
 
 func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
+	dir, err := os.MkdirTemp("", "khelm-test-")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
 	settings := cli.New()
-	repoURL := "https://charts.rook.io/stable"
+	settings.RepositoryCache = dir
 	trust := true
-	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &trust, settings, getter.All(settings))
-	require.NoError(t, err, "use repo")
-	entry, err := repos.Get(repoURL)
+	repos, err := repositories.New(*settings, getter.All(settings), &trust)
+	require.NoError(t, err)
+	repoURL := "https://charts.rook.io/stable"
+	reqRepos, err := reposForURLs(map[string]struct{}{repoURL: {}}, repos)
+	require.NoError(t, err, "reposForURLs")
+	require.NotNil(t, reqRepos)
+	entry, trusted, err := reqRepos.Get(repoURL)
 	require.NoError(t, err, "repos.EntryByURL()")
-	err = repos.Close()
+	require.False(t, trusted, "trusted")
+	err = reqRepos.Close()
 	require.NoError(t, err, "repos.Close()")
-	idxFile := indexFile(entry, settings.RepositoryCache)
+	idxFile := repoIndexFile(entry, settings.RepositoryCache)
 	idx := repo.NewIndexFile() // write empty index file to cause not found error
 	err = idx.WriteFile(idxFile, 0644)
 	require.NoError(t, err, "write empty index file")
@@ -208,16 +219,23 @@ func TestRenderUpdateRepositoryIndexIfChartNotFound(t *testing.T) {
 }
 
 func TestRenderUpdateRepositoryIndexIfDependencyNotFound(t *testing.T) {
+	dir, err := os.MkdirTemp("", "khelm-test-")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
 	settings := cli.New()
+	settings.RepositoryCache = dir
 	repoURL := "https://kubernetes-charts.storage.googleapis.com"
 	trust := true
-	repos, err := reposForURLs(map[string]struct{}{repoURL: {}}, &trust, settings, getter.All(settings))
+	repos, err := repositories.New(*settings, getter.All(settings), &trust)
+	require.NoError(t, err)
+	reqRepos, err := reposForURLs(map[string]struct{}{repoURL: {}}, repos)
 	require.NoError(t, err, "use repo")
-	entry, err := repos.Get(repoURL)
+	entry, trusted, err := reqRepos.Get(repoURL)
 	require.NoError(t, err, "repos.Get()")
-	err = repos.Close()
+	require.False(t, trusted, "trusted")
+	err = reqRepos.Close()
 	require.NoError(t, err, "repos.Close()")
-	idxFile := indexFile(entry, settings.RepositoryCache)
+	idxFile := repoIndexFile(entry, settings.RepositoryCache)
 	idx := repo.NewIndexFile() // write empty index file to cause not found error
 	err = idx.WriteFile(idxFile, 0644)
 	require.NoError(t, err, "write empty index file")
@@ -326,6 +344,10 @@ func TestRenderRepositoryCredentials(t *testing.T) {
 			require.NoError(t, err, "render chart with repository credentials")
 		})
 	}
+}
+
+func repoIndexFile(entry *repo.Entry, cacheDir string) string {
+	return filepath.Join(cacheDir, helmpath.CacheIndexFile(entry.Name))
 }
 
 type fakePrivateChartServerHandler struct {

@@ -1,0 +1,11 @@
+apiVersion: v2
+description: Chart that refers another one that has dependencies itself
+name: myumbrella-chart
+version: 0.2.0
+dependencies:
+- name: intermediate-chart
+  version: "~0.1.0"
+  repository: "file://../localref/intermediate-chart"
+- name: git-https-dependency
+  version: "x.x.x"
+  repository: "git+https://github.com/mgoltzsche/khelm@example?ref=6d1374f17decb68f7876ae1f592d5bd04c74fee5"

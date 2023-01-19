@@ -4,16 +4,22 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mgoltzsche/khelm/v2/pkg/repositories"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
+
+func IsUntrustedRepository(err error) bool {
+	return repositories.IsUntrustedRepository(err)
+}
 
 // Helm maintains the helm environment state
 type Helm struct {
 	TrustAnyRepository *bool
 	Settings           cli.EnvSettings
 	Getters            getter.Providers
+	repos              repositories.Interface
 }
 
 // NewHelm creates a new helm environment
@@ -24,4 +30,16 @@ func NewHelm() *Helm {
 		settings.RepositoryConfig = filepath.Join(helmHome, "repository", "repositories.yaml")
 	}
 	return &Helm{Settings: *settings, Getters: getter.All(settings)}
+}
+
+func (h *Helm) Repositories() (repositories.Interface, error) {
+	if h.repos != nil {
+		return h.repos, nil
+	}
+	repos, err := repositories.New(h.Settings, h.Getters, h.TrustAnyRepository)
+	if err != nil {
+		return nil, err
+	}
+	h.repos = repos
+	return repos, nil
 }

@@ -27,7 +27,7 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 		return name, errors.Errorf("path %q not found", name)
 	}
 
-	repoEntry, err := repos.Get(cfg.Repository)
+	repoEntry, _, err := repos.Get(cfg.Repository)
 	if err != nil {
 		return "", err
 	}
@@ -42,8 +42,7 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 		return "", errors.Wrap(err, "failed to make chart URL absolute")
 	}
 
-	chartCacheDir := filepath.Join(settings.RepositoryCache, "khelm")
-	cacheFile, err := cacheFilePath(chartURL, cv, chartCacheDir)
+	cacheFile, err := cacheFilePath(chartURL, cv, settings.RepositoryCache)
 	if err != nil {
 		return "", errors.Wrap(err, "derive chart cache file")
 	}
@@ -127,24 +126,27 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 	}
 }
 
-func cacheFilePath(chartURL string, cv *repo.ChartVersion, cacheDir string) (string, error) {
+func cacheFilePath(chartURL string, cv *repo.ChartVersion, cacheRootDir string) (string, error) {
+	cacheDir := filepath.Join(cacheRootDir, "khelm")
 	u, err := url.Parse(chartURL)
 	if err != nil {
-		return "", errors.Wrapf(err, "parse chart URL %q", chartURL)
+		return "", errors.Wrapf(err, "parse chart url %q", chartURL)
 	}
-	if u.Path == "" {
-		return "", errors.Errorf("parse chart URL %s: empty path in URL", chartURL)
+	p := u.Path
+	if p == "" {
+		return "", errors.Errorf("invalid chart url %s: empty path", chartURL)
 	}
-
 	// Try reading file from cache
-	path := filepath.Clean(filepath.FromSlash(u.Path))
+	path := filepath.Clean(filepath.FromSlash(p))
 	if strings.Contains(path, "..") {
 		return "", errors.Errorf("get %s: path %q points outside the cache dir", chartURL, path)
 	}
 	digest := "none"
 	if len(cv.Digest) < 16 {
 		// not all the helm repository implementations populate the digest field (e.g. Nexus 3)
-		log.Printf("WARNING: repo index entry for chart %q does not specify a digest", cv.Name)
+		if !strings.HasPrefix(chartURL, "git+") {
+			log.Printf("WARNING: repo index entry for chart %q does not specify a digest", cv.Name)
+		}
 	} else {
 		digest = cv.Digest[:16]
 	}
