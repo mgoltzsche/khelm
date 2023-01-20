@@ -64,6 +64,9 @@ func TestKptFnCommand(t *testing.T) {
 					Repository: "https://charts.jetstack.io",
 					Chart:      "cert-manager",
 				},
+				RendererConfig: config.RendererConfig{
+					KubeVersion: "v1.21.0",
+				},
 			}},
 			-1, []string{"acme.cert-manager.io"},
 		},
