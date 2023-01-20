@@ -12,9 +12,9 @@ export HELM_SECRETS_SOPS_BIN := $(SOPS)
 export HELM_PLUGINS := $(BUILD_DIR)/helm-plugins
 
 GORELEASER_VERSION ?= v1.9.2
-GOLANGCI_LINT_VERSION ?= v1.46.2
+GOLANGCI_LINT_VERSION ?= v1.51.2
 # TODO: fix e2e tests and docu to make newer kpt versions work
-KPT_VERSION ?= v1.0.0-beta.21
+KPT_VERSION ?= v1.0.0-beta.27
 KUSTOMIZE_VERSION ?= v4.5.5
 BATS_VERSION = v1.7.0
 SOPS_VERSION = v3.7.3
