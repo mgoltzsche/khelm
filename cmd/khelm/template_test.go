@@ -26,7 +26,7 @@ func TestTemplateCommand(t *testing.T) {
 		{
 			"latest cluster scoped remote chart",
 			[]string{"cert-manager", "--repo=https://charts.jetstack.io",
-				"--trust-any-repo"},
+				"--trust-any-repo", "--kube-version=v1.21.0"},
 			-1, "acme.cert-manager.io",
 		},
 		{
