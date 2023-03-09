@@ -1,6 +1,6 @@
 module github.com/mgoltzsche/khelm/v2
 
-go 1.18
+go 1.19
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.0
