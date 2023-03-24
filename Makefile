@@ -13,7 +13,7 @@ export HELM_PLUGINS := $(BUILD_DIR)/helm-plugins
 
 GORELEASER_VERSION ?= v1.9.2
 GOLANGCI_LINT_VERSION ?= v1.51.2
-# TODO: fix e2e tests and docu to make newer kpt versions work
+# TODO: update kpt when panic is fixed: https://github.com/GoogleContainerTools/kpt/issues/3868
 KPT_VERSION ?= v1.0.0-beta.20
 KUSTOMIZE_VERSION ?= v4.5.5
 BATS_VERSION = v1.7.0
@@ -41,8 +41,8 @@ install:
 	chmod +x /usr/local/bin/khelm
 
 install-kustomize-plugin:
-	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer
-	cp $(BUILD_DIR)/bin/khelm $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v1/chartrenderer/ChartRenderer
+	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer
+	cp $(BUILD_DIR)/bin/khelm $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer/ChartRenderer
 
 image: khelm
 	$(DOCKER) build --force-rm -t $(IMAGE) -f ./Dockerfile $(BIN_DIR)

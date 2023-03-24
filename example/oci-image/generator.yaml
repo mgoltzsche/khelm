@@ -1,0 +1,8 @@
+apiVersion: khelm.mgoltzsche.github.com/v2
+kind: ChartRenderer
+metadata:
+  name: karpenter
+  namespace: kube-system
+repository: "oci://public.ecr.aws/karpenter"
+chart: karpenter
+version: 0.27.0
