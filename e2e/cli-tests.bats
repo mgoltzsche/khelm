@@ -38,3 +38,12 @@ teardown() {
 	[ -f "$OUT_DIR/manifest.yaml" ]
 	grep -q myreleasex "$OUT_DIR/manifest.yaml"
 }
+
+@test "CLI should support oci registry" {
+	docker run --rm -u $(id -u):$(id -g) -v "$OUT_DIR:/out" "$IMAGE" template myreleasex oci://public.ecr.aws/karpenter/karpenter \
+		--version v0.27.0 \
+		--output /out/manifest.yaml \
+		--debug
+	[ -f "$OUT_DIR/manifest.yaml" ]
+	grep -q myreleasex "$OUT_DIR/manifest.yaml"
+}

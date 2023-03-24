@@ -17,6 +17,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 // loadChart loads chart from local or remote location
@@ -29,6 +30,8 @@ func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.C
 	if cfg.Repository == "" {
 		if fileExists {
 			return h.buildAndLoadLocalChart(ctx, cfg)
+		} else if registry.IsOCI(cfg.Chart) {
+			return h.loadOCIChart(ctx, cfg)
 		} else if l := strings.Split(cfg.Chart, "/"); len(l) == 2 && l[0] != "" && l[1] != "" && l[0] != ".." && l[0] != "." {
 			cfg.Repository = "@" + l[0]
 			cfg.Chart = l[1]
@@ -37,6 +40,14 @@ func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.C
 		}
 	}
 	return h.loadRemoteChart(ctx, cfg)
+}
+
+func (h *Helm) loadOCIChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
+	chartPath, err := locateChart(ctx, &cfg.LoaderConfig, nil, &h.Settings, h.Getters)
+	if err != nil {
+		return nil, err
+	}
+	return loader.Load(chartPath)
 }
 
 func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
