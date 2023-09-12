@@ -65,7 +65,7 @@ func TestKptFnCommand(t *testing.T) {
 					Chart:      "cert-manager",
 				},
 				RendererConfig: config.RendererConfig{
-					KubeVersion: "v1.21.0",
+					KubeVersion: "v1.27.0",
 				},
 			}},
 			-1, []string{"acme.cert-manager.io"},
@@ -238,7 +238,7 @@ func TestKptFnCommand(t *testing.T) {
 				},
 				OutputPath: "my/output/manifest.yaml",
 			},
-			3, []string{" annotations:\n    config.kubernetes.io/index: 1\n    config.kubernetes.io/path: my/output/manifest.yaml\n"},
+			3, []string{" annotations:\n    config.kubernetes.io/index: 0\n    config.kubernetes.io/path: my/output/manifest.yaml\n"},
 		},
 		{
 			"annotate output path when annotations empty",
