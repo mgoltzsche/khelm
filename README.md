@@ -45,7 +45,7 @@ Usage examples can be found in the [example](example) and [e2e](e2e) directories
 khelm can be used as a containerized KRM function with [kpt](https://github.com/GoogleContainerTools/kpt).
 The khelm function templates a chart and returns the output as single manifest file or kustomization directory (when `outputPath` ends with `/`) that kpt writes to disk.
 
-In opposite to the kustomize plugin approach, kpt function outputs can be audited reliably when committed to a git repository, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to rendering technologies and chart servers since they just apply static mainfests to a cluster (e.g. using `kpt live apply`).
+In opposite to the kustomize plugin approach, kpt function outputs can be audited reliably when committed to a git repository, a kpt function does not depend on particular plugin binaries on the host and CD pipelines can run without dependencies to rendering technologies and chart servers since they just apply static manifests to a cluster (e.g. using `kpt live apply`).
 
 #### kpt function usage example
 
