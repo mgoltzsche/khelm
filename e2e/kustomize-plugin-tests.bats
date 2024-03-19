@@ -30,3 +30,7 @@ kustomizeBuild() {
 @test "kustomize vars can overwrite helm values" {
 	kustomizeBuild example/kustomize-var/overlay ' value: changed by kustomization overlay'
 }
+
+@test "kustomize generator should support OCI registry" {
+	kustomizeBuild example/oci-image 'app.kubernetes.io/name: karpenter'
+}

@@ -252,6 +252,14 @@ When running khelm as kpt function or within a container the `repositories.yaml`
 
 Unlike Helm khelm allows usage of any repository when `repositories.yaml` is not present or `--trust-any-repo` (env var `KHELM_TRUST_ANY_REPO`) is enabled.
 
+### Loading a chart from an OCI registry
+
+Using Helm, you can store a Helm chart as OCI image within a container registry.
+To load a chart from an OCI registry using khelm you can leave the `repository` field empty and specify the container registry/image name within the `chart` field, prefixed with `oci://`.
+When using a chart from an OCI registry, Helm's `repository.yaml` configuration is not used.
+Instead, Docker's `config.json` is used to read private registry credentials from, if any.
+This behaviour is aligned with Helm.
+
 ## Helm support
 
 * Helm 2 is supported by the `v1` module version.
