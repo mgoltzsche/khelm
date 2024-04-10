@@ -230,12 +230,19 @@ func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *config
 }
 
 func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, chartPath string, cfg *config.LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) error {
+	registryClient, err := registry.NewClient(
+		registry.ClientOptEnableCache(true),
+	)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	man := &downloader.Manager{
 		Out:              log.Writer(),
 		ChartPath:        chartPath,
 		Keyring:          cfg.Keyring,
 		SkipUpdate:       true,
 		Getters:          getters,
+		RegistryClient:   registryClient,
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
 		Debug:            settings.Debug,
@@ -244,7 +251,7 @@ func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, ch
 		man.Verify = downloader.VerifyAlways
 	}
 	// Workaround for leftover tmpcharts dir (which makes Build() fail)
-	err := os.RemoveAll(filepath.Join(chartPath, "tmpcharts"))
+	err = os.RemoveAll(filepath.Join(chartPath, "tmpcharts"))
 	if err != nil {
 		return errors.WithStack(err)
 	}
