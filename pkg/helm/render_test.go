@@ -55,6 +55,8 @@ func TestRender(t *testing.T) {
 		{"include", "example/include/generator.yaml", []string{}, "  key: b", nil},
 		{"local-chart-with-local-dependency-and-transitive-remote", "example/localrefref/generator.yaml", []string{}, "rook-ceph-v0.9.3", nil},
 		{"local-chart-with-remote-dependency", "example/localref/generator.yaml", []string{}, "rook-ceph-v0.9.3", nil},
+		{"oci-chart", "example/oci-image/generator.yaml", []string{"kube-system", "kube-node-lease"}, "name: ec2nodeclasses.karpenter.k8s.aws", nil},
+		{"oci-dependency", "example/oci-dependency/generator.yaml", []string{"kube-system", "kube-node-lease"}, "name: ec2nodeclasses.karpenter.k8s.aws", nil},
 		{"values-inheritance", "example/values-inheritance/generator.yaml", []string{}, " inherited: inherited value\n  fileoverwrite: overwritten by file\n  valueoverwrite: overwritten by generator config", nil},
 		{"cluster-scoped", "example/cluster-scoped/generator.yaml", []string{}, "myrolebinding", nil},
 		{"chart-hooks", "example/chart-hooks/generator.yaml", []string{"default"}, "  key: myvalue", []string{

@@ -1,0 +1,8 @@
+apiVersion: v2
+description: example chart with OCI chart as dependency
+name: oci-dependency
+version: 0.0.0
+dependencies:
+- name: karpenter
+  version: "0.35.0"
+  repository: "oci://public.ecr.aws/karpenter"
