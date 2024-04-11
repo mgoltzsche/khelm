@@ -38,6 +38,10 @@ func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.C
 		} else {
 			return nil, errors.Errorf("chart directory %q not found and no repository specified", cfg.Chart)
 		}
+	} else if registry.IsOCI(cfg.Repository) {
+		cfg.Chart = fmt.Sprintf("%s/%s", cfg.Repository, cfg.Chart)
+		cfg.Repository = ""
+		return h.loadOCIChart(ctx, cfg)
 	}
 	return h.loadRemoteChart(ctx, cfg)
 }

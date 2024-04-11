@@ -3,5 +3,6 @@ kind: ChartRenderer
 metadata:
   name: karpenter
   namespace: kube-system
-chart: "oci://public.ecr.aws/karpenter/karpenter"
+chart: karpenter
 version: 0.35.0
+repository: "oci://public.ecr.aws/karpenter"
