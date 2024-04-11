@@ -255,10 +255,12 @@ Unlike Helm khelm allows usage of any repository when `repositories.yaml` is not
 ### Loading a chart from an OCI registry
 
 Using Helm, you can store a Helm chart as OCI image within a container registry.
-To load a chart from an OCI registry using khelm you can leave the `repository` field empty and specify the container registry/image name within the `chart` field, prefixed with `oci://`.
+To load a chart from an OCI registry using khelm, you can specify the OCI registry within the `repository` field, prefixed with `oci://`.
+The complete OCI image name is constructed from the `repository` and the `chart` field values, separated by `/`.
+For an example, see [here](./example/oci-image/generator.yaml) and [here](./example/oci-dependency/Chart.yaml).
+
 When using a chart from an OCI registry, Helm's `repository.yaml` configuration is not used.
 Instead, Docker's `config.json` is used to read private registry credentials from, if any.
-This behaviour is aligned with Helm.
 
 ## Helm support
 
