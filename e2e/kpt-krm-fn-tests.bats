@@ -78,6 +78,18 @@ teardown() {
 	grep -q cainjector ./output-remote.yaml
 }
 
+@test "kpt imperative fn should map output" {
+	cd example/kpt/output-mapping
+	rm -f output-default.yaml output-filtered.yaml
+	make fn
+
+	[ -f ./output-default.yaml ]
+	[ -f ./output-filtered.yaml ]
+	grep -q cainjector ./output-default.yaml
+	grep -Eq '^kind: ConfigMap$' ./output-filtered.yaml
+	! grep -Eq '^kind: ConfigMap$' ./output-default.yaml
+}
+
 @test "kpt declarative fn should render built-in chart" {
 	cd example/kpt/declarative
 	rm -rf generated

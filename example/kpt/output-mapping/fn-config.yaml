@@ -1,0 +1,17 @@
+apiVersion: khelm.mgoltzsche.github.com/v2
+kind: ChartRenderer
+metadata:
+  name: remote-chart
+  annotations:
+    config.kubernetes.io/local-config: "true"
+repository: https://charts.jetstack.io
+chart: cert-manager
+version: 1.10.2
+name: myrelease
+debug: true
+outputPath: output-default.yaml
+outputPathMapping:
+- outputPath: output-filtered.yaml
+  selectors:
+  - kind: ConfigMap
+    name: myrelease-cert-manager-webhook
