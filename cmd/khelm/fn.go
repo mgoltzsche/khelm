@@ -53,7 +53,7 @@ func krmFnCommand(h *helm.Helm) *cobra.Command {
 			if m.OutputPath == "" {
 				return errors.Errorf("no outputPath specified for outputPathMapping[%d]", i)
 			}
-			if len(m.ResourceSelectors) == 0 {
+			if len(m.Selectors) == 0 {
 				return errors.Errorf("no selectors specified for outputPathMapping[%d] -> %q", i, m.OutputPath)
 			}
 		}
@@ -196,7 +196,7 @@ func isGeneratedOutputPath(path string, outputPaths []string) bool {
 func mapOutputPaths(resources []*yaml.RNode, outputMappings []config.KRMFuncOutputMapping, defaultOutputPath string, debug bool) (map[string][]*yaml.RNode, error) {
 	matchers := make([]matcher.ResourceMatchers, len(outputMappings))
 	for i, m := range outputMappings {
-		matchers[i] = matcher.FromResourceSelectors(m.ResourceSelectors)
+		matchers[i] = matcher.FromResourceSelectors(m.Selectors)
 	}
 	kustomizationDirs := map[string][]*yaml.RNode{}
 	for i, o := range resources {

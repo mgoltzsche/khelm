@@ -12,13 +12,12 @@ export HELM_SECRETS_SOPS_BIN := $(SOPS)
 export HELM_PLUGINS := $(BUILD_DIR)/helm-plugins
 
 GORELEASER_VERSION ?= v1.9.2
-GOLANGCI_LINT_VERSION ?= v1.51.2
-# TODO: update kpt when panic is fixed: https://github.com/GoogleContainerTools/kpt/issues/3868
+GOLANGCI_LINT_VERSION ?= v1.59.1
 KPT_VERSION ?= v1.0.0-beta.20
-KUSTOMIZE_VERSION ?= v4.5.5
-BATS_VERSION = v1.7.0
-SOPS_VERSION = v3.7.3
-HELM_SECRETS_VERSION = v3.14.0
+KUSTOMIZE_VERSION ?= v5.4.3
+BATS_VERSION = v1.11.0
+SOPS_VERSION = v3.9.0
+HELM_SECRETS_VERSION = v4.6.0
 
 BATS_DIR = $(BUILD_DIR)/tools/bats
 BATS = $(BIN_DIR)/bats
@@ -31,7 +30,7 @@ BUILDTAGS ?=
 CGO_ENABLED ?= 0
 DOCKER ?= docker
 
-all: clean khelm test check
+all: clean khelm test image check
 
 khelm:
 	CGO_ENABLED=$(CGO_ENABLED) go build -o $(BUILD_DIR)/bin/khelm -ldflags "$(GO_LDFLAGS)" -tags "$(BUILDTAGS)" ./cmd/khelm
@@ -70,6 +69,7 @@ clean:
 	rm -rf example/kpt/linkerd/dep
 	# TODO: fix "invalid trailing UTF-8 octet" yaml parser error
 	rm -f example/kpt/test-cases/output-remote.yaml
+	rm -f example/kpt/output-mapping/output-filtered.yaml
 
 clean-all: clean
 	rm -rf $(BUILD_DIR)
@@ -103,7 +103,7 @@ $(KPT):
 	$(call download-bin,$(KPT),"https://github.com/GoogleContainerTools/kpt/releases/download/$(KPT_VERSION)/kpt_$$(uname | tr '[:upper:]' '[:lower:]')_amd64")
 
 $(KUSTOMIZE):
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@$(KUSTOMIZE_VERSION))
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5@$(KUSTOMIZE_VERSION))
 
 $(GORELEASER):
 	$(call go-get-tool,$(GORELEASER),github.com/goreleaser/goreleaser@$(GORELEASER_VERSION))

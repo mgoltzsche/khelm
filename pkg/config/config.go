@@ -41,8 +41,8 @@ type KRMFuncConfig struct {
 
 // KRMFuncOutputMapping maps resources that match the selector to the specified output path.
 type KRMFuncOutputMapping struct {
-	ResourceSelectors []ResourceSelector `yaml:"selectors,omitempty"`
-	OutputPath        string             `yaml:"outputPath"`
+	Selectors  []ResourceSelector `yaml:"selectors,omitempty"`
+	OutputPath string             `yaml:"outputPath"`
 }
 
 // GeneratorConfig define the kustomize plugin's input file content
