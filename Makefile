@@ -11,9 +11,9 @@ SOPS := $(BIN_DIR)/sops
 export HELM_SECRETS_SOPS_BIN := $(SOPS)
 export HELM_PLUGINS := $(BUILD_DIR)/helm-plugins
 
-GORELEASER_VERSION ?= v1.9.2
+GORELEASER_VERSION ?= v2.1.0
 GOLANGCI_LINT_VERSION ?= v1.59.1
-KPT_VERSION ?= v1.0.0-beta.20
+KPT_VERSION ?= v1.0.0-beta.54
 KUSTOMIZE_VERSION ?= v5.4.3
 BATS_VERSION = v1.11.0
 SOPS_VERSION = v3.9.0
@@ -79,7 +79,7 @@ check: $(GOLANGCI_LINT) ## Runs linters
 	$(GOLANGCI_LINT) run ./...
 
 snapshot: $(GORELEASER) ## Builds a snapshot release but does not publish it
-	HELM_VERSION="$(HELM_VERSION)" $(GORELEASER) release --snapshot --rm-dist
+	HELM_VERSION="$(HELM_VERSION)" $(GORELEASER) release --snapshot --clean --fail-fast
 
 register-qemu-binfmt: ## Enable multiarch support on the host
 	$(DOCKER) run --rm --privileged multiarch/qemu-user-static:7.0.0-7 --reset -p yes
@@ -106,7 +106,7 @@ $(KUSTOMIZE):
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5@$(KUSTOMIZE_VERSION))
 
 $(GORELEASER):
-	$(call go-get-tool,$(GORELEASER),github.com/goreleaser/goreleaser@$(GORELEASER_VERSION))
+	$(call go-get-tool,$(GORELEASER),github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION))
 
 $(SOPS):
 	$(call download-bin,$(SOPS),"https://github.com/mozilla/sops/releases/download/$(SOPS_VERSION)/sops-$(SOPS_VERSION).$$(uname | tr '[:upper:]' '[:lower:]').amd64")
