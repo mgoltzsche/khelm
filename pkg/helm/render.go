@@ -139,7 +139,7 @@ func parseKubeVersion(version string) (kv chartutil.KubeVersion, err error) {
 	}
 	return chartutil.KubeVersion{
 		Version: fmt.Sprintf("v%d.%d.%d", v.Major(), v.Minor(), v.Patch()),
-		Major:   strconv.FormatInt(int64(v.Major()), 10),
-		Minor:   strconv.FormatInt(int64(v.Minor()), 10),
+		Major:   strconv.FormatUint(v.Major(), 10),
+		Minor:   strconv.FormatUint(v.Minor(), 10),
 	}, nil
 }
