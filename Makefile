@@ -11,13 +11,13 @@ SOPS := $(BIN_DIR)/sops
 export HELM_SECRETS_SOPS_BIN := $(SOPS)
 export HELM_PLUGINS := $(BUILD_DIR)/helm-plugins
 
-GORELEASER_VERSION ?= v2.5.0
-GOLANGCI_LINT_VERSION ?= v1.62.2
-KPT_VERSION ?= v1.0.0-beta.54
-KUSTOMIZE_VERSION ?= v5.4.3
-BATS_VERSION = v1.11.0
-SOPS_VERSION = v3.9.0
-HELM_SECRETS_VERSION = v4.6.0
+GORELEASER_VERSION ?= v2.10.1
+GOLANGCI_LINT_VERSION ?= v2.2.1
+KPT_VERSION ?= v1.0.0-beta.57
+KUSTOMIZE_VERSION ?= v5.7.0
+BATS_VERSION = v1.12.0
+SOPS_VERSION = v3.10.2
+HELM_SECRETS_VERSION = v4.6.5
 
 BATS_DIR = $(BUILD_DIR)/tools/bats
 BATS = $(BIN_DIR)/bats
@@ -97,7 +97,7 @@ golangci-lint: $(GOLANGCI_LINT)
 goreleaser: $(GORELEASER)
 
 $(GOLANGCI_LINT):
-	$(call go-get-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION))
+	$(call go-get-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION))
 
 $(KPT):
 	$(call download-bin,$(KPT),"https://github.com/GoogleContainerTools/kpt/releases/download/$(KPT_VERSION)/kpt_$$(uname | tr '[:upper:]' '[:lower:]')_amd64")

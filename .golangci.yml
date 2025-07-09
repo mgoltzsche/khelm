@@ -1,18 +1,29 @@
+version: "2"
 linters:
   enable:
-    - gofmt
     - govet
     - errcheck
     - staticcheck
     - unused
-    - gosimple
     - ineffassign
-    - typecheck
     - rowserrcheck
     - gosec
     - unconvert
-
-skip-dirs:
-  - build
-  - vendor
-
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - /build$
+      - /vendor$
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - /build$
+      - /vendor$

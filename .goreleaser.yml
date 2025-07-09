@@ -16,8 +16,8 @@ builds:
   ldflags:
   - -s -w -extldflags '-static' -X main.khelmVersion={{.Version}} -X main.helmVersion={{.Env.HELM_VERSION}}
 archives:
-- format: binary
-  name_template: "{{.ProjectName}}-{{.Os}}-{{.Arch}}"
+- formats: ['binary']
+  name_template: '{{.ProjectName}}-{{.Os}}-{{.Arch}}'
 checksum:
   name_template: 'checksums.txt'
 snapshot:
