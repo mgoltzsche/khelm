@@ -39,6 +39,7 @@ dockers_v2:
     dockerfile: Dockerfile
     ids:
       - khelm
+    sbom: false
     labels:
       "org.opencontainers.image.description": "A Helm chart templating CLI, helm to kustomize converter, kpt function and kustomize plugin."
       "org.opencontainers.image.created": "{{.Date}}"
