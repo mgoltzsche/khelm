@@ -25,11 +25,6 @@ jobs:
       with:
         go-version: 1.25
 
-    - name: Set up qemu
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: all
-
     - name: Build
       run: make khelm
 
@@ -50,6 +45,11 @@ jobs:
       run: |
         HELM_VERSION="$(grep helm\.sh/helm/ go.mod | sed -E -e 's!helm\.sh/helm/v3|\s+|\+.*!!g; s!^v!!' | cut -d ' ' -f2 | grep -E .+)"
         echo "helm_version=$HELM_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Set up qemu
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: all
 
     - name: Dry-run release
       run: make snapshot
