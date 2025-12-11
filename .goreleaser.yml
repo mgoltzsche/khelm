@@ -36,6 +36,7 @@ dockers_v2:
       - ghcr.io/mgoltzsche/khelm
     tags:
       - latest
+      - "{{.Major}}"
       - "{{.Version}}"
     dockerfile: Dockerfile
     ids:
