@@ -16,16 +16,16 @@ jobs:
     if: github.event_name == 'push'
 
     steps:
-    - name: Set up Go
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.25
-
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
         persist-credentials: false
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: 1.25
 
     - name: Set up qemu
       uses: docker/setup-qemu-action@v1
