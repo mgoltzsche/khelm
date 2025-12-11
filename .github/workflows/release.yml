@@ -28,7 +28,7 @@ jobs:
         go-version: 1.25
 
     - name: Set up qemu
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v3
       with:
         platforms: all
 
