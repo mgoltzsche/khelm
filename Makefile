@@ -44,7 +44,7 @@ install-kustomize-plugin:
 	cp $(BUILD_DIR)/bin/khelm $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer/ChartRenderer
 
 image: khelm
-	$(DOCKER) build --force-rm -t $(IMAGE) -f ./Dockerfile $(BIN_DIR)
+	$(DOCKER) build --force-rm -t $(IMAGE) -f ./Dockerfile --build-arg=TARGETPLATFORM=. $(BIN_DIR)
 
 test: $(BUILD_DIR) sops helm-plugins
 	go test -coverprofile $(BUILD_DIR)/coverage.out -cover ./...

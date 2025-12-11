@@ -3,21 +3,22 @@ project_name: khelm
 dist: ./build/dist
 before:
   hooks:
-  - go mod tidy
+    - go mod tidy
 builds:
-- main: ./cmd/khelm
-  targets:
-  - linux_amd64
-  - linux_arm64
-  - darwin_amd64
-  - darwin_arm64
-  env:
-  - CGO_ENABLED=0
-  ldflags:
-  - -s -w -extldflags '-static' -X main.khelmVersion={{.Version}} -X main.helmVersion={{.Env.HELM_VERSION}}
+  - id: khelm
+    main: ./cmd/khelm
+    targets:
+      - linux_amd64
+      - linux_arm64
+      - darwin_amd64
+      - darwin_arm64
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -extldflags '-static' -X main.khelmVersion={{.Version}} -X main.helmVersion={{.Env.HELM_VERSION}}
 archives:
-- formats: ['binary']
-  name_template: '{{.ProjectName}}-{{.Os}}-{{.Arch}}'
+  - formats: ['binary']
+    name_template: '{{.ProjectName}}-{{.Os}}-{{.Arch}}'
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -26,69 +27,25 @@ changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs(\([^)]+\))?:'
-    - '^test(\([^)]+\))?:'
-    - '^chore(\([^)]+\))?:'
-dockers:
-- id: khelm-amd64-image
-  image_templates:
-  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
-  - ghcr.io/mgoltzsche/khelm:{{.Version}}-amd64
-  use: buildx
-  dockerfile: Dockerfile
-  build_flag_templates:
-  - "--pull"
-  - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.title={{.ProjectName}}"
-  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-  - "--label=org.opencontainers.image.version={{.Version}}"
-  - "--build-arg=KHELM_VERSION={{.Version}}"
-  - "--build-arg=HELM_VERSION={{.Env.HELM_VERSION}}"
-  - "--platform=linux/amd64"
-- id: khelm-arm64-image
-  image_templates:
-  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
-  - ghcr.io/mgoltzsche/khelm:{{.Version}}-arm64v8
-  use: buildx
-  goarch: arm64
-  dockerfile: Dockerfile
-  build_flag_templates:
-  - "--pull"
-  - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.title={{.ProjectName}}"
-  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-  - "--label=org.opencontainers.image.version={{.Version}}"
-  - "--build-arg=KHELM_VERSION={{.Version}}"
-  - "--build-arg=HELM_VERSION={{.Env.HELM_VERSION}}"
-  - "--platform=linux/arm64/v8"
-docker_manifests:
-- id: khelm-multiarch-latest-dockerhub-image
-  name_template: docker.io/mgoltzsche/khelm:latest
-  image_templates:
-  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
-  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
-- id: khelm-multiarch-latest-ghcr-image
-  name_template: ghcr.io/mgoltzsche/khelm:latest
-  image_templates:
-  - ghcr.io/mgoltzsche/khelm:{{.Version}}-amd64
-  - ghcr.io/mgoltzsche/khelm:{{.Version}}-arm64v8
-- id: khelm-multiarch-major-dockerhub-image
-  name_template: docker.io/mgoltzsche/khelm:{{.Major}}
-  image_templates:
-  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
-  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
-- id: khelm-multiarch-major-ghcr-image
-  name_template: ghcr.io/mgoltzsche/khelm:{{.Major}}
-  image_templates:
-  - ghcr.io/mgoltzsche/khelm:{{.Version}}-amd64
-  - ghcr.io/mgoltzsche/khelm:{{.Version}}-arm64v8
-- id: khelm-multiarch-dockerhub-image
-  name_template: docker.io/mgoltzsche/khelm:{{.Version}}
-  image_templates:
-  - docker.io/mgoltzsche/khelm:{{.Version}}-amd64
-  - docker.io/mgoltzsche/khelm:{{.Version}}-arm64v8
-- id: khelm-multiarch-ghcr-image
-  name_template: ghcr.io/mgoltzsche/khelm:{{.Version}}
-  image_templates:
-  - ghcr.io/mgoltzsche/khelm:{{.Version}}-amd64
-  - ghcr.io/mgoltzsche/khelm:{{.Version}}-arm64v8
+      - '^docs(\([^)]+\))?:'
+      - '^test(\([^)]+\))?:'
+      - '^chore(\([^)]+\))?:'
+dockers_v2:
+  - images:
+      - docker.io/mgoltzsche/khelm
+      - ghcr.io/mgoltzsche/khelm
+    tags:
+      - "{{.Version}}"
+    dockerfile: Dockerfile
+    ids:
+      - khelm
+    labels:
+      "org.opencontainers.image.description": "A Helm chart templating CLI, helm to kustomize converter, kpt function and kustomize plugin."
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.name": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
