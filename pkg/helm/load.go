@@ -11,17 +11,18 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // loadChart loads chart from local or remote location
-func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
+func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chartv2.Chart, error) {
 	if cfg.Chart == "" {
 		return nil, errors.New("no chart specified")
 	}
@@ -46,15 +47,15 @@ func (h *Helm) loadChart(ctx context.Context, cfg *config.ChartConfig) (*chart.C
 	return h.loadRemoteChart(ctx, cfg)
 }
 
-func (h *Helm) loadOCIChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
+func (h *Helm) loadOCIChart(ctx context.Context, cfg *config.ChartConfig) (*chartv2.Chart, error) {
 	chartPath, err := locateChart(ctx, &cfg.LoaderConfig, nil, &h.Settings, h.Getters)
 	if err != nil {
 		return nil, err
 	}
-	return loader.Load(chartPath)
+	return loadV2Chart(chartPath)
 }
 
-func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
+func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*chartv2.Chart, error) {
 	repoURLs := map[string]struct{}{cfg.Repository: {}}
 	repos, err := reposForURLs(repoURLs, h.TrustAnyRepository, &h.Settings, h.Getters)
 	if err != nil {
@@ -73,18 +74,18 @@ func (h *Helm) loadRemoteChart(ctx context.Context, cfg *config.ChartConfig) (*c
 	if err != nil {
 		return nil, err
 	}
-	return loader.Load(chartPath)
+	return loadV2Chart(chartPath)
 }
 
-func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConfig) (*chart.Chart, error) {
+func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConfig) (*chartv2.Chart, error) {
 	chartPath := absPath(cfg.Chart, cfg.BaseDir)
-	chartRequested, err := loader.Load(chartPath)
+	chartRequested, err := loadV2Chart(chartPath)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	localCharts := make([]localChart, 0, 1)
-	dependencies := make([]*chart.Dependency, 0)
+	dependencies := make([]*chartv2.Dependency, 0)
 	needsRepoIndexUpdate, err := collectCharts(chartRequested, chartPath, cfg, &localCharts, &dependencies, 0)
 	if err != nil {
 		return nil, err
@@ -121,12 +122,29 @@ func (h *Helm) buildAndLoadLocalChart(ctx context.Context, cfg *config.ChartConf
 	}
 	// Reload the chart with the updated Chart.lock file
 	if needsReload {
-		chartRequested, err = loader.Load(chartPath)
+		chartRequested, err = loadV2Chart(chartPath)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed reloading chart %s after dependency download", cfg.Chart)
 		}
 	}
 	return chartRequested, nil
+}
+
+// loadV2Chart loads a chart of apiVersion v1 or v2.
+func loadV2Chart(chartPath string) (*chartv2.Chart, error) {
+	ch, err := loader.Load(chartPath)
+	if err != nil {
+		return nil, err
+	}
+	return asV2Chart(ch, chartPath)
+}
+
+func asV2Chart(ch chart.Charter, chartPath string) (*chartv2.Chart, error) {
+	c, ok := ch.(*chartv2.Chart)
+	if !ok {
+		return nil, errors.Errorf("chart %s has an unsupported format, expected an apiVersion v2 chart but got %T", chartPath, ch)
+	}
+	return c, nil
 }
 
 func isVersionRange(version string) (bool, error) {
@@ -145,12 +163,12 @@ func isVersionRange(version string) (bool, error) {
 }
 
 type localChart struct {
-	Chart             *chart.Chart
+	Chart             *chartv2.Chart
 	Path              string
 	LocalDependencies bool
 }
 
-func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *config.ChartConfig, localCharts *[]localChart, deps *[]*chart.Dependency, depth int) (needsRepoIndexUpdate bool, err error) {
+func collectCharts(chartRequested *chartv2.Chart, chartPath string, cfg *config.ChartConfig, localCharts *[]localChart, deps *[]*chartv2.Dependency, depth int) (needsRepoIndexUpdate bool, err error) {
 	if depth > 20 {
 		return false, errors.New("collect local charts recursively: max depth of 20 reached - cyclic dependency?")
 	}
@@ -166,7 +184,11 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *config.Ch
 			hasLocalDependencies = true
 			depChartPath := strings.TrimPrefix(dep.Repository, "file://")
 			depChartPath = absPath(depChartPath, chartPath)
-			depChart, err := loader.LoadDir(depChartPath)
+			depChartRaw, err := loader.LoadDir(depChartPath)
+			if err != nil {
+				return false, errors.Wrapf(err, "load chart %s dependency %s from dir %s", name, dep.Name, depChartPath)
+			}
+			depChart, err := asV2Chart(depChartRaw, depChartPath)
 			if err != nil {
 				return false, errors.Wrapf(err, "load chart %s dependency %s from dir %s", name, dep.Name, depChartPath)
 			}
@@ -195,7 +217,11 @@ func collectCharts(chartRequested *chart.Chart, chartPath string, cfg *config.Ch
 
 func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *config.LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) (needsReload bool, err error) {
 	for _, ch := range localCharts {
-		if err = action.CheckDependencies(ch.Chart, ch.Chart.Metadata.Dependencies); err != nil || ch.LocalDependencies {
+		metaDeps := make([]chart.Dependency, 0, len(ch.Chart.Metadata.Dependencies))
+		for _, dep := range ch.Chart.Metadata.Dependencies {
+			metaDeps = append(metaDeps, dep)
+		}
+		if err = action.CheckDependencies(ch.Chart, metaDeps); err != nil || ch.LocalDependencies {
 			needsReload = true
 			meta := ch.Chart.Metadata
 			if meta == nil {
@@ -233,7 +259,7 @@ func buildLocalCharts(ctx context.Context, localCharts []localChart, cfg *config
 	return needsReload, nil
 }
 
-func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, chartPath string, cfg *config.LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) error {
+func buildChartDependencies(ctx context.Context, chartRequested *chartv2.Chart, chartPath string, cfg *config.LoaderConfig, repos repositoryConfig, settings *cli.EnvSettings, getters getter.Providers) error {
 	registryClient, err := registry.NewClient(
 		registry.ClientOptEnableCache(true),
 	)
@@ -249,6 +275,7 @@ func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, ch
 		RegistryClient:   registryClient,
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
+		ContentCache:     settings.ContentCache,
 		Debug:            settings.Debug,
 	}
 	if cfg.Verify {
@@ -261,10 +288,20 @@ func buildChartDependencies(ctx context.Context, chartRequested *chart.Chart, ch
 	}
 	// Downloads dependencies - respecting requirements.lock if present
 	err = man.Build()
-	if err != nil && errors.Cause(err).Error() == "entry not found" {
+	if err != nil && isEntryNotFoundError(err) {
 		if err = repos.UpdateIndex(ctx); err == nil {
 			err = man.Build()
 		}
 	}
 	return errors.WithStack(err)
+}
+
+// isEntryNotFoundError returns true if a "entry not found" error was returned by the chart downloader, e.g. if the chart is missing in the cached repository index.
+func isEntryNotFoundError(err error) bool {
+	for e := err; e != nil; e = errors.Unwrap(e) {
+		if e.Error() == "entry not found" {
+			return true
+		}
+	}
+	return false
 }

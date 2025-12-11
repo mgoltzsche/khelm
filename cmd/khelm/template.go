@@ -8,7 +8,7 @@ import (
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/mgoltzsche/khelm/v2/pkg/helm"
 	"github.com/spf13/cobra"
-	"helm.sh/helm/v3/pkg/strvals"
+	"helm.sh/helm/v4/pkg/strvals"
 )
 
 func templateCommand(h *helm.Helm, writer io.Writer) *cobra.Command {

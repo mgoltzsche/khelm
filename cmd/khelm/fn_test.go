@@ -11,7 +11,7 @@ import (
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
@@ -37,9 +37,9 @@ func TestKptFnCommand(t *testing.T) {
 		},
 	}
 
-	origK8sVersion := chartutil.DefaultCapabilities.KubeVersion.Version
+	origK8sVersion := common.DefaultCapabilities.KubeVersion.Version
 	defer func() {
-		chartutil.DefaultCapabilities.KubeVersion.Version = origK8sVersion
+		common.DefaultCapabilities.KubeVersion.Version = origK8sVersion
 	}()
 
 	for _, c := range []struct {

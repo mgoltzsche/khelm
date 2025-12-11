@@ -14,11 +14,11 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/repo"
+	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
+	repo "helm.sh/helm/v4/pkg/repo/v1"
 )
 
 type untrustedRepoError struct {
@@ -66,7 +66,7 @@ func reposForURLs(repoURLs map[string]struct{}, trustAnyRepo *bool, settings *cl
 }
 
 // reposForDependencies create temporary repositories.yaml and configure settings with it.
-func reposForDependencies(deps []*chart.Dependency, trustAnyRepo *bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
+func reposForDependencies(deps []*chartv2.Dependency, trustAnyRepo *bool, settings *cli.EnvSettings, getters getter.Providers) (repositoryConfig, error) {
 	repoURLs := map[string]struct{}{}
 	for _, d := range deps {
 		repoURLs[d.Repository] = struct{}{}
@@ -105,7 +105,7 @@ func newRepositories(settings *cli.EnvSettings, getters getter.Providers) (r *re
 	}
 	r.repos, err = repo.LoadFile(settings.RepositoryConfig)
 	if err != nil {
-		if !os.IsNotExist(errors.Cause(err)) {
+		if !errors.Is(err, os.ErrNotExist) {
 			return nil, errors.Wrapf(err, "load %s", settings.RepositoryConfig)
 		}
 		r.repos = nil
@@ -128,7 +128,7 @@ func (f *repositories) repoIndex(ctx context.Context, entry *repo.Entry) (*repo.
 	idxFile := indexFile(entry, f.cacheDir)
 	idx, err := loadIndexFile(ctx, idxFile)
 	if err != nil {
-		if os.IsNotExist(errors.Cause(err)) {
+		if errors.Is(err, os.ErrNotExist) {
 			err = downloadIndexFile(ctx, entry, f.cacheDir, f.getters)
 			if err != nil {
 				return nil, err
