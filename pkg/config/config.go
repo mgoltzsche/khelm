@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
-	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"k8s.io/client-go/util/homedir"
 )
 
@@ -78,7 +78,7 @@ func (cfg *ChartConfig) ApplyDefaults() {
 		cfg.Namespace = "default"
 	}
 	if cfg.KubeVersion == "" {
-		cfg.KubeVersion = chartutil.DefaultCapabilities.KubeVersion.Version
+		cfg.KubeVersion = common.DefaultCapabilities.KubeVersion.Version
 	}
 	if cfg.Values == nil {
 		cfg.Values = map[string]interface{}{}

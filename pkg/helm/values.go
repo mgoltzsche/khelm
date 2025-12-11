@@ -6,8 +6,8 @@ import (
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v4/pkg/cli/values"
+	"helm.sh/helm/v4/pkg/getter"
 )
 
 const (

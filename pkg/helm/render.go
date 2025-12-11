@@ -14,10 +14,11 @@ import (
 	"github.com/mgoltzsche/khelm/v2/internal/matcher"
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
+	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/release"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
@@ -56,7 +57,7 @@ func (h *Helm) Render(ctx context.Context, req *config.ChartConfig) (r []*yaml.R
 
 // renderChart renders a manifest from the given chart and values.
 // Derived from https://github.com/helm/helm/blob/v3.5.4/cmd/helm/template.go
-func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters getter.Providers) ([]*yaml.RNode, error) {
+func renderChart(chartRequested *chartv2.Chart, req *config.ChartConfig, getters getter.Providers) ([]*yaml.RNode, error) {
 	log.Printf("Rendering chart %s %s with name %q and namespace %q", chartRequested.Metadata.Name, chartRequested.Metadata.Version, req.Name, req.Namespace)
 
 	// Load values
@@ -66,7 +67,7 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 	}
 
 	// Run helm install client
-	actionCfg := &action.Configuration{Capabilities: chartutil.DefaultCapabilities}
+	actionCfg := &action.Configuration{Capabilities: common.DefaultCapabilities}
 	actionCfg.Capabilities.APIVersions = append(actionCfg.Capabilities.APIVersions, req.APIVersions...)
 	if req.KubeVersion != "" {
 		actionCfg.Capabilities.KubeVersion, err = parseKubeVersion(req.KubeVersion)
@@ -75,9 +76,8 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 		}
 	}
 	client := action.NewInstall(actionCfg)
-	client.DryRun = true
+	client.DryRunStrategy = action.DryRunClient
 	client.Replace = true // Skip the name check
-	client.ClientOnly = true
 	client.DependencyUpdate = true
 	client.Verify = req.Verify
 	client.Keyring = req.Keyring
@@ -85,7 +85,7 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 	client.Namespace = req.Namespace
 	client.IncludeCRDs = !req.ExcludeCRDs
 
-	release, err := client.Run(chartRequested, vals)
+	rel, err := client.Run(chartRequested, vals)
 	if err != nil {
 		return nil, errors.Wrapf(err, "render chart %s", chartRequested.Metadata.Name)
 	}
@@ -104,9 +104,17 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 	chartHookMatcher := matcher.NewChartHookMatcher(transformer.Excludes, !req.ExcludeHooks)
 	transformer.Excludes = chartHookMatcher
 
-	manifest := release.Manifest
-	for _, hook := range release.Hooks {
-		manifest += fmt.Sprintf("\n---\n%s", hook.Manifest)
+	accessor, err := release.NewAccessor(rel)
+	if err != nil {
+		return nil, errors.Wrapf(err, "create release accessor for chart %s", chartRequested.Metadata.Name)
+	}
+	manifest := accessor.Manifest()
+	for _, hook := range accessor.Hooks() {
+		hookAccessor, err := release.NewHookAccessor(hook)
+		if err != nil {
+			return nil, errors.Wrapf(err, "create hook accessor for chart %s", chartRequested.Metadata.Name)
+		}
+		manifest += fmt.Sprintf("\n---\n%s", hookAccessor.Manifest())
 	}
 
 	transformed, err := transformer.TransformManifest(bytes.NewReader([]byte((manifest))))
@@ -129,7 +137,7 @@ func renderChart(chartRequested *chart.Chart, req *config.ChartConfig, getters g
 	return transformed, nil
 }
 
-func parseKubeVersion(version string) (kv chartutil.KubeVersion, err error) {
+func parseKubeVersion(version string) (kv common.KubeVersion, err error) {
 	v, err := semver.NewVersion(version)
 	if err != nil {
 		return kv, errors.Wrapf(err, "invalid kubeVersion %q provided", version)
@@ -137,7 +145,7 @@ func parseKubeVersion(version string) (kv chartutil.KubeVersion, err error) {
 	if v.Prerelease() != "" || v.Metadata() != "" {
 		return kv, errors.Errorf("invalid kubeVersion %q provided: unexpected version suffix", version)
 	}
-	return chartutil.KubeVersion{
+	return common.KubeVersion{
 		Version: fmt.Sprintf("v%d.%d.%d", v.Major(), v.Minor(), v.Patch()),
 		Major:   strconv.FormatUint(v.Major(), 10),
 		Minor:   strconv.FormatUint(v.Minor(), 10),

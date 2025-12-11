@@ -30,7 +30,7 @@ jobs:
     - name: Extract Helm version
       id: extract_helm_version
       run: |
-        HELM_VERSION="$(grep helm\.sh/helm/ go.mod | sed -E -e 's!helm\.sh/helm/v3|\s+|\+.*!!g; s!^v!!' | cut -d ' ' -f2 | grep -E .+)"
+        HELM_VERSION="$(grep helm\.sh/helm/ go.mod | sed -E -e 's!helm\.sh/helm/v4|\s+|\+.*!!g; s!^v!!' | cut -d ' ' -f2 | grep -E .+)"
         echo "helm_version=$HELM_VERSION" >> $GITHUB_OUTPUT
 
     - name: Build & Test

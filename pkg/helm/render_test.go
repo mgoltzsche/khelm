@@ -16,10 +16,10 @@ import (
 
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/stretchr/testify/require"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo"
+	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
+	repo "helm.sh/helm/v4/pkg/repo/v1"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 	helmyaml "sigs.k8s.io/yaml"
 )
@@ -350,7 +350,7 @@ func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, re
 		idx.APIVersion = "v2"
 		idx.Entries = map[string]repo.ChartVersions{
 			f.config.Chart: {{
-				Metadata: &chart.Metadata{
+				Metadata: &chartv2.Metadata{
 					AppVersion: f.config.Version,
 					Version:    f.config.Version,
 					Name:       f.config.Chart,

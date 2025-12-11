@@ -11,11 +11,11 @@ import (
 
 	"github.com/mgoltzsche/khelm/v2/pkg/config"
 	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/registry"
+	repo "helm.sh/helm/v4/pkg/repo/v1"
 )
 
 // locateChart fetches the chart if not present in cache and returns its path.
@@ -37,6 +37,7 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 		Getters:          getters,
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
+		ContentCache:     settings.ContentCache,
 	}
 
 	if cfg.Repository != "" {
@@ -61,7 +62,7 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 		dl.Options = []getter.Option{
 			getter.WithBasicAuth(repoEntry.Username, repoEntry.Password),
 			getter.WithTLSClientConfig(repoEntry.CertFile, repoEntry.KeyFile, repoEntry.CAFile),
-			getter.WithInsecureSkipVerifyTLS(repoEntry.InsecureSkipTLSverify),
+			getter.WithInsecureSkipVerifyTLS(repoEntry.InsecureSkipTLSVerify),
 		}
 	}
 
@@ -84,7 +85,9 @@ func locateChart(ctx context.Context, cfg *config.LoaderConfig, repos repository
 			return "", errors.Wrap(err, "normalize cached file path")
 		}
 		if cfg.Verify {
-			if _, err := downloader.VerifyChart(cacheFile, cfg.Keyring); err != nil {
+			provFile := fmt.Sprintf("%s.prov", cacheFile)
+
+			if _, err := downloader.VerifyChart(cacheFile, provFile, cfg.Keyring); err != nil {
 				return "", err
 			}
 		}
