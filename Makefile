@@ -32,37 +32,37 @@ DOCKER ?= docker
 
 all: clean khelm test image check
 
-khelm:
+khelm: ## Build the khelm binary.
 	CGO_ENABLED=$(CGO_ENABLED) go build -o $(BUILD_DIR)/bin/khelm -ldflags "$(GO_LDFLAGS)" -tags "$(BUILDTAGS)" ./cmd/khelm
 
-install:
+install: ## Install the khelm binary on your host.
 	cp $(BUILD_DIR)/bin/khelm /usr/local/bin/khelm
 	chmod +x /usr/local/bin/khelm
 
-install-kustomize-plugin:
+install-kustomize-plugin: ## Install the kustomize plugin on your host.
 	mkdir -p $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer
 	cp $(BUILD_DIR)/bin/khelm $${XDG_CONFIG_HOME:-$$HOME/.config}/kustomize/plugin/khelm.mgoltzsche.github.com/v2/chartrenderer/ChartRenderer
 
-image: khelm
+image: khelm ## Build the khelm container image.
 	$(DOCKER) build --force-rm -t $(IMAGE) -f ./Dockerfile --build-arg=TARGETPLATFORM=. $(BIN_DIR)
 
-test: $(BUILD_DIR) sops helm-plugins
+test: $(BUILD_DIR) sops helm-plugins ## Run the unit tests.
 	go test -coverprofile $(BUILD_DIR)/coverage.out -cover ./...
 
-coverage: test
+coverage: test ## Run unit tests and generate coverage HTML report.
 	go tool cover -html=$(BUILD_DIR)/coverage.out -o $(BUILD_DIR)/coverage.html
 
-e2e-test: kpt kustomize | $(BATS)
+e2e-test: kpt kustomize | $(BATS) ## Run the e2e tests.
 	@echo 'Running e2e tests (PATH=$(BUILD_DIR)/bin)'
 	@{ \
 	export PATH="$(BIN_DIR):$$PATH" IMAGE=$(IMAGE); \
 	$(BATS) -T ./e2e; \
 	}
 
-fmt:
+fmt: ## Format the Go code.
 	go fmt ./...
 
-clean:
+clean: ## Remove all build/test artifacts.
 	rm -f $(BUILD_DIR)/bin/khelm
 	rm -f $(BUILD_DIR)/bin/khelm-static
 	rm -rf example/localrefref/charts
@@ -71,18 +71,21 @@ clean:
 	rm -f example/kpt/test-cases/output-remote.yaml
 	rm -f example/kpt/output-mapping/output-filtered.yaml
 
-clean-all: clean
+clean-all: clean ## Remove all build/test artifacts and downloaded tools.
 	rm -rf $(BUILD_DIR)
 	find . -name charts -type d -exec rm -rf {} \;
 
-check: $(GOLANGCI_LINT) ## Runs linters
+check: $(GOLANGCI_LINT) ## Run linters.
 	$(GOLANGCI_LINT) run ./...
 
-snapshot: $(GORELEASER) ## Builds a snapshot release but does not publish it
+snapshot: $(GORELEASER) ## Build a snapshot release without publishing it.
 	HELM_VERSION="$(HELM_VERSION)" $(GORELEASER) release --snapshot --clean --fail-fast
 
-register-qemu-binfmt: ## Enable multiarch support on the host
+register-qemu-binfmt: ## Enable multiarch support on the host.
 	$(DOCKER) run --rm --privileged multiarch/qemu-user-static:7.0.0-7 --reset -p yes
+
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 kpt: $(KPT)
 
