@@ -380,7 +380,7 @@ func (f *fakePrivateChartServerHandler) ServeHTTP(writer http.ResponseWriter, re
 		}
 		return
 	}
-	log.Println("ERROR: fake server received unexpected request:", req.RequestURI)
+	log.Println("ERROR: fake server received unexpected request:", req.RequestURI) //nolint:gosec
 	writer.WriteHeader(404)
 }
 
