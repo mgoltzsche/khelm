@@ -269,7 +269,7 @@ Instead, Docker's `config.json` is used to read private registry credentials fro
 
 ## Build and test
 
-Build and test the khelm binary (requires Go 1.13) as well as the container image:
+Build and test the khelm binary (requires Go 1.26) as well as the container image:
 ```sh
 make clean khelm test check image e2e-test
 ```
@@ -278,4 +278,9 @@ _The binary is written to `build/bin/khelm`_.
 Install the binary on your host at `/usr/local/bin/khelm`:
 ```sh
 sudo make install
+```
+
+For more information about the available build targets, run:
+```sh
+make help
 ```
