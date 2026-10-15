@@ -6,5 +6,5 @@ info:
   description: webapp example
 pipeline:
   mutators:
-  - image: local/declarative-khelm-fn-example:unstable
-    configPath: ./fn-config.yaml
+    - image: local/declarative-khelm-fn-example:unstable
+      configPath: ./fn-config.yaml

@@ -23,9 +23,9 @@ jobs:
         persist-credentials: false
 
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v7
       with:
-        go-version: 1.26
+        go-version: 1.27
 
     - name: Extract Helm version
       id: extract_helm_version
@@ -54,7 +54,7 @@ jobs:
       uses: goreleaser/goreleaser-action@v7
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        version: v2.16.0
+        version: v2.18.3
         args: release --clean
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
